@@ -3,115 +3,102 @@ module Parser
     parseExpr
 ) where
 
-import Text.Parsec
+import qualified Text.Parsec as P
 
 import Control.Monad
 
-type Identifier = String
-type Type       = String
-type Param      = (Type,Identifier)
-
-data Expr 
-  = Let Type Identifier Expr
-  | Subs Identifier
-  | DefFn Identifier [Param] Type Expr
-  | Call Identifier [Expr]
-  | If Expr Expr
-  | ElseIf Expr Expr
-  | Else Expr
-  | Semicolon
-  | Block [Expr]
-  deriving Show 
+import Lexer
+import Syntax
 
 keywords :: [String]
 keywords = ["def"]
 
-parseProgram :: Parsec String () [Expr]
+parseProgram :: P.Parsec String () [Expr]
 parseProgram = do 
-  spaces
-  result <- sepBy parseExpr spaces
-  eof 
+  P.spaces
+  result <- P.sepBy parseExpr P.spaces
+  P.eof 
   return result
 
-parseExpr :: Parsec String () Expr
+parseExpr :: P.Parsec String () Expr
 parseExpr 
-  = try parseLet
-  <|> try parseSubs
-  <|> try parseDefFn
-  <|> try parseSemicolon
+  = P.try parseLet
+  P.<|> P.try parseSubs
+  P.<|> P.try parseDefFn
+  P.<|> P.try parseSemicolon
 
-parseIdentifier :: Parsec String () Identifier
+parseIdentifier :: P.Parsec String () Identifier
 parseIdentifier = do
-  head <- lower
-  tail <- many (alphaNum <|> char '_' <?> "a valid character for a variable name")
+  head <- P.lower
+  tail <- P.many (P.alphaNum P.<|> P.char '_' P.<?> "a valid character for a variable name")
   let word = head:tail
   guard (word `notElem` keywords)
   return $ head:tail
 
-parseType :: Parsec String () Type
+parseType :: P.Parsec String () Type
 parseType = do
-  head <- upper 
-  tail <- many alphaNum 
+  head <- P.upper 
+  tail <- P.many P.alphaNum 
   return $ head:tail
 
-parseParam :: Parsec String () Param
+parseParam :: P.Parsec String () Param
 parseParam = do
   paramType <- parseType
-  spaces
+  P.spaces
   paramIdent <- parseIdentifier
   return (paramType,paramIdent)
 
-parseSemicolon :: Parsec String () Expr
+parseSemicolon :: P.Parsec String () Expr
 parseSemicolon = 
   do
-    char ';'
+    P.char ';'
     return Semicolon
 
-parseLet :: Parsec String () Expr
+parseLet :: P.Parsec String () Expr
 parseLet = do
   varType <- parseType
-  spaces
+  P.spaces
   varId   <- parseIdentifier
-  spaces
-  string ":="
-  spaces
+  P.spaces
+  P.string ":="
+  P.spaces
   Let varType varId <$> parseExpr
 
-parseSubs :: Parsec String () Expr
+parseSubs :: P.Parsec String () Expr
 parseSubs = Subs <$> parseIdentifier
 
-parseDefFn :: Parsec String () Expr
+parseDefFn :: P.Parsec String () Expr
 parseDefFn = do
-  string "def"
-  spaces 
+  P.string "def"
+  P.spaces 
   fnIdent <- parseIdentifier
-  spaces 
-  char '('
-  spaces
-  paramList <- sepBy parseParam (char ',' >> spaces)
-  string "):"
-  spaces 
+  P.spaces 
+  P.char '('
+  P.spaces
+  paramList <- P.sepBy parseParam (P.char ',' >> P.spaces)
+  P.string "):"
+  P.spaces 
   fnReturnType <- parseType
-  spaces 
-  string ":="
-  spaces 
+  P.spaces 
+  P.string ":="
+  P.spaces 
   DefFn fnIdent paramList fnReturnType <$> parseExpr
 
-parseCall :: Parsec String () Expr
+parseCall :: P.Parsec String () Expr
 parseCall = do
   ident <- parseIdentifier
-  spaces
-  char '('
-  spaces
-  args <- sepBy parseExpr (char ',' >> spaces)
-  char ')'
+  P.spaces
+  P.char '('
+  P.spaces
+  args <- P.sepBy parseExpr (P.char ',' >> P.spaces)
+  P.char ')'
   return $ Call ident args
 
-parseBlock :: Parsec String () Expr
+parseBlock :: P.Parsec String () Expr
 parseBlock = do
-  char '{'
-  spaces 
-  exprs <- sepBy1 parseExpr spaces
-  spaces 
-  char '}'
+  P.char '{'
+  P.spaces 
+  exprs <- P.sepBy1 parseExpr P.spaces
+  P.spaces 
+  P.char '}'
   return $ Block exprs
