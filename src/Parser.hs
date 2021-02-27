@@ -1,27 +1,64 @@
-module Parser 
-(
-    parseExpr
-) where
+module Parser where
 
 import qualified Text.Parsec as P
+import qualified Text.Parsec.Expr as Ex
 
 import Control.Monad
 
 import Lexer
 import Syntax
 
-keywords :: [String]
-keywords = ["def"]
+binary s f = Ex.Infix (reservedOp s >> return (BinOp f))
+unary  s f = Ex.Prefix (reservedOp s >> return (UnaryOp f))
+
+-- arithmetic precedence
+aOpTable = [[unary  "-" Not                                                                                ]
+          ,[binary "*" Mul Ex.AssocLeft, binary "/" Divide Ex.AssocLeft, binary "//" IntDivide Ex.AssocLeft]
+          ,[binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft                                    ]]
+
+-- boolean precedence
+bOpTable = [[unary  "not" Not             ]
+           ,[binary "and" And Ex.AssocLeft]
+           ,[binary "or" Or Ex.AssocLeft  ]]
+
+-- Literal parsing
+
+int :: P.Parsec String () Expr
+int = do
+  LitInt <$> integer 
+
+float :: P.Parsec String () Expr 
+float = do
+  LitFloat <$> Lexer.float
+
+string :: P.Parsec String () Expr 
+string = do
+  P.char '\"'
+  contents <- Lexer.string
+  P.char '\"'
+  return $ LitString contents
+
+bool :: P.Parsec String () Expr
+bool =  (Lexer.reserved "true"  >> return (LitBool True )) 
+  P.<|> (Lexer.reserved "false" >> return (LitBool False))
+
+
+char :: P.Parsec String () Expr 
+char = do
+  P.char '\''
+  contents <- Lexer.char 
+  P.char '\''
+  return $ LitChar contents
 
 parseProgram :: P.Parsec String () [Expr]
-parseProgram = do 
+parseProgram = do
   P.spaces
   result <- P.sepBy parseExpr P.spaces
-  P.eof 
+  P.eof
   return result
 
 parseExpr :: P.Parsec String () Expr
-parseExpr 
+parseExpr
   = P.try parseLet
   P.<|> P.try parseSubs
   P.<|> P.try parseDefFn
@@ -32,13 +69,12 @@ parseIdentifier = do
   head <- P.lower
   tail <- P.many (P.alphaNum P.<|> P.char '_' P.<?> "a valid character for a variable name")
   let word = head:tail
-  guard (word `notElem` keywords)
   return $ head:tail
 
 parseType :: P.Parsec String () Type
 parseType = do
-  head <- P.upper 
-  tail <- P.many P.alphaNum 
+  head <- P.upper
+  tail <- P.many P.alphaNum
   return $ head:tail
 
 parseParam :: P.Parsec String () Param
@@ -49,7 +85,7 @@ parseParam = do
   return (paramType,paramIdent)
 
 parseSemicolon :: P.Parsec String () Expr
-parseSemicolon = 
+parseSemicolon =
   do
     P.char ';'
     return Semicolon
@@ -70,18 +106,18 @@ parseSubs = Subs <$> parseIdentifier
 parseDefFn :: P.Parsec String () Expr
 parseDefFn = do
   P.string "def"
-  P.spaces 
+  P.spaces
   fnIdent <- parseIdentifier
-  P.spaces 
+  P.spaces
   P.char '('
   P.spaces
   paramList <- P.sepBy parseParam (P.char ',' >> P.spaces)
   P.string "):"
-  P.spaces 
+  P.spaces
   fnReturnType <- parseType
-  P.spaces 
+  P.spaces
   P.string ":="
-  P.spaces 
+  P.spaces
   DefFn fnIdent paramList fnReturnType <$> parseExpr
 
 parseCall :: P.Parsec String () Expr
@@ -97,8 +133,8 @@ parseCall = do
 parseBlock :: P.Parsec String () Expr
 parseBlock = do
   P.char '{'
-  P.spaces 
+  P.spaces
   exprs <- P.sepBy1 parseExpr P.spaces
-  P.spaces 
+  P.spaces
   P.char '}'
   return $ Block exprs

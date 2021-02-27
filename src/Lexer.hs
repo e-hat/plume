@@ -1,14 +1,4 @@
-module Lexer
-(
-    languageDef,
-    lexer,
-    identifier,
-    reserved,
-    reservedOp,
-    parens,
-    semicolon,
-    whiteSpace
-) where
+module Lexer where
 
 import qualified Text.Parsec.Token as Tok
 import Text.Parsec.Language
@@ -33,15 +23,20 @@ languageDef =
                                   , "or"
                                   ] 
               , Tok.reservedOpNames  = [ "+", "-", "/", "//", ":="
-                                  , "<", "<=", "=", "and", "or", "not"
+                                  , "<", "<=", "=", "!=", "and", "or", "not"
+                                  , "<-"
                                   ]
               }
 
 lexer = Tok.makeTokenParser languageDef
 
-identifier = Tok.identifier lexer
-reserved   = Tok.reserved   lexer
-reservedOp = Tok.reservedOp lexer
-parens     = Tok.parens     lexer
-semicolon  = Tok.semi       lexer
-whiteSpace = Tok.whiteSpace lexer
+identifier = Tok.identifier    lexer
+reserved   = Tok.reserved      lexer
+reservedOp = Tok.reservedOp    lexer
+parens     = Tok.parens        lexer
+semicolon  = Tok.semi          lexer
+whiteSpace = Tok.whiteSpace    lexer
+integer    = Tok.integer       lexer
+float      = Tok.float         lexer
+char       = Tok.charLiteral   lexer
+string     = Tok.stringLiteral lexer

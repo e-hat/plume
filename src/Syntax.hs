@@ -15,6 +15,12 @@ data Expr
   | Semicolon
   | Block [Expr]
   | BinOp Op Expr Expr
+  | UnaryOp Op Expr
+  | LitInt Integer 
+  | LitFloat Double 
+  | LitString String
+  | LitBool Bool
+  | LitChar Char
   deriving (Eq, Show)
 
 data Op
@@ -23,4 +29,15 @@ data Op
     | Minus
     | Divide
     | IntDivide
+    | Neg
+    | And
+    | Or
+    | Not
+    | Less
+    | Leq
+    | Greater
+    | Geq
+    | Equal
+    | NotEqual
     deriving (Eq, Show)
+
