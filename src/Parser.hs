@@ -11,7 +11,9 @@ import Syntax
 binary s f = Ex.Infix (L.reservedOp s >> return (BinOp f))
 unary  s f = Ex.Prefix (L.reservedOp s >> return (UnaryOp f))
 
--- arithmetic expressions
+----------------------------------------------------------
+------------------- arithmetic expressions ---------------
+----------------------------------------------------------
 aOpTable = [[unary  "-" Not                                                                                  ]
            ,[binary "*" Mul  Ex.AssocLeft, binary "/" Divide Ex.AssocLeft, binary "//" IntDivide Ex.AssocLeft]
            ,[binary "+" Plus Ex.AssocLeft, binary "-" Minus  Ex.AssocLeft                                    ]]
@@ -26,7 +28,9 @@ aTerm =   L.parens aExpression
     P.<|> float
     P.<|> call
 
--- boolean boolean expressions
+--------------------------------------------------------
+--------------- boolean expressions---------------------
+--------------------------------------------------------
 bOpTable = [[unary  "not" Not             ]
            ,[binary "and" And Ex.AssocLeft]
            ,[binary "or"  Or  Ex.AssocLeft]]
@@ -40,7 +44,9 @@ bTerm =   L.parens bExpression
     P.<|> call
     P.<|> rExpression
 
--- relational expression
+---------------------------------------------------------
+-------------- relational expressions -------------------
+---------------------------------------------------------
 
 rExpression = do
   a1 <- aExpression
@@ -55,8 +61,9 @@ relation =  (L.reservedOp "<"  >> return Less    )
       P.<|> (L.reservedOp "="  >> return Equal   )
       P.<|> (L.reservedOp "!=" >> return NotEqual)
 
-
--- Literal parsing
+------------------------------------------------------
+------------------literal parsing---------------------
+------------------------------------------------------
 
 int :: P.Parsec String () Expr
 int = do
@@ -87,7 +94,9 @@ char = do
 semicolon :: P.Parsec String () Expr
 semicolon = L.semicolon >> return Semicolon
 
--- more complex parsing
+-----------------------------------------------------------
+------------------more complex parsing---------------------
+-----------------------------------------------------------
 
 -- types MUST start with capital in Plume
 typeName :: P.Parsec String () Type
