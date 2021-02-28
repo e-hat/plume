@@ -42,6 +42,7 @@ bTerm =   L.parens bExpression
     P.<|> subs
     P.<|> bool
     P.<|> call
+    P.<|> reassign
     P.<|> rExpression
 
 ---------------------------------------------------------
@@ -108,6 +109,12 @@ letexpr = do
   ident <- L.identifier 
   L.reservedOp ":="
   Let t ident <$> expression
+
+reassign :: P.Parsec String () Expr 
+reassign = do
+  ident <- L.identifier 
+  L.reservedOp "<-"
+  Reassign ident <$> expression
 
 expression :: P.Parsec String () Expr 
 expression = undefined
