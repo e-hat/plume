@@ -6,6 +6,7 @@ type Param      = (Type, Identifier)
 
 data Expr 
   = Let Type Identifier Expr
+  | Reassign Identifier Expr
   | Subs Identifier
   | DefFn Identifier [Param] Type Expr
   | Call Identifier [Expr]

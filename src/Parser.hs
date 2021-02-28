@@ -5,136 +5,99 @@ import qualified Text.Parsec.Expr as Ex
 
 import Control.Monad
 
-import Lexer
+import qualified Lexer as L
 import Syntax
 
-binary s f = Ex.Infix (reservedOp s >> return (BinOp f))
-unary  s f = Ex.Prefix (reservedOp s >> return (UnaryOp f))
+binary s f = Ex.Infix (L.reservedOp s >> return (BinOp f))
+unary  s f = Ex.Prefix (L.reservedOp s >> return (UnaryOp f))
 
--- arithmetic precedence
-aOpTable = [[unary  "-" Not                                                                                ]
-          ,[binary "*" Mul Ex.AssocLeft, binary "/" Divide Ex.AssocLeft, binary "//" IntDivide Ex.AssocLeft]
-          ,[binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft                                    ]]
+-- arithmetic expressions
+aOpTable = [[unary  "-" Not                                                                                  ]
+           ,[binary "*" Mul  Ex.AssocLeft, binary "/" Divide Ex.AssocLeft, binary "//" IntDivide Ex.AssocLeft]
+           ,[binary "+" Plus Ex.AssocLeft, binary "-" Minus  Ex.AssocLeft                                    ]]
 
--- boolean precedence
+
+aExpression :: P.Parsec String () Expr
+aExpression = Ex.buildExpressionParser aOpTable aTerm
+
+aTerm =   L.parens aExpression
+    P.<|> subs
+    P.<|> int
+    P.<|> float
+    P.<|> call
+
+-- boolean boolean expressions
 bOpTable = [[unary  "not" Not             ]
            ,[binary "and" And Ex.AssocLeft]
-           ,[binary "or" Or Ex.AssocLeft  ]]
+           ,[binary "or"  Or  Ex.AssocLeft]]
+
+bExpression :: P.Parsec String () Expr
+bExpression = Ex.buildExpressionParser bOpTable bTerm
+
+bTerm =   L.parens bExpression
+    P.<|> subs
+    P.<|> bool
+    P.<|> call
+    P.<|> rExpression
+
+-- relational expression
+
+rExpression = do
+  a1 <- aExpression
+  r <- relation
+  BinOp r a1 <$> aExpression
+
+
+relation =  (L.reservedOp "<"  >> return Less    )
+      P.<|> (L.reservedOp "<=" >> return Leq     )
+      P.<|> (L.reservedOp ">"  >> return Greater )
+      P.<|> (L.reservedOp ">=" >> return Geq     )
+      P.<|> (L.reservedOp "="  >> return Equal   )
+      P.<|> (L.reservedOp "!=" >> return NotEqual)
+
 
 -- Literal parsing
 
 int :: P.Parsec String () Expr
 int = do
-  LitInt <$> integer 
+  LitInt <$> L.integer 
 
 float :: P.Parsec String () Expr 
 float = do
-  LitFloat <$> Lexer.float
+  LitFloat <$> L.float
 
 string :: P.Parsec String () Expr 
 string = do
   P.char '\"'
-  contents <- Lexer.string
+  contents <- L.string
   P.char '\"'
   return $ LitString contents
 
 bool :: P.Parsec String () Expr
-bool =  (Lexer.reserved "true"  >> return (LitBool True )) 
-  P.<|> (Lexer.reserved "false" >> return (LitBool False))
-
+bool =  (L.reserved "true"  >> return (LitBool True )) 
+  P.<|> (L.reserved "false" >> return (LitBool False))
 
 char :: P.Parsec String () Expr 
 char = do
   P.char '\''
-  contents <- Lexer.char 
+  contents <- L.char 
   P.char '\''
   return $ LitChar contents
 
-parseProgram :: P.Parsec String () [Expr]
-parseProgram = do
-  P.spaces
-  result <- P.sepBy parseExpr P.spaces
-  P.eof
-  return result
+semicolon :: P.Parsec String () Expr
+semicolon = L.semicolon >> return Semicolon
 
-parseExpr :: P.Parsec String () Expr
-parseExpr
-  = P.try parseLet
-  P.<|> P.try parseSubs
-  P.<|> P.try parseDefFn
-  P.<|> P.try parseSemicolon
+-- more complex parsing
 
-parseIdentifier :: P.Parsec String () Identifier
-parseIdentifier = do
-  head <- P.lower
-  tail <- P.many (P.alphaNum P.<|> P.char '_' P.<?> "a valid character for a variable name")
-  let word = head:tail
-  return $ head:tail
+-- types MUST start with capital in Plume
+typeName :: P.Parsec String () Type
+typeName = (:) <$> P.upper <*> P.many P.alphaNum
 
-parseType :: P.Parsec String () Type
-parseType = do
-  head <- P.upper
-  tail <- P.many P.alphaNum
-  return $ head:tail
+expression :: P.Parsec String () Expr 
+expression = undefined
 
-parseParam :: P.Parsec String () Param
-parseParam = do
-  paramType <- parseType
-  P.spaces
-  paramIdent <- parseIdentifier
-  return (paramType,paramIdent)
+subs :: P.Parsec String () Expr 
+subs = undefined 
 
-parseSemicolon :: P.Parsec String () Expr
-parseSemicolon =
-  do
-    P.char ';'
-    return Semicolon
-
-parseLet :: P.Parsec String () Expr
-parseLet = do
-  varType <- parseType
-  P.spaces
-  varId   <- parseIdentifier
-  P.spaces
-  P.string ":="
-  P.spaces
-  Let varType varId <$> parseExpr
-
-parseSubs :: P.Parsec String () Expr
-parseSubs = Subs <$> parseIdentifier
-
-parseDefFn :: P.Parsec String () Expr
-parseDefFn = do
-  P.string "def"
-  P.spaces
-  fnIdent <- parseIdentifier
-  P.spaces
-  P.char '('
-  P.spaces
-  paramList <- P.sepBy parseParam (P.char ',' >> P.spaces)
-  P.string "):"
-  P.spaces
-  fnReturnType <- parseType
-  P.spaces
-  P.string ":="
-  P.spaces
-  DefFn fnIdent paramList fnReturnType <$> parseExpr
-
-parseCall :: P.Parsec String () Expr
-parseCall = do
-  ident <- parseIdentifier
-  P.spaces
-  P.char '('
-  P.spaces
-  args <- P.sepBy parseExpr (P.char ',' >> P.spaces)
-  P.char ')'
-  return $ Call ident args
-
-parseBlock :: P.Parsec String () Expr
-parseBlock = do
-  P.char '{'
-  P.spaces
-  exprs <- P.sepBy1 parseExpr P.spaces
-  P.spaces
-  P.char '}'
-  return $ Block exprs
+call :: P.Parsec String () Expr 
+call = undefined
