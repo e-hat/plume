@@ -102,6 +102,13 @@ semicolon = L.semicolon >> return Semicolon
 typeName :: P.Parsec String () Type
 typeName = (:) <$> P.upper <*> P.many P.alphaNum
 
+letexpr :: P.Parsec String () Expr 
+letexpr = do 
+  t <- typeName
+  ident <- L.identifier 
+  L.reservedOp ":="
+  Let t ident <$> expression
+
 expression :: P.Parsec String () Expr 
 expression = undefined
 
