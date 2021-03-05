@@ -24,7 +24,7 @@ languageDef =
                                   ] 
               , Tok.reservedOpNames  = [ "+", "-", "/", "//", ":="
                                   , "<", "<=", "=", "!=", ">", "and", "or", "not"
-                                  , "<-", ":", ","
+                                  , "<-", ":", ",", "=>"
                                   ]
               }
 
@@ -34,6 +34,7 @@ identifier = Tok.identifier    lexer
 reserved   = Tok.reserved      lexer
 reservedOp = Tok.reservedOp    lexer
 parens     = Tok.parens        lexer
+braces     = Tok.braces        lexer
 semicolon  = Tok.semi          lexer
 whiteSpace = Tok.whiteSpace    lexer
 integer    = Tok.integer       lexer
