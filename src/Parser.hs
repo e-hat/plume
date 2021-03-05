@@ -38,7 +38,8 @@ bOpTable = [[unary  "not" Not             ]
 bExpression :: P.Parsec String () Expr
 bExpression = Ex.buildExpressionParser bOpTable bTerm
 
-bTerm =   L.parens bExpression
+bTerm =   
+    L.parens bExpression
     P.<|> subs
     P.<|> bool
     P.<|> call
@@ -99,11 +100,31 @@ semicolon = L.semicolon >> return Semicolon
 ------------------more complex parsing---------------------
 -----------------------------------------------------------
 
--- types MUST start with capital in Plume
+-- helpers
 typeName :: P.Parsec String () Type
 typeName = (:) <$> P.upper <*> P.many P.alphaNum
 
-letexpr :: P.Parsec String () Expr 
+param :: P.Parsec String () Param 
+param = (,) <$> typeName <*> L.identifier
+
+-- the expressions themselves
+-- "trys" will be optimized after everything else so that I have behavior to test against
+expression :: P.Parsec String () Expr 
+expression 
+  =     P.try reassign
+  P.<|> P.try letexpr
+  P.<|> DefFn deffn
+  P.<|> P.try subs
+  P.<|> P.try call
+  P.<|> P.try ifexpr
+  P.<|> P.try elseif
+  P.<|> P.try elseexpr
+  P.<|> P.try semicolon
+  P.<|> P.try block
+  P.<|> P.try bExpression
+  P.<|> P.try aExpression
+
+letexpr :: P.Parsec String () Stmt 
 letexpr = do 
   t <- typeName
   ident <- L.identifier 
@@ -116,11 +137,35 @@ reassign = do
   L.reservedOp "<-"
   Reassign ident <$> expression
 
-expression :: P.Parsec String () Expr 
-expression = undefined
-
 subs :: P.Parsec String () Expr 
-subs = undefined 
+subs = ident 
+
+deffn :: P.Parsec String () Stmt 
+deffn = do
+    L.reserved "def"
+    name <- ident
+    P.char "("
+    P.whitespace
+    params <- P.sepBy param (P.char ',' >> P.whitespace)
+    P.char ")"
+    P.whitespace
+    P.char ":"
+    P.whitespace
+    returnType <- typeName
+    L.reservedOp ":="
+    DefFn name params returnType <$> expr
 
 call :: P.Parsec String () Expr 
 call = undefined
+
+ifexpr :: P.Parsec String () Expr 
+ifexpr = undefined 
+
+elseif :: P.Parsec String () Expr 
+elseif = undefined 
+
+elseexpr :: P.Parsec String () Expr 
+elseexpr = undefined 
+
+block :: P.Parsec String () Expr 
+block = undefined 
