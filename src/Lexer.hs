@@ -40,5 +40,5 @@ integer    = Tok.integer       lexer
 float      = Tok.float         lexer
 char       = Tok.charLiteral   lexer
 string     = Tok.stringLiteral lexer
-typeName   = Tok.lexeme lexer ((:) <$> P.upper  <*> P.many P.alphaNum)
-param      = Tok.lexeme lexer ((,) <$> typeName <*> identifier       )
+typeName   = Tok.lexeme        lexer ((:) <$> P.upper  <*> P.many P.alphaNum)
+param      = Tok.lexeme        lexer ((,) <$> typeName <*> identifier       )
