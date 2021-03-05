@@ -113,6 +113,7 @@ expression
   P.<|> P.try bExpression
   P.<|> P.try aExpression
   P.<|> P.try ifexpr
+  P.<|> P.try elseif
   P.<|> P.try semicolon
 
 letexpr :: P.Parsec String () Expr 
@@ -149,13 +150,18 @@ call = do
 
 ifexpr :: P.Parsec String () Expr 
 ifexpr = do
-   L.reserved "if"
-   cond <- bExpression
-   L.reservedOp "=>"
-   If cond <$> expression 
+    L.reserved "if"
+    cond <- bExpression
+    L.reservedOp "=>"
+    If cond <$> expression 
 
 elseif :: P.Parsec String () Expr 
-elseif = undefined 
+elseif = do
+    L.reserved "else"
+    L.reserved "if"
+    cond <- bExpression
+    L.reservedOp "=>"
+    ElseIf cond <$> expression
 
 elseexpr :: P.Parsec String () Expr 
 elseexpr = undefined 
