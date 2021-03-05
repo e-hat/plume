@@ -156,7 +156,13 @@ deffn = do
     DefFn name params returnType <$> expr
 
 call :: P.Parsec String () Expr 
-call = undefined
+call = do
+    name <- ident
+    P.char "("
+    P.whitespace
+    params <- P.sepBy ident (P.char ',' >> P.whitespace)
+    P.char ")" 
+    return $ Call name params
 
 ifexpr :: P.Parsec String () Expr 
 ifexpr = undefined 
