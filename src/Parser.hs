@@ -107,8 +107,8 @@ expression
   =     P.try reassign
   P.<|> P.try letexpr
   P.<|> P.try deffn
-  P.<|> P.try subs
   P.<|> P.try call
+  P.<|> P.try subs
   P.<|> P.try semicolon
   P.<|> P.try bExpression
   P.<|> P.try aExpression
