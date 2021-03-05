@@ -17,7 +17,6 @@ languageDef =
                                   , "true"
                                   , "false"
                                   , "else"
-                                  , "else"
                                   , "not"
                                   , "and"
                                   , "or"
