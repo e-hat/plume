@@ -113,6 +113,7 @@ expression
   P.<|> P.try bExpression
   P.<|> P.try aExpression
   P.<|> P.try ifexpr
+  P.<|> P.try semicolon
 
 letexpr :: P.Parsec String () Expr 
 letexpr = do 
