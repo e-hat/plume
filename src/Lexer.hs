@@ -8,7 +8,7 @@ languageDef =
     emptyDef { Tok.commentStart  = "/*"
              , Tok.commentEnd    = "*/"
              , Tok.commentLine   = "#"
-             , Tok.identStart    = P.letter
+             , Tok.identStart    = P.lower
              , Tok.identLetter   = P.alphaNum
              , Tok.reservedNames = [ "if"
                                   , "for"
@@ -24,7 +24,7 @@ languageDef =
                                   ] 
               , Tok.reservedOpNames  = [ "+", "-", "/", "//", ":="
                                   , "<", "<=", "=", "!=", ">", "and", "or", "not"
-                                  , "<-"
+                                  , "<-", ":", ","
                                   ]
               }
 
@@ -40,3 +40,5 @@ integer    = Tok.integer       lexer
 float      = Tok.float         lexer
 char       = Tok.charLiteral   lexer
 string     = Tok.stringLiteral lexer
+typeName   = Tok.lexeme lexer ((:) <$> P.upper  <*> P.many P.alphaNum)
+param      = Tok.lexeme lexer ((,) <$> typeName <*> identifier       )
