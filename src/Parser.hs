@@ -100,33 +100,22 @@ semicolon = L.semicolon >> return Semicolon
 ------------------more complex parsing---------------------
 -----------------------------------------------------------
 
--- helpers
-typeName :: P.Parsec String () Type
-typeName = (:) <$> P.upper <*> P.many P.alphaNum
-
-param :: P.Parsec String () Param 
-param = (,) <$> typeName <*> L.identifier
-
 -- the expressions themselves
 -- "trys" will be optimized after everything else so that I have behavior to test against
 expression :: P.Parsec String () Expr 
 expression 
   =     P.try reassign
   P.<|> P.try letexpr
-  P.<|> DefFn deffn
+  P.<|> P.try deffn
   P.<|> P.try subs
   P.<|> P.try call
-  P.<|> P.try ifexpr
-  P.<|> P.try elseif
-  P.<|> P.try elseexpr
   P.<|> P.try semicolon
-  P.<|> P.try block
   P.<|> P.try bExpression
   P.<|> P.try aExpression
 
-letexpr :: P.Parsec String () Stmt 
+letexpr :: P.Parsec String () Expr 
 letexpr = do 
-  t <- typeName
+  t <- L.typeName
   ident <- L.identifier 
   L.reservedOp ":="
   Let t ident <$> expression
@@ -138,31 +127,23 @@ reassign = do
   Reassign ident <$> expression
 
 subs :: P.Parsec String () Expr 
-subs = ident 
+subs = Subs <$> L.identifier 
 
-deffn :: P.Parsec String () Stmt 
+deffn :: P.Parsec String () Expr 
 deffn = do
     L.reserved "def"
-    name <- ident
-    P.char "("
-    P.whitespace
-    params <- P.sepBy param (P.char ',' >> P.whitespace)
-    P.char ")"
-    P.whitespace
-    P.char ":"
-    P.whitespace
-    returnType <- typeName
+    ident <- L.identifier
+    params <- L.parens $ P.sepBy L.param (L.reservedOp ",")
+    L.reservedOp ":"
+    returnType <- L.typeName
     L.reservedOp ":="
-    DefFn name params returnType <$> expr
+    DefFn ident params returnType <$> expression
 
 call :: P.Parsec String () Expr 
 call = do
-    name <- ident
-    P.char "("
-    P.whitespace
-    params <- P.sepBy ident (P.char ',' >> P.whitespace)
-    P.char ")" 
-    return $ Call name params
+    ident <- L.identifier
+    params <- L.parens $ P.sepBy expression (L.reservedOp ",")
+    return $ Call ident params
 
 ifexpr :: P.Parsec String () Expr 
 ifexpr = undefined 
