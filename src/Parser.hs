@@ -23,10 +23,10 @@ aExpression :: P.Parsec String () Expr
 aExpression = Ex.buildExpressionParser aOpTable aTerm
 
 aTerm =   L.parens aExpression
-    P.<|> subs
+    P.<|> P.try call
+    P.<|> P.try subs
     P.<|> int
     P.<|> float
-    P.<|> call
 
 --------------------------------------------------------
 --------------- boolean expressions---------------------
@@ -38,12 +38,11 @@ bOpTable = [[unary  "not" Not             ]
 bExpression :: P.Parsec String () Expr
 bExpression = Ex.buildExpressionParser bOpTable bTerm
 
-bTerm =   
-    L.parens bExpression
-    P.<|> subs
-    P.<|> bool
-    P.<|> call
+bTerm =   L.parens bExpression
+    P.<|> P.try call
     P.<|> reassign
+    P.<|> P.try subs
+    P.<|> bool
     P.<|> rExpression
 
 ---------------------------------------------------------
@@ -104,14 +103,14 @@ semicolon = L.semicolon >> return Semicolon
 -- "trys" will be optimized after everything else so that I have behavior to test against
 expression :: P.Parsec String () Expr 
 expression 
-  =     P.try reassign
-  P.<|> P.try letexpr
+  =     P.try letexpr
   P.<|> P.try deffn
-  P.<|> P.try call
-  P.<|> P.try subs
-  P.<|> P.try semicolon
   P.<|> P.try bExpression
   P.<|> P.try aExpression
+  P.<|> P.try call
+  P.<|> P.try reassign
+  P.<|> P.try subs
+  P.<|> P.try semicolon
   P.<|> P.try ifexpr
   P.<|> P.try elseif
   P.<|> P.try semicolon
