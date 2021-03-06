@@ -1,117 +1,174 @@
-module Parser 
-(
-    parseExpr
-) where
+module Parser where
 
-import Text.Parsec
+import qualified Text.Parsec as P
+import qualified Text.Parsec.Expr as Ex
 
 import Control.Monad
 
-type Identifier = String
-type Type       = String
-type Param      = (Type,Identifier)
+import qualified Lexer as L
+import Syntax
 
-data Expr 
-  = Let Type Identifier Expr
-  | Subs Identifier
-  | DefFn Identifier [Param] Type Expr
-  | Call Identifier [Expr]
-  | If Expr Expr
-  | ElseIf Expr Expr
-  | Else Expr
-  | Semicolon
-  | Block [Expr]
-  deriving Show 
+binary s f = Ex.Infix (L.reservedOp s >> return (BinOp f))
+unary  s f = Ex.Prefix (L.reservedOp s >> return (UnaryOp f))
 
-keywords :: [String]
-keywords = ["def"]
+----------------------------------------------------------
+------------------- arithmetic expressions ---------------
+----------------------------------------------------------
+aOpTable = [[unary  "-" Not                                                                                  ]
+           ,[binary "*" Mul  Ex.AssocLeft, binary "/" Divide Ex.AssocLeft, binary "//" IntDivide Ex.AssocLeft]
+           ,[binary "+" Plus Ex.AssocLeft, binary "-" Minus  Ex.AssocLeft                                    ]]
 
-parseProgram :: Parsec String () [Expr]
-parseProgram = do 
-  spaces
-  result <- sepBy parseExpr spaces
-  eof 
-  return result
 
-parseExpr :: Parsec String () Expr
-parseExpr 
-  = try parseLet
-  <|> try parseSubs
-  <|> try parseDefFn
-  <|> try parseSemicolon
+aExpression :: P.Parsec String () Expr
+aExpression = Ex.buildExpressionParser aOpTable aTerm
 
-parseIdentifier :: Parsec String () Identifier
-parseIdentifier = do
-  head <- lower
-  tail <- many (alphaNum <|> char '_' <?> "a valid character for a variable name")
-  let word = head:tail
-  guard (word `notElem` keywords)
-  return $ head:tail
+aTerm =   L.parens aExpression
+    P.<|> P.try call
+    P.<|> P.try subs
+    P.<|> int
+    P.<|> float
 
-parseType :: Parsec String () Type
-parseType = do
-  head <- upper 
-  tail <- many alphaNum 
-  return $ head:tail
+--------------------------------------------------------
+--------------- boolean expressions---------------------
+--------------------------------------------------------
+bOpTable = [[unary  "not" Not             ]
+           ,[binary "and" And Ex.AssocLeft]
+           ,[binary "or"  Or  Ex.AssocLeft]]
 
-parseParam :: Parsec String () Param
-parseParam = do
-  paramType <- parseType
-  spaces
-  paramIdent <- parseIdentifier
-  return (paramType,paramIdent)
+bExpression :: P.Parsec String () Expr
+bExpression = Ex.buildExpressionParser bOpTable bTerm
 
-parseSemicolon :: Parsec String () Expr
-parseSemicolon = 
-  do
-    char ';'
-    return Semicolon
+bTerm =   L.parens bExpression
+    P.<|> P.try call
+    P.<|> reassign
+    P.<|> P.try subs
+    P.<|> bool
+    P.<|> rExpression
 
-parseLet :: Parsec String () Expr
-parseLet = do
-  varType <- parseType
-  spaces
-  varId   <- parseIdentifier
-  spaces
-  string ":="
-  spaces
-  Let varType varId <$> parseExpr
+---------------------------------------------------------
+-------------- relational expressions -------------------
+---------------------------------------------------------
 
-parseSubs :: Parsec String () Expr
-parseSubs = Subs <$> parseIdentifier
+rExpression = do
+  a1 <- aExpression
+  r <- relation
+  BinOp r a1 <$> aExpression
 
-parseDefFn :: Parsec String () Expr
-parseDefFn = do
-  string "def"
-  spaces 
-  fnIdent <- parseIdentifier
-  spaces 
-  char '('
-  spaces
-  paramList <- sepBy parseParam (char ',' >> spaces)
-  string "):"
-  spaces 
-  fnReturnType <- parseType
-  spaces 
-  string ":="
-  spaces 
-  DefFn fnIdent paramList fnReturnType <$> parseExpr
 
-parseCall :: Parsec String () Expr
-parseCall = do
-  ident <- parseIdentifier
-  spaces
-  char '('
-  spaces
-  args <- sepBy parseExpr (char ',' >> spaces)
-  char ')'
-  return $ Call ident args
+relation =  (L.reservedOp "<"  >> return Less    )
+      P.<|> (L.reservedOp "<=" >> return Leq     )
+      P.<|> (L.reservedOp ">"  >> return Greater )
+      P.<|> (L.reservedOp ">=" >> return Geq     )
+      P.<|> (L.reservedOp "="  >> return Equal   )
+      P.<|> (L.reservedOp "!=" >> return NotEqual)
 
-parseBlock :: Parsec String () Expr
-parseBlock = do
-  char '{'
-  spaces 
-  exprs <- sepBy1 parseExpr spaces
-  spaces 
-  char '}'
-  return $ Block exprs
+------------------------------------------------------
+------------------literal parsing---------------------
+------------------------------------------------------
+
+int :: P.Parsec String () Expr
+int = do
+  LitInt <$> L.integer 
+
+float :: P.Parsec String () Expr 
+float = do
+  LitFloat <$> L.float
+
+string :: P.Parsec String () Expr 
+string = do
+  P.char '\"'
+  contents <- L.string
+  P.char '\"'
+  return $ LitString contents
+
+bool :: P.Parsec String () Expr
+bool =  (L.reserved "true"  >> return (LitBool True )) 
+  P.<|> (L.reserved "false" >> return (LitBool False))
+
+char :: P.Parsec String () Expr 
+char = do
+  P.char '\''
+  contents <- L.char 
+  P.char '\''
+  return $ LitChar contents
+
+semicolon :: P.Parsec String () Expr
+semicolon = L.semicolon >> return Semicolon
+
+-----------------------------------------------------------
+------------------more complex parsing---------------------
+-----------------------------------------------------------
+
+-- the expressions themselves
+-- "trys" will be optimized after everything else so that I have behavior to test against
+expression :: P.Parsec String () Expr 
+expression 
+  =     P.try letexpr
+  P.<|> P.try deffn
+  P.<|> P.try bExpression
+  P.<|> P.try aExpression
+  P.<|> P.try call
+  P.<|> P.try reassign
+  P.<|> P.try subs
+  P.<|> P.try semicolon
+  P.<|> P.try ifexpr
+  P.<|> P.try elseif
+  P.<|> P.try elseexpr
+  P.<|> P.try semicolon
+  P.<|> P.try block
+
+letexpr :: P.Parsec String () Expr 
+letexpr = do 
+  t <- L.typeName
+  ident <- L.identifier 
+  L.reservedOp ":="
+  Let t ident <$> expression
+
+reassign :: P.Parsec String () Expr 
+reassign = do
+  ident <- L.identifier 
+  L.reservedOp "<-"
+  Reassign ident <$> expression
+
+subs :: P.Parsec String () Expr 
+subs = Subs <$> L.identifier 
+
+deffn :: P.Parsec String () Expr 
+deffn = do
+    L.reserved "def"
+    ident <- L.identifier
+    params <- L.parens $ P.sepBy L.param (L.reservedOp ",")
+    L.reservedOp ":"
+    returnType <- L.typeName
+    L.reservedOp ":="
+    DefFn ident params returnType <$> expression
+
+call :: P.Parsec String () Expr 
+call = do
+    ident <- L.identifier
+    params <- L.parens $ P.sepBy expression (L.reservedOp ",")
+    return $ Call ident params
+
+ifexpr :: P.Parsec String () Expr 
+ifexpr = do
+    L.reserved "if"
+    cond <- bExpression
+    L.reservedOp "=>"
+    If cond <$> expression 
+
+elseif :: P.Parsec String () Expr 
+elseif = do
+    L.reserved "else"
+    L.reserved "if"
+    cond <- bExpression
+    L.reservedOp "=>"
+    ElseIf cond <$> expression
+
+elseexpr :: P.Parsec String () Expr 
+elseexpr = do
+    L.reserved "else"
+    L.reservedOp "=>"   
+    Else <$> expression 
+
+block :: P.Parsec String () Expr 
+block = Block <$> (L.braces $ P.many1 expression) 

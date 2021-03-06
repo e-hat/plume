@@ -2,12 +2,12 @@ module Main where
 
 import Parser
 
-import Text.Parsec
+import Text.Parsec as P
   
 main :: IO ()
 main = do
   putStrLn "Enter some input to parse:"
-  result <- parse parseExpr "" <$> getLine
+  result <- P.parse expression "" <$> getLine
   print result
 
 
