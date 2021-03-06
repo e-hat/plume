@@ -113,7 +113,9 @@ expression
   P.<|> P.try semicolon
   P.<|> P.try ifexpr
   P.<|> P.try elseif
+  P.<|> P.try elseexpr
   P.<|> P.try semicolon
+  P.<|> P.try block
 
 letexpr :: P.Parsec String () Expr 
 letexpr = do 
@@ -163,7 +165,10 @@ elseif = do
     ElseIf cond <$> expression
 
 elseexpr :: P.Parsec String () Expr 
-elseexpr = undefined 
+elseexpr = do
+    L.reserved "else"
+    L.reservedOp "=>"   
+    Else <$> expression 
 
 block :: P.Parsec String () Expr 
-block = undefined 
+block = Block <$> (L.braces $ P.many1 expression) 
