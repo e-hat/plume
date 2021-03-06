@@ -5,6 +5,9 @@ This project is my first programming language. It is currently in its very early
 
 Plume aims to be a strongly, statically typed, and compiled languaged. It attempts to capture the performance of C++ along with the ergonomics of newer languages such as Rust, Scala, and Go. It differs from Rust in the fact that it will require C/C++ esque memory management. Above all else, this project also aims to be a powerful learning experience that lends itself to constant improvement. Also, the codebase for this project will be useful for exploring other areas of PL later on, such as making an interpreter or experimenting with different runtime systems and garbage collection. 
 
+## Usage
+This project relies on [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) to manage dependencies. Clone the repo and `cd` into it, then run `stack setup`. Then, do `stack ghci` and run the `main` function. At this point in the project, you'll be asked to enter a line of Plume. This will be parsed and the AST for that line will be printed as a result.
+
 ## Approach
 This compiler will be written in Haskell with a Parsec-based frontend and will target WASM for easy cross-platform use (also because it's cool).
 
