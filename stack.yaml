@@ -1,4 +1,4 @@
 packages:
 - .
 resolver:
-  compiler: ghc-8.6.5
+  compiler: ghc-8.8.4
