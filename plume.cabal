@@ -2,13 +2,13 @@ name:                plume
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/plume#readme
-license:             BSD3
+homepage:            https://github.com/e-hat/plume
+license:             MIT
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2021 Author name here
-category:            Web
+author:              Eddie Hatfield
+maintainer:          edward.hatfield@tufts.edu
+copyright:           2021 Eddie Hatfield
+category:            Compiler
 build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
