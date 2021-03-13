@@ -7,9 +7,7 @@ import Text.Parsec as P
 
 handleNodes :: Either ParseError Program -> IO ()
 handleNodes (Left err) = error $ show err
-handleNodes (Right ns) = do
-  print ns
-  mconcat <$> mapM print ns
+handleNodes (Right ns) = print ns
   
 main :: IO ()
 main = do
