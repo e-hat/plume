@@ -73,12 +73,7 @@ float :: P.Parsec String () ExprNode
 float = exprWrapper $ LitFloat <$> L.float
 
 string :: P.Parsec String () ExprNode
-string =
-  exprWrapper $ do
-    P.char '\"'
-    contents <- L.string
-    P.char '\"'
-    return $ LitString contents
+string = exprWrapper $ LitString <$> L.string
 
 bool :: P.Parsec String () ExprNode
 bool =
