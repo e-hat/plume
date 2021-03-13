@@ -2,6 +2,72 @@ module Syntax where
 
 import qualified Text.Parsec as P
 
+type Program = [DeclNode]
+
+data DeclNode = DeclNode
+                { getDeclSpan :: SpanRec
+                , getDecl     :: Decl
+                }
+  deriving Show
+
+data ExprNode = ExprNode
+                { getExprSpan :: SpanRec
+                , getExpr     :: Expr
+                }
+    
+  deriving (Show)
+
+type Identifier = String
+
+type Type = String
+
+type Param = (Type, Identifier)
+
+data Decl 
+  = Let Type Identifier ExprNode
+  | Reassign Identifier ExprNode
+  | DefFn Identifier [Param] Type ExprNode
+  | CallDecl Identifier [ExprNode]
+  | IfDecl ExprNode DeclNode
+  | ElseIfDecl ExprNode DeclNode
+  | ElseDecl DeclNode
+  | BlockDecl [DeclNode]
+  deriving Show
+
+data Expr
+  = Subs Identifier
+  | CallExpr Identifier [ExprNode]
+  | IfExpr ExprNode ExprNode
+  | ElseIfExpr ExprNode ExprNode
+  | ElseExpr ExprNode
+  | BlockExpr [DeclNode] ExprNode
+  | BinOp Op ExprNode ExprNode
+  | UnaryOp Op ExprNode
+  | LitInt Integer
+  | LitFloat Double
+  | LitString String
+  | LitBool Bool
+  | LitChar Char
+  deriving (Show)
+
+data Op
+  = Plus
+  | Mul
+  | Minus
+  | Divide
+  | IntDivide
+  | Neg
+  | And
+  | Or
+  | Not
+  | Less
+  | Leq
+  | Greater
+  | Geq
+  | Equal
+  | NotEqual
+  deriving Show
+ 
 data SpanRec =
   SpanRec
     { getFileName :: String
@@ -35,57 +101,3 @@ instance Semigroup SpanRec where
       (max aMaxLine bMaxLine)
       (min aMinCol bMinCol)
       (max aMaxCol bMaxCol)
-
-data ASTNode =
-  ASTNode
-    { getSpan :: SpanRec
-    , getExpr :: Expr
-    }
-  deriving (Show)
-
-type Identifier = String
-
-type Type = String
-
-type Param = (Type, Identifier)
-
--- note that in Plume, EVERYTHING is an expression
--- this will make parsing "if's as expressions" and the like
--- easier, I hope ¯\_(ツ)_/¯
-data Expr
-  = Let Type Identifier ASTNode
-  | Reassign Identifier ASTNode
-  | Subs Identifier
-  | DefFn Identifier [Param] Type ASTNode
-  | Call Identifier [ASTNode]
-  | If ASTNode ASTNode
-  | ElseIf ASTNode ASTNode
-  | Else ASTNode
-  | Semicolon
-  | Block [ASTNode]
-  | BinOp Op ASTNode ASTNode
-  | UnaryOp Op ASTNode
-  | LitInt Integer
-  | LitFloat Double
-  | LitString String
-  | LitBool Bool
-  | LitChar Char
-  deriving (Show)
-
-data Op
-  = Plus
-  | Mul
-  | Minus
-  | Divide
-  | IntDivide
-  | Neg
-  | And
-  | Or
-  | Not
-  | Less
-  | Leq
-  | Greater
-  | Geq
-  | Equal
-  | NotEqual
-  deriving (Eq, Show)

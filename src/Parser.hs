@@ -6,31 +6,41 @@ import Syntax
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as Ex
 
--- wraps an expression parser to keep track of its span
-spanWrapper :: P.Parsec String () Expr -> P.Parsec String () ASTNode
-spanWrapper exprP = do
+program :: P.Parsec String () Program
+program = L.whiteSpace >> P.many1 declaration
+
+-- wraps an declaration parser to keep track of its span
+declWrapper :: P.Parsec String () Decl -> P.Parsec String () DeclNode
+declWrapper declP = do
   start <- P.getPosition
-  val <- exprP
+  val <- declP
   end <- P.getPosition
-  return $ ASTNode (spanBtwnSP start end) val
+  return $ DeclNode (spanBtwnSP start end) val
+
+exprWrapper :: P.Parsec String () Expr -> P.Parsec String() ExprNode 
+exprWrapper exprP = do
+  start <- P.getPosition 
+  val <- exprP
+  end <- P.getPosition 
+  return $ ExprNode (spanBtwnSP start end) val
 
 ----------------------------------------------------------
 ------------------- arithmetic expressions ---------------
 ----------------------------------------------------------
-asAST :: Expr -> ASTNode
-asAST b@(BinOp _ n1 n2) = ASTNode (getSpan n1 <> getSpan n2) b
-asAST u@(UnaryOp _ n) = ASTNode (getSpan n) u
+asExprNode :: Expr -> ExprNode
+asExprNode b@(BinOp _ n1 n2) = ExprNode (getExprSpan n1 <> getExprSpan n2) b
+asExprNode u@(UnaryOp _ n) = ExprNode (getExprSpan n) u
 
 binary s f =
   Ex.Infix $ do
     L.reservedOp s
-    return (\x y -> asAST (BinOp f x y))
+    return (\x y -> asExprNode (BinOp f x y))
 
 unary s f =
   Ex.Prefix $ do
     pos <- P.getPosition
     L.reservedOp s
-    return (asAST . UnaryOp f)
+    return (asExprNode . UnaryOp f)
 
 aOpTable =
   [ [unary "-" Neg]
@@ -41,11 +51,11 @@ aOpTable =
   , [binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft]
   ]
 
-aExpression :: P.Parsec String () ASTNode
+aExpression :: P.Parsec String () ExprNode
 aExpression = Ex.buildExpressionParser aOpTable aTerm
 
 aTerm =
-  L.parens aExpression P.<|> P.try call P.<|> P.try subs P.<|> int P.<|> float
+  L.parens aExpression P.<|> P.try callexpr P.<|> P.try subs P.<|> int P.<|> float
 
 --------------------------------------------------------
 --------------- boolean expressions---------------------
@@ -56,21 +66,23 @@ bOpTable =
   , [binary "or" Or Ex.AssocLeft]
   ]
 
-bExpression :: P.Parsec String () ASTNode
+bExpression :: P.Parsec String () ExprNode
 bExpression = Ex.buildExpressionParser bOpTable bTerm
 
 bTerm =
-  L.parens bExpression P.<|> P.try call P.<|> reassign P.<|> P.try subs P.<|>
-  bool P.<|>
-  rExpression
+  L.parens bExpression P.<|> 
+    P.try rExpression P.<|>
+  P.try callexpr P.<|> P.try subs P.<|>
+  bool 
 
 ---------------------------------------------------------
 -------------- relational expressions -------------------
 ---------------------------------------------------------
-rExpression = spanWrapper $ do
-  a1 <- aExpression
-  r <- relation
-  BinOp r a1 <$> aExpression
+rExpression =
+  exprWrapper $ do
+    a1 <- aExpression
+    r <- relation
+    BinOp r a1 <$> aExpression
 
 relation =
   (L.reservedOp "<" >> return Less) P.<|> (L.reservedOp "<=" >> return Leq) P.<|>
@@ -82,77 +94,88 @@ relation =
 ------------------------------------------------------
 ------------------literal parsing---------------------
 ------------------------------------------------------
-int :: P.Parsec String () ASTNode
-int = spanWrapper $ LitInt <$> L.integer
+int :: P.Parsec String () ExprNode
+int = exprWrapper $ LitInt <$> L.integer
 
-float :: P.Parsec String () ASTNode
-float = spanWrapper $ LitFloat <$> L.float
+float :: P.Parsec String () ExprNode
+float = exprWrapper $ LitFloat <$> L.float
 
-string :: P.Parsec String () ASTNode
+string :: P.Parsec String () ExprNode
 string =
-  spanWrapper $ do
+  exprWrapper $ do
     P.char '\"'
     contents <- L.string
     P.char '\"'
     return $ LitString contents
 
-bool :: P.Parsec String () ASTNode
+bool :: P.Parsec String () ExprNode
 bool =
-  spanWrapper $
+  exprWrapper $
   (L.reserved "true" >> return (LitBool True)) P.<|>
   (L.reserved "false" >> return (LitBool False))
 
-char :: P.Parsec String () ASTNode
+char :: P.Parsec String () ExprNode
 char =
-  spanWrapper $ do
+  exprWrapper $ do
     P.char '\''
     contents <- L.char
     P.char '\''
     return $ LitChar contents
-
-semicolon :: P.Parsec String () ASTNode
-semicolon = spanWrapper $ L.semicolon >> return Semicolon
 
 -----------------------------------------------------------
 ------------------more complex parsing---------------------
 -----------------------------------------------------------
 -- the expressions themselves
 -- "trys" will be optimized after everything else so that I have behavior to test against
-expression :: P.Parsec String () ASTNode
-expression =
-  P.try letexpr P.<|> P.try deffn P.<|> P.try bExpression P.<|>
-  P.try aExpression P.<|>
-  P.try call P.<|>
+declaration :: P.Parsec String () DeclNode
+declaration =
+  P.try letdecl P.<|> P.try deffn P.<|>
+  P.try calldecl P.<|>
   P.try reassign P.<|>
-  P.try subs P.<|>
-  P.try semicolon P.<|>
-  P.try ifexpr P.<|>
-  P.try elseif P.<|>
-  P.try elseexpr P.<|>
-  P.try semicolon P.<|>
-  P.try block
+  P.try ifdecl P.<|>
+  P.try elseifdecl P.<|>
+  P.try elsedecl P.<|>
+  P.try blockdecl P.<?>
+  "a declaration (something without a result)"
 
-letexpr :: P.Parsec String () ASTNode
-letexpr =
-  spanWrapper $ do
+expression :: P.Parsec String () ExprNode 
+expression =
+  P.try bExpression
+  P.<|> P.try aExpression
+  P.<|> P.try callexpr
+  P.<|> P.try subs
+  P.<|> P.try ifexpr
+  P.<|> P.try elseifexpr
+  P.<|> P.try elseexpr
+  P.<|> P.try blockexpr
+  P.<|> P.try int
+  P.<|> P.try float
+  P.<|> P.try string
+  P.<|> P.try bool
+  P.<|> P.try char
+  P.<?> "an expression (something that has a result)"
+
+letdecl :: P.Parsec String () DeclNode
+letdecl =
+  declWrapper $ do
     t <- L.typeName
     ident <- L.identifier
     L.reservedOp ":="
     Let t ident <$> expression
 
-reassign :: P.Parsec String () ASTNode
+reassign :: P.Parsec String () DeclNode
 reassign =
-  spanWrapper $ do
+  declWrapper $ do
     ident <- L.identifier
     L.reservedOp "<-"
     Reassign ident <$> expression
 
-subs :: P.Parsec String () ASTNode
-subs = spanWrapper $ Subs <$> L.identifier
+subs :: P.Parsec String () ExprNode
+subs = exprWrapper $ Subs <$> L.identifier
 
-deffn :: P.Parsec String () ASTNode
+deffn :: P.Parsec String () DeclNode
 deffn =
-  spanWrapper $ do
+  declWrapper $ do
     L.reserved "def"
     ident <- L.identifier
     params <- L.parens $ P.sepBy L.param (L.reservedOp ",")
@@ -161,36 +184,80 @@ deffn =
     L.reservedOp ":="
     DefFn ident params returnType <$> expression
 
-call :: P.Parsec String () ASTNode
-call =
-  spanWrapper $ do
-    ident <- L.identifier
+callexpr :: P.Parsec String () ExprNode 
+callexpr =
+  exprWrapper $ do
+    ident <- L.identifier 
     params <- L.parens $ P.sepBy expression (L.reservedOp ",")
-    return $ Call ident params
+    return $ CallExpr ident params
 
-ifexpr :: P.Parsec String () ASTNode
+declFromExpr :: ExprNode -> Decl 
+declFromExpr (ExprNode _ e) = 
+  makeCall e
+    where
+      makeCall (CallExpr i exs) = CallDecl i exs 
+
+calldecl :: P.Parsec String () DeclNode
+calldecl =
+  declWrapper $ do
+    stmt <- callexpr
+    L.reservedOp ";"
+    return $ declFromExpr stmt
+
+ifexpr :: P.Parsec String () ExprNode
 ifexpr =
-  spanWrapper $ do
+  exprWrapper $ do
     L.reserved "if"
     cond <- bExpression
     L.reservedOp "=>"
-    If cond <$> expression
+    IfExpr cond <$> expression
 
-elseif :: P.Parsec String () ASTNode
-elseif =
-  spanWrapper $ do
+ifdecl :: P.Parsec String () DeclNode 
+ifdecl =
+  declWrapper $ do
+    L.reserved "if"
+    cond <- bExpression
+    L.reservedOp "=>"
+    IfDecl cond <$> declaration 
+
+elseifexpr :: P.Parsec String () ExprNode
+elseifexpr =
+  exprWrapper $ do
     L.reserved "else"
     L.reserved "if"
     cond <- bExpression
     L.reservedOp "=>"
-    ElseIf cond <$> expression
+    ElseIfExpr cond <$> expression
 
-elseexpr :: P.Parsec String () ASTNode
+elseifdecl :: P.Parsec String () DeclNode 
+elseifdecl =
+  declWrapper $ do
+    L.reserved "else"
+    L.reserved "if"
+    cond <- bExpression
+    L.reservedOp "=>"
+    ElseIfDecl cond <$> declaration
+
+elseexpr :: P.Parsec String () ExprNode
 elseexpr =
-  spanWrapper $ do
+  exprWrapper $ do
     L.reserved "else"
     L.reservedOp "=>"
-    Else <$> expression
+    ElseExpr <$> expression
 
-block :: P.Parsec String () ASTNode
-block = spanWrapper $ Block <$> L.braces (P.many1 expression)
+elsedecl :: P.Parsec String () DeclNode 
+elsedecl =
+  declWrapper $ do
+    L.reserved "else"
+    L.reservedOp "=>"
+    ElseDecl <$> declaration
+
+blockexpr :: P.Parsec String () ExprNode
+blockexpr = 
+  exprWrapper $ do
+    decls <- L.braces $ P.many declaration
+    BlockExpr decls <$> expression
+
+blockdecl :: P.Parsec String () DeclNode 
+blockdecl =
+  declWrapper $ L.braces $ BlockDecl <$> P.many declaration
