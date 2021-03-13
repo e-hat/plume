@@ -27,8 +27,8 @@ exprWrapper exprP = do
 --------------------------------------------------------------
 ------------------- expressions with operators ---------------
 --------------------------------------------------------------
-  -- Plume has all of its expressions with binary/unary ops
-  -- parsed as one type, then errors are figured out in typechecking-land
+-- Plume has all of its expressions with binary/unary ops
+-- parsed as one type, then errors are figured out in typechecking-land
 asExprNode :: Expr -> ExprNode
 asExprNode b@(BinOp _ n1 n2) = Node (getSpan n1 <> getSpan n2) b
 asExprNode u@(UnaryOp _ n) = Node (getSpan n) u
@@ -105,8 +105,6 @@ declaration =
     P.<|> P.try calldecl
     P.<|> P.try reassign
     P.<|> P.try ifdecl
-    P.<|> P.try elseifdecl
-    P.<|> P.try elsedecl
     P.<|> P.try blockdecl
     P.<?> "a declaration (something without a result)"
 
@@ -116,8 +114,6 @@ expression =
     P.<|> P.try subs
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
-    P.<|> P.try elseifexpr
-    P.<|> P.try elseexpr
     P.<|> P.try blockexpr
     P.<|> P.try int
     P.<|> P.try float
@@ -182,7 +178,10 @@ ifexpr =
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    IfExpr cond <$> expression
+    firstexpr <- expression
+    elseifs <- P.many $ P.try elseifexpr
+    elsecase <- P.optionMaybe $ P.try elseexpr
+    return $ IfExpr cond firstexpr elseifs elsecase
 
 ifdecl :: P.Parsec String () DeclNode
 ifdecl =
@@ -190,39 +189,42 @@ ifdecl =
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    IfDecl cond <$> declaration
+    firstdecl <- declaration
+    elseifs <- P.many $ P.try elseifdecl
+    elsecase <- P.optionMaybe $ P.try elsedecl
+    return $ IfDecl cond firstdecl elseifs elsecase
 
-elseifexpr :: P.Parsec String () ExprNode
+elseifexpr :: P.Parsec String () (ExprNode, ExprNode)
 elseifexpr =
-  exprWrapper $ do
+  do
     L.reserved "else"
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    ElseIfExpr cond <$> expression
+    (,) cond <$> expression
 
-elseifdecl :: P.Parsec String () DeclNode
+elseifdecl :: P.Parsec String () (ExprNode, DeclNode)
 elseifdecl =
-  declWrapper $ do
+  do
     L.reserved "else"
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    ElseIfDecl cond <$> declaration
+    (,) cond <$> declaration
 
 elseexpr :: P.Parsec String () ExprNode
 elseexpr =
-  exprWrapper $ do
+  do
     L.reserved "else"
     L.reservedOp "=>"
-    ElseExpr <$> expression
+    expression
 
 elsedecl :: P.Parsec String () DeclNode
 elsedecl =
-  declWrapper $ do
+  do
     L.reserved "else"
     L.reservedOp "=>"
-    ElseDecl <$> declaration
+    declaration
 
 blockexpr :: P.Parsec String () ExprNode
 blockexpr =

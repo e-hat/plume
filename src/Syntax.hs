@@ -29,18 +29,14 @@ data Decl
   | Reassign Identifier ExprNode
   | DefFn Identifier [Param] Type ExprNode
   | CallDecl Identifier [ExprNode]
-  | IfDecl ExprNode DeclNode
-  | ElseIfDecl ExprNode DeclNode
-  | ElseDecl DeclNode
+  | IfDecl ExprNode DeclNode [(ExprNode,DeclNode)] (Maybe DeclNode)
   | BlockDecl [DeclNode]
   deriving Show
 
 data Expr
   = Subs Identifier
   | CallExpr Identifier [ExprNode]
-  | IfExpr ExprNode ExprNode
-  | ElseIfExpr ExprNode ExprNode
-  | ElseExpr ExprNode
+  | IfExpr ExprNode ExprNode [(ExprNode,ExprNode)] (Maybe ExprNode)
   | BlockExpr [DeclNode] ExprNode
   | BinOp Op ExprNode ExprNode
   | UnaryOp Op ExprNode
