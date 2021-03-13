@@ -107,4 +107,4 @@ instance Show SpanRec where
     printf "(l: %d->%d, c: %d->%d, %s)" mnl mxl mnc mxc f
 
 instance (Show t) => Show (Node t) where 
-  show (Node sr t) = show sr ++ ": " ++ show t
+  show (Node sr t) = show sr ++ "-->" ++ show t ++ " |"
