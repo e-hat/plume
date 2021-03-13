@@ -223,8 +223,8 @@ elsedecl =
 
 blockexpr :: P.Parsec String () ExprNode
 blockexpr =
-  exprWrapper $ do
-    decls <- L.braces $ P.many declaration
+  exprWrapper . L.braces $ do
+    decls <- P.many declaration
     BlockExpr decls <$> expression
 
 blockdecl :: P.Parsec String () DeclNode
