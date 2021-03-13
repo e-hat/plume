@@ -2,25 +2,26 @@ module Syntax where
 
 import qualified Text.Parsec as P
 
-type Program = [DeclNode]
+import Text.Printf (printf)
+import Data.List (intercalate)
 
-data DeclNode = DeclNode
-                { getDeclSpan :: SpanRec
-                , getDecl     :: Decl
-                }
-  deriving Show
+newtype Program = Program [DeclNode]
 
-data ExprNode = ExprNode
-                { getExprSpan :: SpanRec
-                , getExpr     :: Expr
+instance Show Program where
+  show (Program dns) = 
+    intercalate "\n" $ map show dns
+
+-- Nodes specialized based on content types
+data Node t   = Node 
+                { getSpan    :: SpanRec
+                , getContent :: t
                 }
-    
-  deriving (Show)
+
+type DeclNode = Node Decl
+type ExprNode = Node Expr
 
 type Identifier = String
-
 type Type = String
-
 type Param = (Type, Identifier)
 
 data Decl 
@@ -48,7 +49,7 @@ data Expr
   | LitString String
   | LitBool Bool
   | LitChar Char
-  deriving (Show)
+  deriving Show
 
 data Op
   = Plus
@@ -76,7 +77,6 @@ data SpanRec =
     , getMinCol :: Int
     , getMaxCol :: Int
     }
-  deriving (Show)
 
 getLineRange :: SpanRec -> (Int, Int)
 getLineRange (SpanRec _ a b _ _) = (a, b)
@@ -101,3 +101,10 @@ instance Semigroup SpanRec where
       (max aMaxLine bMaxLine)
       (min aMinCol bMinCol)
       (max aMaxCol bMaxCol)
+
+instance Show SpanRec where
+  show (SpanRec f mnl mxl mnc mxc) = 
+    printf "(l: %d->%d, c: %d->%d, %s)" mnl mxl mnc mxc f
+
+instance (Show t) => Show (Node t) where 
+  show (Node sr t) = show sr ++ ": " ++ show t

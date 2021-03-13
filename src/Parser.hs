@@ -7,7 +7,7 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as Ex
 
 program :: P.Parsec String () Program
-program = L.whiteSpace >> P.many1 declaration
+program = Program <$> (L.whiteSpace >> P.many1 declaration)
 
 -- wraps an declaration parser to keep track of its span
 declWrapper :: P.Parsec String () Decl -> P.Parsec String () DeclNode
@@ -15,21 +15,21 @@ declWrapper declP = do
   start <- P.getPosition
   val <- declP
   end <- P.getPosition
-  return $ DeclNode (spanBtwnSP start end) val
+  return $ Node (spanBtwnSP start end) val
 
 exprWrapper :: P.Parsec String () Expr -> P.Parsec String() ExprNode 
 exprWrapper exprP = do
   start <- P.getPosition 
   val <- exprP
   end <- P.getPosition 
-  return $ ExprNode (spanBtwnSP start end) val
+  return $ Node (spanBtwnSP start end) val
 
 ----------------------------------------------------------
 ------------------- arithmetic expressions ---------------
 ----------------------------------------------------------
 asExprNode :: Expr -> ExprNode
-asExprNode b@(BinOp _ n1 n2) = ExprNode (getExprSpan n1 <> getExprSpan n2) b
-asExprNode u@(UnaryOp _ n) = ExprNode (getExprSpan n) u
+asExprNode b@(BinOp _ n1 n2) = Node (getSpan n1 <> getSpan n2) b
+asExprNode u@(UnaryOp _ n) = Node (getSpan n) u
 
 binary s f =
   Ex.Infix $ do
@@ -192,9 +192,10 @@ callexpr =
     return $ CallExpr ident params
 
 declFromExpr :: ExprNode -> Decl 
-declFromExpr (ExprNode _ e) = 
+declFromExpr (Node _ e) = 
   makeCall e
     where
+      makeCall :: Expr -> Decl
       makeCall (CallExpr i exs) = CallDecl i exs 
 
 calldecl :: P.Parsec String () DeclNode
