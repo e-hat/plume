@@ -146,7 +146,7 @@ deffn =
     L.reservedOp ":="
     DefFn ident (map Param params) returnType <$> expression
 
-paramexpr :: P.Parsec String () ExprNode 
+paramexpr :: P.Parsec String () ExprNode
 paramexpr =
   P.try opExpression
     P.<|> P.try subs
