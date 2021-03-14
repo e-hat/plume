@@ -144,13 +144,24 @@ deffn =
     L.reservedOp ":"
     returnType <- L.typeName
     L.reservedOp ":="
-    DefFn ident params returnType <$> expression
+    DefFn ident (map Param params) returnType <$> expression
+
+paramexpr :: P.Parsec String () ExprNode 
+paramexpr =
+  P.try opExpression
+    P.<|> P.try subs
+    P.<|> P.try callexpr
+    P.<|> P.try int
+    P.<|> P.try float
+    P.<|> P.try string
+    P.<|> P.try bool
+    P.<|> P.try char
 
 callexpr :: P.Parsec String () ExprNode
 callexpr =
   exprWrapper $ do
     ident <- L.identifier
-    params <- L.parens $ P.sepBy expression (L.reservedOp ",")
+    params <- L.parens $ P.sepBy paramexpr (L.reservedOp ",")
     return $ CallExpr ident params
 
 declFromExpr :: ExprNode -> Decl

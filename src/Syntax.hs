@@ -1,15 +1,12 @@
 module Syntax where
 
 import qualified Text.Parsec as P
+import Text.Show.Pretty
 
-import Text.Printf (printf)
+import Text.Printf (printf, errorShortFormat)
 import Data.List (intercalate)
 
-newtype Program = Program [DeclNode]
-
-instance Show Program where
-  show (Program dns) = 
-    intercalate "\n" $ map show dns
+newtype Program = Program { getProgram :: [DeclNode] }
 
 -- Nodes specialized based on content types
 data Node t   = Node 
@@ -22,7 +19,8 @@ type ExprNode = Node Expr
 
 type Identifier = String
 type Type = String
-type Param = (Type, Identifier)
+newtype Param = Param { getParam :: (Type, Identifier) }
+
 
 data Decl 
   = Let Type Identifier ExprNode
@@ -31,7 +29,6 @@ data Decl
   | CallDecl Identifier [ExprNode]
   | IfDecl ExprNode DeclNode [(ExprNode,DeclNode)] (Maybe DeclNode)
   | BlockDecl [DeclNode]
-  deriving Show
 
 data Expr
   = Subs Identifier
@@ -45,7 +42,6 @@ data Expr
   | LitString String
   | LitBool Bool
   | LitChar Char
-  deriving Show
 
 data Op
   = Plus
@@ -102,5 +98,32 @@ instance Show SpanRec where
   show (SpanRec f mnl mxl mnc mxc) = 
     printf "(l: %d->%d, c: %d->%d, %s)" mnl mxl mnc mxc f
 
-instance (Show t) => Show (Node t) where 
-  show (Node sr t) = show sr ++ "-->" ++ show t ++ " |"
+instance PrettyVal Program where
+  prettyVal (Program ns) = prettyVal ns
+
+instance (PrettyVal t) => PrettyVal (Node t)  where
+  prettyVal (Node _ c) = prettyVal c
+
+instance PrettyVal Decl where
+  prettyVal (Let t i e) = Con "Let" [String t, String i, prettyVal e]
+  prettyVal (Reassign i e) = Con "Reassign" [prettyVal e]
+  prettyVal (DefFn i ps t e) = Con "DefFn" [Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal e]]
+  prettyVal (CallDecl i es) = Con "CallDecl" [String i, Con "Params passed" [prettyVal es]]
+  prettyVal (IfDecl e d eds md) = Con "IfDecl" [prettyVal e, prettyVal d, Con "ElseIfs" (map prettyVal eds), Con "Else" [prettyVal md]]
+  prettyVal (BlockDecl ds) = Con "BlockDecl" [prettyVal ds]
+
+instance PrettyVal Param where
+  prettyVal (Param p) = prettyVal p
+
+instance PrettyVal Expr where
+  prettyVal (Subs i) = Con "Subs" [String i]
+  prettyVal (CallExpr i es) = Con "CallExpr" [Con "Params passed" [prettyVal es]]
+  prettyVal (IfExpr c e ees me) = Con "IfExpr" [Con "Condition" [prettyVal c], Con "IfResult" [prettyVal e], Con "ElseIfs" (map prettyVal ees), Con "Else" [prettyVal me]]
+  prettyVal (BlockExpr ds e) = Con "BlockExpr" [prettyVal ds, prettyVal e]
+  prettyVal (BinOp o a b) = Con "BinOp" [String $ show o, prettyVal a, prettyVal b]
+  prettyVal (UnaryOp o a) = Con "UnaryOp" [String $ show o, prettyVal a]
+  prettyVal (LitInt i)    = Integer (show i)
+  prettyVal (LitFloat d)  = Float (show d)
+  prettyVal (LitString s) = String s
+  prettyVal (LitBool b)   = String (show b)
+  prettyVal (LitChar c)   = Char (show c)
