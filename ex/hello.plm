@@ -1,6 +1,6 @@
 def factorial(Int n): Int :=
   if n < 2 => 1
-  else     => factorial(n - 1)
+  else     => n * factorial(n - 1)
 
 def main(String arg): Int := {
   print("Hello world!\n");

@@ -1,8 +1,4 @@
 def main(String args): Int := {
-    func(
-        if 5 > 4 => 6
-        else     => -2,
-        7
-    );
+    func(5, 6);
     0
 }
