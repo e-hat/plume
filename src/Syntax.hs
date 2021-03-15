@@ -14,15 +14,14 @@ data Node t = Node
   } deriving Eq
 
 type DeclNode = Node Decl
-
 type ExprNode = Node Expr
 
 type Identifier = String
-
 type Type = String
 
 newtype Param = Param {getParam :: (Type, Identifier)} deriving Eq
 
+-- each stmt in Plume is either a declaration or an expression
 data Decl
   = Let Type Identifier ExprNode
   | Reassign Identifier ExprNode

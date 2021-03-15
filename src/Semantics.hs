@@ -5,22 +5,30 @@ import Text.Printf (errorShortFormat, printf)
 
 import Syntax
 
+-- the only valid symbols in Plume, variables and functions
+-- note that functions can be overloaded in this language
 data Symbol = Var Identifier | Func Identifier [Type] deriving (Eq, Ord, Show)
 
+-- symbol map for looking up during typechecking
 type SymTable = Map.Map Symbol Type
 
+-- general error handling --> this will be improved upon
 semanticErr :: Node t -> String -> a
 semanticErr (Node s c) msg = error $ printf "%s: %s" (show s) msg
 
+-- gets the symbol for a let or function definition declaration
 getDeclSymbol :: Decl -> Symbol
 getDeclSymbol (Let _ i _) = Var i
 getDeclSymbol (DefFn i ps _ _) = Func i (map (fst . getParam) ps)
 
+-- gets the type for a let or function definition declaration
 getDeclType :: Decl -> Type
 getDeclType (Let t _ _) = t
 getDeclType (DefFn _ _ r _) = r
 getDeclType _ = "Void"
 
+-- generates a global list of symbols
+-- I do NOT want to have forward declaration be a thing
 genGlobalSyms :: [DeclNode] -> SymTable
 genGlobalSyms [d] =  
   Map.singleton (getDeclSymbol $ getContent d) (getDeclType $ getContent d)
