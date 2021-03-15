@@ -3,26 +3,10 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages:
+packages: []
+snapshots:
 - completed:
-    hackage: pretty-show-1.10@sha256:bfef8da0ac4db4fc7f41edfec9e9a701ac206418d70702bff1e40f20d6a2b1f1,1888
-    pantry-tree:
-      size: 735
-      sha256: ae0986a1537a5f462fd48787f82931a07ab8b569631cf08e6cff19c2d9e3866b
-  original:
-    hackage: pretty-show-1.10
-- completed:
-    hackage: happy-1.20.0@sha256:f99e612b29d68d784d7e193943a13466f0923de69452a2585081491efed0436b,5709
-    pantry-tree:
-      size: 8749
-      sha256: a90122967031e2feb99adbbacf57ddf8627a7c0444720402513d3f11ec7f990a
-  original:
-    hackage: happy-1.20.0
-- completed:
-    hackage: haskell-lexer-1.1@sha256:9e0a7633f6bdb59004c6f3144ebfad1edb9e440fc6a94215c3a1d11bcd8656ef,915
-    pantry-tree:
-      size: 587
-      sha256: b301fc4115ecc2687df258748a4d6f4165ee34890d65ddb81930d6adfd6c4f7c
-  original:
-    hackage: haskell-lexer-1.1
-snapshots: []
+    size: 534126
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/31.yaml
+    sha256: 637fb77049b25560622a224845b7acfe81a09fdb6a96a3c75997a10b651667f6
+  original: lts-16.31
