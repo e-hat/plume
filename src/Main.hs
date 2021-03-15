@@ -2,6 +2,7 @@ module Main where
 
 import Parser
 import Syntax
+import Semantics
 
 import qualified Text.Parsec as P
 import Text.Show.Pretty
@@ -41,6 +42,10 @@ run (CLInput f True) = do
   nodes <- P.parse program f <$> readFile f
   case nodes of 
     Left err -> error $ show err
-    Right ast -> dumpIO ast
+    Right p -> dumpIO p
 
-run (CLInput _ False) = undefined
+run (CLInput f False) = do
+  nodes <- P.parse program f <$> readFile f
+  case nodes of
+    Left err -> error $ show err
+    Right p -> print $ genGlobalSyms (getProgram p)
