@@ -103,6 +103,15 @@ declaration =
     P.<|> P.try blockdecl
     P.<?> "a declaration (something without a result)"
 
+bodyDeclaration :: P.Parsec String () DeclNode
+bodyDeclaration =
+  P.try letdecl
+    P.<|> P.try calldecl
+    P.<|> P.try reassign
+    P.<|> P.try ifdecl
+    P.<|> P.try blockdecl
+    P.<?> "a declaration (something without a result)"
+
 expression :: P.Parsec String () ExprNode
 expression =
   P.try opExpression
@@ -195,7 +204,7 @@ ifdecl =
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    firstdecl <- declaration
+    firstdecl <- bodyDeclaration
     elseifs <- P.many (P.try elseifdecl)
     elsecase <- P.optionMaybe (P.try elsedecl)
     return $ IfDecl cond firstdecl elseifs elsecase
@@ -216,7 +225,7 @@ elseifdecl =
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    (,) cond <$> declaration
+    (,) cond <$> bodyDeclaration
 
 elseexpr :: P.Parsec String () ExprNode
 elseexpr =
@@ -230,14 +239,14 @@ elsedecl =
   do
     L.reserved "else"
     L.reservedOp "=>"
-    declaration
+    bodyDeclaration
 
 blockexpr :: P.Parsec String () ExprNode
 blockexpr =
   exprWrapper . L.braces $ do
-    decls <- P.many declaration
+    decls <- P.many bodyDeclaration
     BlockExpr decls <$> expression
 
 blockdecl :: P.Parsec String () DeclNode
 blockdecl =
-  declWrapper . L.braces $ BlockDecl <$> P.many declaration
+  declWrapper . L.braces $ BlockDecl <$> P.many bodyDeclaration
