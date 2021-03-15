@@ -114,12 +114,12 @@ instance PrettyVal Decl where
     Con "DefFn" [Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal e]]
   prettyVal (CallDecl i es) = Con "CallDecl" [String i, Con "Params passed" [prettyVal es]]
   prettyVal (IfDecl e d eds md) =
-    Con "IfDecl" [prettyVal e, prettyVal d, Con "ElseIfs" (map prettyVal eds), Con "Else" [prettyVal md]]
+    Con "IfDecl" [Con "Condition" [prettyVal e], Con "IfResult" [prettyVal d], Con "ElseIfs" (map prettyVal eds), Con "Else" [prettyVal md]]
   prettyVal (BlockDecl ds) = Con "BlockDecl" [prettyVal ds]
 
 instance PrettyVal Expr where
   prettyVal (Subs i) = Con "Subs" [String i]
-  prettyVal (CallExpr i es) = Con "CallExpr" [Con "Params passed" [prettyVal es]]
+  prettyVal (CallExpr i es) = Con "CallExpr" [String i, Con "Params passed" [prettyVal es]]
   prettyVal (IfExpr c e ees me) =
     Con "IfExpr" [Con "Condition" [prettyVal c], Con "IfResult" [prettyVal e], Con "ElseIfs" (map prettyVal ees), Con "Else" [prettyVal me]]
   prettyVal (BlockExpr ds e) = Con "BlockExpr" [prettyVal ds, prettyVal e]
@@ -130,3 +130,4 @@ instance PrettyVal Expr where
   prettyVal (LitString s) = String s
   prettyVal (LitBool b) = String (show b)
   prettyVal (LitChar c) = Char (show c)
+
