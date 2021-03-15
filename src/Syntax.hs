@@ -11,7 +11,7 @@ newtype Program = Program {getProgram :: [DeclNode]}
 data Node t = Node
   { getSpan :: SpanRec,
     getContent :: t
-  }
+  } deriving Eq
 
 type DeclNode = Node Decl
 
@@ -21,7 +21,7 @@ type Identifier = String
 
 type Type = String
 
-newtype Param = Param {getParam :: (Type, Identifier)}
+newtype Param = Param {getParam :: (Type, Identifier)} deriving Eq
 
 data Decl
   = Let Type Identifier ExprNode
@@ -30,6 +30,7 @@ data Decl
   | CallDecl Identifier [ExprNode]
   | IfDecl ExprNode DeclNode [(ExprNode, DeclNode)] (Maybe DeclNode)
   | BlockDecl [DeclNode]
+  deriving Eq
 
 data Expr
   = Subs Identifier
@@ -43,6 +44,7 @@ data Expr
   | LitString String
   | LitBool Bool
   | LitChar Char
+  deriving Eq
 
 data Op
   = Plus
@@ -60,7 +62,7 @@ data Op
   | Geq
   | Equal
   | NotEqual
-  deriving (Show)
+  deriving (Show, Eq)
 
 data SpanRec = SpanRec
   { getFileName :: String,
@@ -68,7 +70,7 @@ data SpanRec = SpanRec
     getMaxLine :: Int,
     getMinCol :: Int,
     getMaxCol :: Int
-  }
+  } deriving Eq
 
 getLineRange :: SpanRec -> (Int, Int)
 getLineRange (SpanRec _ a b _ _) = (a, b)
