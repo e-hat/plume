@@ -196,8 +196,8 @@ ifdecl =
     cond <- opExpression
     L.reservedOp "=>"
     firstdecl <- declaration
-    elseifs <- P.many $ P.try elseifdecl
-    elsecase <- P.optionMaybe $ P.try elsedecl
+    elseifs <- P.many (P.try elseifdecl)
+    elsecase <- P.optionMaybe (P.try elsedecl)
     return $ IfDecl cond firstdecl elseifs elsecase
 
 elseifexpr :: P.Parsec String () (ExprNode, ExprNode)
@@ -240,4 +240,4 @@ blockexpr =
 
 blockdecl :: P.Parsec String () DeclNode
 blockdecl =
-  declWrapper $ L.braces $ BlockDecl <$> P.many declaration
+  declWrapper . L.braces $ BlockDecl <$> P.many declaration
