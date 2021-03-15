@@ -15,11 +15,12 @@ extra-source-files:  README.md
 
 executable plume
   hs-source-dirs:      src
-  other-modules:       Syntax Parser Lexer
+  other-modules:       Syntax Parser Lexer Semantics
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5,
                        parsec,
                        pretty-show,
-                       optparse-applicative
+                       optparse-applicative,
+                       containers
 
