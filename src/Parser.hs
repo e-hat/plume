@@ -103,6 +103,7 @@ declaration =
     P.<|> P.try blockdecl
     P.<?> "a declaration (something without a result)"
 
+-- not allowed to define functions in if statements and etc
 bodyDeclaration :: P.Parsec String () DeclNode
 bodyDeclaration =
   P.try letdecl
