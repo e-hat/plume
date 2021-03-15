@@ -98,7 +98,7 @@ instance Semigroup SpanRec where
 
 instance Show SpanRec where
   show (SpanRec f mnl mxl mnc mxc) =
-    printf "(l: %d->%d, c: %d->%d, %s)" mnl mxl mnc mxc f
+    printf "(line: %d->%d, col: %d->%d, %s)" mnl mxl mnc mxc f
 
 instance PrettyVal Program where
   prettyVal (Program ns) = prettyVal ns
