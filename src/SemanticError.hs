@@ -1,17 +1,15 @@
-module SemanticError 
-  ( semanticErr ) where
-
-import Text.Printf (errorShortFormat, printf)
+module SemanticError (semanticErr, ErrRep) where
 
 import Syntax
+import Text.Printf (errorShortFormat, printf)
 
 -- general error handling
 semanticErr :: (ErrRep t) => Node t -> String -> a
 semanticErr (Node s d) = wrapStmtName s (errRep d)
-
-wrapStmtName :: SpanRec -> String -> String -> a
-wrapStmtName sr name msg = 
-  error $ printf "Error: %s\n In `%s` at %s" msg name (show sr)
+  where
+    wrapStmtName :: SpanRec -> String -> String -> a
+    wrapStmtName sr name msg =
+      error $ printf "Error: %s\n In `%s` at %s" msg name (show sr)
 
 class ErrRep a where
   errRep :: a -> String
