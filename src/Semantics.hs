@@ -1,9 +1,8 @@
 module Semantics where
 
 import qualified Data.Map.Strict as Map
-
-import Syntax
 import SemanticError
+import Syntax
 
 -- the only valid symbols in Plume, variables and functions
 -- note that functions can be overloaded in this language
@@ -26,14 +25,13 @@ getDeclType _ = "Void"
 -- generates a global list of symbols
 -- I do NOT want to have forward declaration be a thing
 genGlobalSyms :: [DeclNode] -> SymTable
-genGlobalSyms [d] =  
-  Map.singleton (getDeclSymbol $ getContent d) (getDeclType $ getContent d)
-genGlobalSyms (d:ds) = 
-  let 
-    rest = genGlobalSyms ds
-    sym  = getDeclSymbol $ getContent d
-  in
-    case Map.lookup sym rest of
-      Nothing -> Map.insert sym (getDeclType $ getContent d) rest
-      Just _  -> semanticErr d "symbols cannot share name in global scope"
-
+genGlobalSyms = genGlobalSymsImpl . reverse
+  where
+    genGlobalSymsImpl [d] = 
+      Map.singleton (getDeclSymbol $ getContent d) (getDeclType $ getContent d)
+    genGlobalSymsImpl (d : ds) =
+      let rest = genGlobalSymsImpl ds
+          sym = getDeclSymbol $ getContent d
+      in case Map.lookup sym rest of
+        Nothing -> Map.insert sym (getDeclType $ getContent d) rest
+        Just _ -> semanticErr d "symbols cannot share name in global scope"
