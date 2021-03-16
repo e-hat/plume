@@ -5,7 +5,7 @@ import Text.Printf (errorShortFormat, printf)
 
 import Syntax
 
--- general error handling --> this will be improved upon
+-- general error handling
 semanticErr :: (ErrRep t) => Node t -> String -> a
 semanticErr (Node s d) = wrapStmtName s (errRep d)
 
