@@ -1,9 +1,9 @@
 module Semantics where
 
 import qualified Data.Map.Strict as Map
-import Text.Printf (errorShortFormat, printf)
 
 import Syntax
+import SemanticError
 
 -- the only valid symbols in Plume, variables and functions
 -- note that functions can be overloaded in this language
@@ -11,10 +11,6 @@ data Symbol = Var Identifier | Func Identifier [Type] deriving (Eq, Ord, Show)
 
 -- symbol map for looking up during typechecking
 type SymTable = Map.Map Symbol Type
-
--- general error handling --> this will be improved upon
-semanticErr :: Node t -> String -> a
-semanticErr (Node s c) msg = error $ printf "%s: %s" (show s) msg
 
 -- gets the symbol for a let or function definition declaration
 getDeclSymbol :: Decl -> Symbol
