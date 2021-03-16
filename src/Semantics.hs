@@ -34,4 +34,4 @@ genGlobalSyms = genGlobalSymsImpl . reverse
           sym = getDeclSymbol $ getContent d
       in case Map.lookup sym rest of
         Nothing -> Map.insert sym (getDeclType $ getContent d) rest
-        Just _ -> semanticErr d "symbols cannot share name in global scope"
+        Just _ -> semanticErr d "cannot have overlapping symbol declarations in global scope"
