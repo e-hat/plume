@@ -1,29 +1,9 @@
 module Semantics where
 
 import qualified Data.Map.Strict as Map
-
 import SemanticError
+import SymbolTable
 import Syntax
-
--- the only valid symbols in Plume, variables and functions
--- note that functions can be overloaded in this language
-data Symbol = Var Identifier | Func Identifier [Type] deriving (Eq, Ord, Show)
-
--- symbol map for looking up during typechecking and beyond!
-type SymTable = Map.Map Symbol Type
-
--- gets the symbol for a let or function definition declaration
-getDeclSymbol :: Decl -> Symbol
-getDeclSymbol (Let _ i _) = Var i
-getDeclSymbol (DefFn i ps _ _) = Func i (map (fst . getParam) ps)
--- other types of declarations are anonymous
-getDeclSymbol _ = undefined
-
--- gets the type for a let or function definition declaration
-getDeclType :: Decl -> Type
-getDeclType (Let t _ _) = t
-getDeclType (DefFn _ _ r _) = r
-getDeclType _ = "Void"
 
 -- generates a global list of symbols
 -- I do NOT want to have forward declaration be a thing
@@ -43,36 +23,34 @@ genGlobalSyms = genGlobalSymsImpl . reverse . getProgram
             Nothing -> Map.insert sym (getDeclType $ getContent d) rest
             Just _ -> semanticErr d "cannot have overlapping symbol declarations in global scope"
 
-data SymTableTree = SymTableTree
-  { getParent :: Maybe SymTableTree,
-    getTable :: SymTable,
-    getChildren :: [SymTableTree]
-  } deriving Show -- TODO: make a Show.Pretty instance for this type
+class Scannable a where
+  scan :: a -> SymTableTree -> Either String SymTableTree
 
-lookupStt :: Symbol -> SymTableTree -> Maybe Type
-lookupStt sym (SymTableTree p t _) = case Map.lookup sym t of
-                                    Nothing -> case p of 
-                                                 Nothing -> Nothing 
-                                                 Just stt -> lookupStt sym stt
-                                    Just t -> Just t
-
-class Validated a where
-  validate :: a -> SymTableTree -> Either String SymTableTree
-
-validateNode :: (ErrRep t, Validated t) => Node t -> SymTableTree -> SymTableTree
-validateNode n@(Node sr c) base = case validate c base of
-                             Left msg -> semanticErr n msg
-                             Right result -> result
-
-instance Validated Decl where
-  validate d base = undefined
-
-instance Validated Expr where
-  validate e base = undefined
+scanNode :: (ErrRep t, Scannable t) => Node t -> SymTableTree -> SymTableTree
+scanNode n@(Node sr c) base = case scan c base of
+  Left msg -> semanticErr n msg
+  Right result -> result
 
 validateProgram :: Program -> SymTableTree
-validateProgram p = 
-  let baseTree = SymTableTree Nothing (genGlobalSyms p) [] 
-  in 
-    foldr validateNode baseTree (getProgram p) 
-  
+validateProgram p =
+  let baseTree = SymTableTree Nothing (genGlobalSyms p) []
+   in foldr scanNode baseTree (getProgram p)
+
+instance Scannable Decl where
+  -- scan handles building the symbol table and checking for scoping issues
+  scan l@(Let _ i expr) ct@(SymTableTree pTbl tbl cs) =
+    if getDeclSymbol l `Map.member` tbl
+      then Left $ "the variable " ++ i ++ " has been created twice in this scope"
+      else Right $ SymTableTree pTbl (insertDecl l tbl) (cs ++ [scanNode expr childTree])
+    where
+      childTree = SymTableTree (Just ct) Map.empty []
+  scan r@(Reassign i expr) ct@(SymTableTree pTbl tbl cs) =
+    case lookupStt (getDeclSymbol r) ct of
+      Nothing -> Left $ "the symbol " ++ i ++ " has not yet been declared in a Let declaration"
+      Just _ ->
+        Right $ SymTableTree pTbl tbl (cs ++ [scanNode expr childTree])
+        where
+          childTree = SymTableTree (Just ct) Map.empty []
+
+instance Scannable Expr where
+  scan e base = undefined
