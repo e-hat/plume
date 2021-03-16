@@ -48,4 +48,4 @@ run (CLInput f False) = do
   nodes <- P.parse program f <$> readFile f
   case nodes of
     Left err -> error $ show err
-    Right p -> print $ genGlobalSyms (getProgram p)
+    Right p -> print $ validateProgram p

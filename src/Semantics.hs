@@ -47,7 +47,7 @@ data SymTableTree = SymTableTree
   { getParent :: Maybe SymTableTree,
     getTable :: SymTable,
     getChildren :: [SymTableTree]
-  }
+  } deriving Show -- TODO: make a Show.Pretty instance for this type
 
 lookupStt :: Symbol -> SymTableTree -> Maybe Type
 lookupStt sym (SymTableTree p t _) = case Map.lookup sym t of
