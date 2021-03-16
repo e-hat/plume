@@ -9,7 +9,7 @@ import Syntax
 -- note that functions can be overloaded in this language
 data Symbol = Var Identifier | Func Identifier [Type] deriving (Eq, Ord, Show)
 
--- symbol map for looking up during typechecking
+-- symbol map for looking up during typechecking and beyond!
 type SymTable = Map.Map Symbol Type
 
 -- gets the symbol for a let or function definition declaration
@@ -59,13 +59,8 @@ lookupStt sym (SymTableTree p t _) = case Map.lookup sym t of
 class Validated a where
   validate :: a -> SymTableTree -> Either String SymTableTree
 
--- slightly ugly setup, doing this because a Node t either fails and exits or 
--- succeeds, whereas a Validated t either fails with a msg or succeeds
-class Checkable a where
-  check :: a -> SymTableTree -> SymTableTree
-
-instance (ErrRep t, Validated t) => Checkable (Node t) where
-  check n@(Node sr c) base = case validate c base of
+validateNode :: (ErrRep t, Validated t) => Node t -> SymTableTree -> SymTableTree
+validateNode n@(Node sr c) base = case validate c base of
                              Left msg -> semanticErr n msg
                              Right result -> result
 
@@ -79,5 +74,5 @@ validateProgram :: Program -> SymTableTree
 validateProgram p = 
   let baseTree = SymTableTree Nothing (genGlobalSyms p) [] 
   in 
-    foldr check baseTree (getProgram p) 
+    foldr validateNode baseTree (getProgram p) 
   
