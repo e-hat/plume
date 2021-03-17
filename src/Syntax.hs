@@ -43,6 +43,7 @@ data Expr
   | LitString String
   | LitBool Bool
   | LitChar Char
+  | Return
   deriving Eq
 
 data Op
