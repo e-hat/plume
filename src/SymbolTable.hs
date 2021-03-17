@@ -14,14 +14,13 @@ type SymTable = Map.Map Symbol Type
 getDeclSymbol :: Decl -> Symbol
 getDeclSymbol (Let _ i _) = Var i
 getDeclSymbol (DefFn i ps _ _) = Func i (map (fst . getParam) ps)
-getDeclSymbol (Reassign i _) = Var i
-getDeclSymbol _ = undefined 
+getDeclSymbol _ = error "getDeclSymbol used on non-let or non-deffn" 
 
 -- gets the type for a let or function definition declaration
 getDeclType :: Decl -> Type
 getDeclType (Let t _ _) = t
 getDeclType (DefFn _ _ r _) = r
-getDeclType _ = "Void"
+getDeclType _ = error "getDeclType used on non-let or non-deffn" 
 
 getSymKV :: Decl -> (Symbol, Type)
 getSymKV (Let t i _ ) = (Var i, t)
