@@ -110,7 +110,7 @@ instance (PrettyVal t) => PrettyVal (Node t) where
 
 instance PrettyVal Decl where
   prettyVal (Let t i e) = Con "Let" [String t, String i, prettyVal e]
-  prettyVal (Reassign i e) = Con "Reassign" [prettyVal e]
+  prettyVal (Reassign i e) = Con "Reassign" [String i, prettyVal e]
   prettyVal (DefFn i ps t e) =
     Con "DefFn" [Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal e]]
   prettyVal (CallDecl i es) = Con "CallDecl" [String i, Con "Params passed" [prettyVal es]]
