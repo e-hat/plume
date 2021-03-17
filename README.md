@@ -12,9 +12,7 @@ This project relies on [stack](https://docs.haskellstack.org/en/stable/install_a
 This compiler will be written in Haskell with a Parsec-based frontend and will target WASM for easy cross-platform use (also because it's cool).
 
 ## Current State
-I am currently building the frontend using Parsec. My plan for this project is to GET THINGS WORKING then worry about doing more complex semantic analysis/runtime algorithms in the future.
-
-I have setup parsing for boolean and arithmetic expressions and I am now implementing some core syntax of the language. Note that this is absolutely not a final definition of the syntax (e.g. it is missing for-loops). It is simply a starting place to get things working ASAP.
+While it is still missing some core syntax features, I have moved forward to building the symbol table on the semantics branch. This also involves checking for scoping errors. Next, I'll use the symbol table for type checking. Then, I move forward into the backend. However, I'm considering making an IR that is similar to C syntax to sort of "desugar" the syntactic irregularities of Plume.
 
 ## Examples
 I will put an examples in this section when the language is capable of running small programs. However, below is what I'm aiming towards:
