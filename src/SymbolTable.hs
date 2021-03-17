@@ -1,7 +1,11 @@
 module SymbolTable where 
 
 import Syntax
+
 import qualified Data.Map.Strict as Map
+import Data.Maybe
+
+import Text.Show.Pretty
 
 -- the only valid symbols in Plume, variables and functions
 -- note that functions can be overloaded in this language
@@ -50,4 +54,7 @@ lookupStt sym (SymTableTree p t _) = case Map.lookup sym t of
                                     Just t -> Just t
 
 
+instance PrettyVal SymTableTree where
+  prettyVal (SymTableTree mp tbl cs) = 
+    Con "TableTree" [Con "Parent" [prettyVal $ isJust mp], Con "Table" [String $ show tbl], Con "Children" (map prettyVal cs)]
 
