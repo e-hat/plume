@@ -27,6 +27,12 @@ getSymKV (Let t i _ ) = (Var i, t)
 getSymKV (DefFn i ps r _) = (Func i (map (fst . getParam) ps), r)
 getSymKV _ = undefined
 
+getParamKV :: Param -> (Symbol, Type)
+getParamKV (Param ti) = (Var $ snd ti, fst ti)
+
+insertParam :: Param -> SymTable -> SymTable
+insertParam p = uncurry Map.insert (getParamKV p)
+
 insertDecl :: Decl -> SymTable -> SymTable
 insertDecl d = uncurry Map.insert (getSymKV d)
 
