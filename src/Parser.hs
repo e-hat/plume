@@ -7,7 +7,7 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as Ex
 
 program :: P.Parsec String () Program
-program = Program <$> (L.whiteSpace *> P.many1 declaration <* P.eof)
+program = Program <$> (L.whiteSpace *> P.many1 (P.try letdecl P.<|> P.try deffn) <* P.eof)
 
 -- wraps an declaration parser to keep track of its span
 declWrapper :: P.Parsec String () Decl -> P.Parsec String () DeclNode
@@ -111,6 +111,7 @@ bodyDeclaration =
     P.<|> P.try reassign
     P.<|> P.try ifdecl
     P.<|> P.try blockdecl
+    P.<|> P.try letdecl
     P.<?> "a declaration (something without a result)"
 
 expression :: P.Parsec String () ExprNode
@@ -125,6 +126,7 @@ expression =
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
+    P.<|> P.try returnexpr
     P.<?> "an expression (something that has a result)"
 
 letdecl :: P.Parsec String () DeclNode
@@ -251,3 +253,6 @@ blockexpr =
 blockdecl :: P.Parsec String () DeclNode
 blockdecl =
   declWrapper . L.braces $ BlockDecl <$> P.many bodyDeclaration
+
+returnexpr :: P.Parsec String () ExprNode 
+returnexpr = exprWrapper $ L.reserved "return" >> return Return
