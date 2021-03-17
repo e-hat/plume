@@ -15,16 +15,16 @@ class ErrRep a where
   errRep :: a -> String
 
 instance ErrRep Decl where
-  errRep (Let _ n _) = "Let Declaration for" ++ n
-  errRep (Reassign n _) = "Reassign Declaration for" ++ n
+  errRep (Let _ n _) = "Let Declaration for " ++ n
+  errRep (Reassign n _) = "Reassign Declaration for " ++ n
   errRep (DefFn n _ _ _) = "Function Definition Declaration for " ++ n
-  errRep (CallDecl n _) = "Function Call Declaration of function" ++ n
+  errRep (CallDecl n _) = "Function Call Declaration of function " ++ n
   errRep IfDecl {} = "If Statement Declaration"
   errRep BlockDecl {} = "Block Statement Declaration"
 
 instance ErrRep Expr where
   errRep (Subs n) = "Substitution Expression of " ++ n
-  errRep (CallExpr n _) = "Function Call Expression" ++ n
+  errRep (CallExpr n _) = "Function Call Expression of " ++ n
   errRep IfExpr {} = "If Statement Expression"
   errRep BlockExpr {} = "Block Statement Expression"
   errRep BinOp {} = "Binary Operation Expression"
