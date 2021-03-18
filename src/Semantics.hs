@@ -17,12 +17,12 @@ genGlobalSyms = genGlobalSymsImpl . reverse . getProgram
   where
     genGlobalSymsImpl :: [DeclNode] -> SymTable
     genGlobalSymsImpl [d] =
-      Map.singleton (getDeclSymbol $ getContent d) (getDeclType $ getContent d)
+      Map.singleton (getDeclSymbol $ getContent d) (getDeclEntry $ getContent d)
     genGlobalSymsImpl (d : ds) =
       let rest = genGlobalSymsImpl ds
           sym = getDeclSymbol $ getContent d
        in case Map.lookup sym rest of
-            Nothing -> Map.insert sym (getDeclType $ getContent d) rest
+            Nothing -> Map.insert sym (getDeclEntry $ getContent d) rest
             Just _ -> semanticErr d "cannot have overlapping symbol declarations in global scope"
 
 class Scannable a where
@@ -62,7 +62,7 @@ instance Scannable Decl where
   -- a reassignment either references an unknown variable name (could be in parent scopes)
   -- or (plume specific) adds a child scope
   scan (Reassign i expr) ct@(SymTableTree pTbl tbl cs) =
-    case lookupStt (Var i) ct of
+    case lookupStt i ct of
       Nothing -> Left $ "the variable " ++ i ++ " has not yet been declared in a Let declaration"
       Just _ ->
         Right $ SymTableTree pTbl tbl (cs ++ [scanNode childTree expr])
@@ -106,6 +106,6 @@ instance Scannable Expr where
   scan Return ct = Right ct
   -- this is straightforward
   scan (Subs i) ct  = 
-    case lookupStt (Var i) ct of
+    case lookupStt i ct of
       Nothing -> Left $ "symbol " ++ i ++ " has not yet been declared"
       Just _ -> Right ct

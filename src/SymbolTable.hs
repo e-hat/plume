@@ -7,32 +7,30 @@ import Data.Maybe
 
 import Text.Show.Pretty
 
--- the only valid symbols in Plume, variables and functions
--- note that functions can be overloaded in this language
-data Symbol = Var Identifier | Func Identifier [Type] deriving (Eq, Ord, Show)
+data TEntry = Single Type | Many [Type] Type deriving (Eq, Ord, Show)
 
 -- symbol map for looking up during typechecking and beyond!
-type SymTable = Map.Map Symbol Type
+type SymTable = Map.Map Identifier TEntry
 
 -- gets the symbol for a let or function definition declaration
-getDeclSymbol :: Decl -> Symbol
-getDeclSymbol (Let _ i _) = Var i
-getDeclSymbol (DefFn i ps _ _) = Func i (map (fst . getParam) ps)
+getDeclSymbol :: Decl -> Identifier
+getDeclSymbol (Let _ i _) = i
+getDeclSymbol (DefFn i _ _ _) = i
 getDeclSymbol _ = error "getDeclSymbol used on non-let or non-deffn" 
 
 -- gets the type for a let or function definition declaration
-getDeclType :: Decl -> Type
-getDeclType (Let t _ _) = t
-getDeclType (DefFn _ _ r _) = r
-getDeclType _ = error "getDeclType used on non-let or non-deffn" 
+getDeclEntry :: Decl -> TEntry
+getDeclEntry (Let t _ _) = Single t
+getDeclEntry (DefFn _ ps r _) = Many (map (fst . getParam) ps) r
+getDeclEntry _ = error "getDeclEntry used on non-let or non-deffn" 
 
-getSymKV :: Decl -> (Symbol, Type)
-getSymKV (Let t i _ ) = (Var i, t)
-getSymKV (DefFn i ps r _) = (Func i (map (fst . getParam) ps), r)
-getSymKV _ = undefined
+getSymKV :: Decl -> (Identifier, TEntry)
+getSymKV (Let t i _ ) = (i, Single t)
+getSymKV d@(DefFn i _ _ _) = (i, getDeclEntry d)
+getSymKV _ = error "getSymKV used on non-let or non-deffn"
 
-getParamKV :: Param -> (Symbol, Type)
-getParamKV (Param ti) = (Var $ snd ti, fst ti)
+getParamKV :: Param -> (Identifier, TEntry)
+getParamKV (Param ti) = (snd ti, Single $ fst ti)
 
 insertParam :: Param -> SymTable -> SymTable
 insertParam p = uncurry Map.insert (getParamKV p)
@@ -46,7 +44,7 @@ data SymTableTree = SymTableTree
     getChildren :: [SymTableTree]
   } deriving Show -- TODO: make a Show.Pretty instance for this type
 
-lookupStt :: Symbol -> SymTableTree -> Maybe Type
+lookupStt :: Identifier -> SymTableTree -> Maybe TEntry
 lookupStt sym (SymTableTree p t _) = case Map.lookup sym t of
                                     Nothing -> case p of 
                                                  Nothing -> Nothing 
