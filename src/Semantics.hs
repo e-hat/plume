@@ -95,7 +95,7 @@ instance Scannable Decl where
      in -- and finally, append all of the trees as children of the original
         Right $ SymTableTree pTbl tbl (cs ++ [condTree, decl1Tree] ++ elseifTrees ++ maybeToList melseTree)
 
-instance Scannable Expr where
+instance Scannable Expr where 
   -- literals are easy as, by definition, they don't have anything to do with the symbol table
   scan LitInt {} ct = Right ct
   scan LitChar {} ct = Right ct
@@ -116,6 +116,4 @@ instance Scannable Expr where
       Just (Many ps _) -> 
         if length ps /= length es 
            then Left $ "wrong number of parameters passed to function " ++ i 
-           else Right $ SymTableTree pTbl tbl (cs ++ map (scanNode childTree) es) 
-             where
-               childTree = SymTableTree (Just ct) Map.empty []
+           else Right $ foldl scanNode ct es
