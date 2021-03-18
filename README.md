@@ -9,7 +9,7 @@ Plume aims to be a strongly, statically typed, and compiled languaged. It attemp
 This project aims to be a powerful learning experience that lends itself to constant improvement. Also, the codebase for this project will be useful for exploring other areas of PL later on, such as making an interpreter or experimenting with different runtime systems and garbage collection. Oh, and because it's fun and something I'll always be happy I did 🙂
 
 ## Usage
-This project relies on [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) to manage dependencies. Clone the repo and `cd` into it, then run `stack install plume`. You will now have the `plume` command on your `$PATH`, so run `plume --help` for your options. For now, you can run `plume -a [filename]` to print the AST for a Plume source file.
+This project relies on [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) to manage dependencies. Clone the repo and `cd` into it, then run `stack install`. You will now have the `plume` command on your `$PATH`, so run `plume --help` for your options. For now, you can run `plume -a [filename]` to print the AST for a Plume source file.
 
 ## Approach
 This compiler will be written in Haskell with a Parsec-based frontend and will target WASM for easy cross-platform use (also because it's cool).
