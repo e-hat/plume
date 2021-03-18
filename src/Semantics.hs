@@ -105,7 +105,17 @@ instance Scannable Expr where
   -- return is kind of a literal for Void, right?
   scan Return ct = Right ct
   -- this is straightforward
-  scan (Subs i) ct  = 
+  scan (Subs i) ct =
     case lookupStt i ct of
       Nothing -> Left $ "symbol " ++ i ++ " has not yet been declared"
       Just _ -> Right ct
+  scan (CallExpr i es) ct@(SymTableTree pTbl tbl cs) = 
+    case lookupStt i ct of
+      Nothing -> Left $ "attempting to call function " ++ i ++ " that does not exist"
+      Just (Single _) -> Left $ i ++ " is a variable but is being called like a function"
+      Just (Many ps _) -> 
+        if length ps /= length es 
+           then Left $ "wrong number of parameters passed to function " ++ i 
+           else Right $ SymTableTree pTbl tbl (cs ++ map (scanNode childTree) es) 
+             where
+               childTree = SymTableTree (Just ct) Map.empty []
