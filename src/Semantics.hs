@@ -97,10 +97,15 @@ instance Scannable Decl where
 
 instance Scannable Expr where
   -- literals are easy as, by definition, they don't have anything to do with the symbol table
-  scan LitInt {} = Right
-  scan LitChar {} = Right
-  scan LitString {} = Right
-  scan LitFloat {} = Right
-  scan LitBool {} = Right
+  scan LitInt {} ct = Right ct
+  scan LitChar {} ct = Right ct
+  scan LitString {} ct = Right ct
+  scan LitFloat {} ct = Right ct
+  scan LitBool {} ct = Right ct
   -- return is kind of a literal for Void, right?
-  scan Return = Right
+  scan Return ct = Right ct
+  -- this is straightforward
+  scan (Subs i) ct  = 
+    case lookupStt (Var i) ct of
+      Nothing -> Left $ "symbol " ++ i ++ " has not yet been declared"
+      Just _ -> Right ct
