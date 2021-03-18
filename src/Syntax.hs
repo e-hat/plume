@@ -132,4 +132,5 @@ instance PrettyVal Expr where
   prettyVal (LitString s) = String s
   prettyVal (LitBool b) = String (show b)
   prettyVal (LitChar c) = Char (show c)
+  prettyVal Return = Con "Return" []
 
