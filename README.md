@@ -1,4 +1,4 @@
-# Plume
+# Plume 🦚
 
 ## About
 This project is my first programming language. It can currently parse a `.plm` file into an AST.
