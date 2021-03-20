@@ -38,12 +38,6 @@ insertParam p = uncurry Map.insert (getParamKV p)
 insertDecl :: DeclAug t -> SymTable -> SymTable
 insertDecl d = uncurry Map.insert (getSymKV d)
 
-data SymTableTree = SymTableTree
-  { getParent :: Maybe SymTableTree,
-    getTable :: SymTable,
-    getChildren :: [SymTableTree]
-  } deriving Show 
-
 data SymData = SymData
   { getScope :: SymTable,
     getSymSpan :: SpanRec 
