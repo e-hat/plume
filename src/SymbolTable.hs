@@ -46,6 +46,11 @@ data SymData = SymData
 newtype SymDeclAug = SymDeclAug { getSymDeclAug :: DeclAug SymData } 
 newtype SymExprAug = SymExprAug { getSymExprAug :: ExprAug SymData }
 
+newtype SymTreeList = SymTreeList { getSymTreeList :: [SymDeclAug] }
+
+instance PrettyVal SymTreeList where
+  prettyVal (SymTreeList ts) = prettyVal ts
+
 instance PrettyVal SymDeclAug where
   prettyVal (SymDeclAug (Let t i e, SymData scp _)) = Con "Let" [String $ show scp, String t, String i, prettyVal $ SymExprAug e]
   prettyVal (SymDeclAug (Reassign i e, _)) = Con "Reassign" [String i, prettyVal $ SymExprAug e]
@@ -67,5 +72,9 @@ instance PrettyVal SymExprAug where
   prettyVal (SymExprAug (BlockExpr ds e, SymData scp _)) = Con "BlockExpr" [String $ show scp, prettyVal (map SymDeclAug ds), prettyVal $ SymExprAug e]
   prettyVal (SymExprAug (BinOp o a b, SymData scp _)) = Con "BinOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a, prettyVal $ SymExprAug b]
   prettyVal (SymExprAug (UnaryOp o a, SymData scp _)) = Con "UnaryOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a]
-  prettyVal (SymExprAug (LitInt i, SymData scp _)) = Integer (show i)
-
+  prettyVal (SymExprAug (LitInt i, SymData {})) = Integer (show i)
+  prettyVal (SymExprAug (LitBool b, SymData {})) = String (show b)
+  prettyVal (SymExprAug (LitFloat f, SymData {})) = Float (show f)
+  prettyVal (SymExprAug (LitString s, SymData {})) = String s
+  prettyVal (SymExprAug (LitChar c, SymData {})) = Char (show c)
+  prettyVal (SymExprAug (Return, SymData {})) = String "return"
