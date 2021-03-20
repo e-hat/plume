@@ -44,11 +44,8 @@ run (CLInput f True) = do
     Left err -> error $ show err
     Right p -> dumpIO p
 
-run (CLInput f False) = undefined --do
-  {-  nodes <- P.parse program f <$> readFile f
-  case nodes of
+run (CLInput f False) = do
+  nodes <- P.parse program f <$> readFile f
+  case nodes of 
     Left err -> error $ show err
-    Right p -> do
-      dumpIO p
-      print $ genGlobalSyms p
-      dumpIO $ validateProgram p -}
+    Right p -> print $ snd $ head $ buildGlobalScopes p
