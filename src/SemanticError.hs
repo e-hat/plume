@@ -9,7 +9,7 @@ astSemanticErr (d, s)  = wrapStmtName s (errRep d)
   where
     wrapStmtName :: SpanRec -> String -> String -> a
     wrapStmtName sr name msg =
-      error $ printf "Error: %s\n In `%s` at %s" msg name (show sr)
+      error $ printf "\n****************\nError: %s\n In `%s` at %s\n****************" msg name (show sr)
 
 class ErrRep a where
   errRep :: a -> String
