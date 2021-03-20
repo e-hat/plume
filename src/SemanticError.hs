@@ -1,11 +1,11 @@
-module SemanticError (semanticErr, ErrRep) where
+module SemanticError (astSemanticErr, ErrRep) where
 
 import Syntax
 import Text.Printf (errorShortFormat, printf)
 
 -- general error handling
-semanticErr :: (ErrRep t) => Node t -> String -> a
-semanticErr (Node s d) = wrapStmtName s (errRep d)
+astSemanticErr :: (ErrRep t) => (t, SpanRec) -> String -> a
+astSemanticErr (d, s)  = wrapStmtName s (errRep d)
   where
     wrapStmtName :: SpanRec -> String -> String -> a
     wrapStmtName sr name msg =
@@ -14,7 +14,7 @@ semanticErr (Node s d) = wrapStmtName s (errRep d)
 class ErrRep a where
   errRep :: a -> String
 
-instance ErrRep Decl where
+instance ErrRep (Decl t) where
   errRep (Let _ n _) = "Let Declaration for " ++ n
   errRep (Reassign n _) = "Reassign Declaration for " ++ n
   errRep (DefFn n _ _ _) = "Function Definition Declaration for " ++ n
@@ -22,7 +22,7 @@ instance ErrRep Decl where
   errRep IfDecl {} = "If Statement Declaration"
   errRep BlockDecl {} = "Block Statement Declaration"
 
-instance ErrRep Expr where
+instance ErrRep (Expr t) where
   errRep (Subs n) = "Substitution Expression of " ++ n
   errRep (CallExpr n _) = "Function Call Expression of " ++ n
   errRep IfExpr {} = "If Statement Expression"

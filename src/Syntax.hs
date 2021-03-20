@@ -1,50 +1,49 @@
 module Syntax where
 
-import Data.List (intercalate)
 import qualified Text.Parsec as P
 import Text.Printf (errorShortFormat, printf)
 import Text.Show.Pretty
 
-newtype Program = Program {getProgram :: [DeclNode]}
+newtype Program = Program {getProgram :: [ASTDeclAug]}
 
--- Nodes specialized based on content types
-data Node t = Node
-  { getSpan :: SpanRec,
-    getContent :: t
-  } deriving Eq
+newtype ASTDeclAug = ASTDeclAug {getASTDeclAug :: DeclAug SpanRec}
 
-type DeclNode = Node Decl
-type ExprNode = Node Expr
+newtype ASTExprAug = ASTExprAug {getASTExprAug :: ExprAug SpanRec}
 
 type Identifier = String
+
 type Type = String
 
-newtype Param = Param {getParam :: (Type, Identifier)} deriving Eq
+newtype Param = Param {getParam :: (Type, Identifier)} deriving (Eq)
+
+type TreeAug a b = (a b, b)
+
+type DeclAug b = (Decl b, b)
+
+type ExprAug b = (Expr b, b)
 
 -- each stmt in Plume is either a declaration or an expression
-data Decl
-  = Let Type Identifier ExprNode
-  | Reassign Identifier ExprNode
-  | DefFn Identifier [Param] Type ExprNode
-  | CallDecl Identifier [ExprNode]
-  | IfDecl ExprNode DeclNode [(ExprNode, DeclNode)] (Maybe DeclNode)
-  | BlockDecl [DeclNode]
-  deriving Eq
+data Decl t
+  = Let Type Identifier (ExprAug t)
+  | Reassign Identifier (ExprAug t)
+  | DefFn Identifier [Param] Type (ExprAug t)
+  | CallDecl Identifier [ExprAug t]
+  | IfDecl (ExprAug t) (DeclAug t) [(ExprAug t, DeclAug t)] (Maybe (DeclAug t))
+  | BlockDecl [DeclAug t]
 
-data Expr
+data Expr t
   = Subs Identifier
-  | CallExpr Identifier [ExprNode]
-  | IfExpr ExprNode ExprNode [(ExprNode, ExprNode)] (Maybe ExprNode)
-  | BlockExpr [DeclNode] ExprNode
-  | BinOp Op ExprNode ExprNode
-  | UnaryOp Op ExprNode
+  | CallExpr Identifier [ExprAug t]
+  | IfExpr (ExprAug t) (ExprAug t) [(ExprAug t, ExprAug t)] (Maybe (ExprAug t))
+  | BlockExpr [DeclAug t] (ExprAug t)
+  | BinOp Op (ExprAug t) (ExprAug t)
+  | UnaryOp Op (ExprAug t)
   | LitInt Integer
   | LitFloat Double
   | LitString String
   | LitBool Bool
   | LitChar Char
   | Return
-  deriving Eq
 
 data Op
   = Plus
@@ -70,7 +69,8 @@ data SpanRec = SpanRec
     getMaxLine :: Int,
     getMinCol :: Int,
     getMaxCol :: Int
-  } deriving Eq
+  }
+  deriving (Eq)
 
 getLineRange :: SpanRec -> (Int, Int)
 getLineRange (SpanRec _ a b _ _) = (a, b)
@@ -106,31 +106,31 @@ instance PrettyVal Program where
 instance PrettyVal Param where
   prettyVal (Param p) = prettyVal p
 
-instance (PrettyVal t) => PrettyVal (Node t) where
-  prettyVal (Node _ c) = prettyVal c
+instance PrettyVal ASTDeclAug where
+  prettyVal (ASTDeclAug (Let t i e, _)) = Con "Let" [String t, String i, prettyVal $ ASTExprAug e]
+  prettyVal (ASTDeclAug (Reassign i e, _)) = Con "Reassign" [String i, prettyVal $ ASTExprAug e]
+  prettyVal (ASTDeclAug (DefFn i ps t e, _)) =
+    Con "DefFn" [Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal $ ASTExprAug e]]
+  prettyVal (ASTDeclAug (CallDecl i es, _)) = Con "CallDecl" [String i, Con "Params passed" [prettyVal $ map ASTExprAug es]]
+  prettyVal (ASTDeclAug (IfDecl e d eds md, _)) =
+    Con "IfDecl" [Con "Condition" [prettyVal $ ASTExprAug e], Con "IfResult" [prettyVal $ ASTDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (ASTDeclAug <$> md)]]
+    where
+      augEFPair (e, d) = (ASTExprAug e, ASTDeclAug d)
+  prettyVal (ASTDeclAug (BlockDecl ds, _)) = Con "BlockDecl" [prettyVal (map ASTDeclAug ds)]
 
-instance PrettyVal Decl where
-  prettyVal (Let t i e) = Con "Let" [String t, String i, prettyVal e]
-  prettyVal (Reassign i e) = Con "Reassign" [String i, prettyVal e]
-  prettyVal (DefFn i ps t e) =
-    Con "DefFn" [Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal e]]
-  prettyVal (CallDecl i es) = Con "CallDecl" [String i, Con "Params passed" [prettyVal es]]
-  prettyVal (IfDecl e d eds md) =
-    Con "IfDecl" [Con "Condition" [prettyVal e], Con "IfResult" [prettyVal d], Con "ElseIfs" (map prettyVal eds), Con "Else" [prettyVal md]]
-  prettyVal (BlockDecl ds) = Con "BlockDecl" [prettyVal ds]
-
-instance PrettyVal Expr where
-  prettyVal (Subs i) = Con "Subs" [String i]
-  prettyVal (CallExpr i es) = Con "CallExpr" [String i, Con "Params passed" [prettyVal es]]
-  prettyVal (IfExpr c e ees me) =
-    Con "IfExpr" [Con "Condition" [prettyVal c], Con "IfResult" [prettyVal e], Con "ElseIfs" (map prettyVal ees), Con "Else" [prettyVal me]]
-  prettyVal (BlockExpr ds e) = Con "BlockExpr" [prettyVal ds, prettyVal e]
-  prettyVal (BinOp o a b) = Con "BinOp" [String $ show o, prettyVal a, prettyVal b]
-  prettyVal (UnaryOp o a) = Con "UnaryOp" [String $ show o, prettyVal a]
-  prettyVal (LitInt i) = Integer (show i)
-  prettyVal (LitFloat d) = Float (show d)
-  prettyVal (LitString s) = String s
-  prettyVal (LitBool b) = String (show b)
-  prettyVal (LitChar c) = Char (show c)
-  prettyVal Return = Con "Return" []
-
+instance PrettyVal ASTExprAug where
+  prettyVal (ASTExprAug (Subs i, _)) = Con "Subs" [String i]
+  prettyVal (ASTExprAug (CallExpr i es, _)) = Con "CallExpr" [String i, Con "Params passed" [prettyVal (map ASTExprAug es)]]
+  prettyVal (ASTExprAug (IfExpr c e ees me, _)) =
+    Con "IfExpr" [Con "Condition" [prettyVal $ ASTExprAug c], Con "IfResult" [prettyVal $ ASTExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (ASTExprAug <$> me)]]
+    where
+      augEFPair (e1, e2) = (ASTExprAug e1, ASTExprAug e2)
+  prettyVal (ASTExprAug (BlockExpr ds e, _)) = Con "BlockExpr" [prettyVal (map ASTDeclAug ds), prettyVal $ ASTExprAug e]
+  prettyVal (ASTExprAug (BinOp o a b, _)) = Con "BinOp" [String $ show o, prettyVal $ ASTExprAug a, prettyVal $ ASTExprAug b]
+  prettyVal (ASTExprAug (UnaryOp o a, _)) = Con "UnaryOp" [String $ show o, prettyVal $ ASTExprAug a]
+  prettyVal (ASTExprAug (LitInt i, _)) = Integer (show i)
+  prettyVal (ASTExprAug (LitFloat d, _)) = Float (show d)
+  prettyVal (ASTExprAug (LitString s, _)) = String s
+  prettyVal (ASTExprAug (LitBool b, _)) = String (show b)
+  prettyVal (ASTExprAug (LitChar c, _)) = Char (show c)
+  prettyVal (ASTExprAug (Return, _)) = Con "Return" []
