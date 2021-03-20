@@ -16,13 +16,16 @@ type Type = String
 
 newtype Param = Param {getParam :: (Type, Identifier)} deriving (Eq)
 
-type TreeAug a b = (a b, b)
+type DeclAug t = (Decl t, t)
 
-type DeclAug b = (Decl b, b)
-
-type ExprAug b = (Expr b, b)
+type ExprAug t = (Expr t, t)
 
 -- each stmt in Plume is either a declaration or an expression
+-- this is an "augmented" tree structure 
+-- it allows me to maintain the same "shape" of the tree, but carry different
+-- data on each node depending on what I'm doing, e.g. I need just span info for 
+-- all errors, but I'll need a symbol table on each node for type checking.
+-- t represents that additional piece of data unrelated to tree structure
 data Decl t
   = Let Type Identifier (ExprAug t)
   | Reassign Identifier (ExprAug t)
