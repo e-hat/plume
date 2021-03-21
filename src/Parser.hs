@@ -84,11 +84,7 @@ bool =
 
 char :: P.Parsec String () (ExprAug SpanRec)
 char =
-  exprWrapper $ do
-    P.char '\''
-    contents <- L.char
-    P.char '\''
-    return $ LitChar contents
+  exprWrapper $ LitChar <$> L.char
 
 -----------------------------------------------------------
 ------------------more complex parsing---------------------
@@ -196,7 +192,7 @@ ifbodyexpr =
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
     P.<|> P.try blockexpr
-    P.<|> P.try int 
+    P.<|> P.try int
     P.<|> P.try float
     P.<|> P.try string
     P.<|> P.try bool
