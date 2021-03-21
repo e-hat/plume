@@ -26,6 +26,7 @@ validateSemantics p =
       symTrees = map (buildGlobalSymTree globalScope . checkGlobalLet) globals
    in -- comment for debugging, as typecheck is not yet implemented
       SymTreeList $ map (SymDeclAug . typecheckD) symTrees
+
 --SymTreeList $ map SymDeclAug symTrees
 
 isLit :: ExprAug SpanRec -> Bool
@@ -43,13 +44,14 @@ buildGlobalScope ds =
         case Map.lookup (getDeclSymbol entry) tbl of
           Just _ -> astSemanticErr entry ("symbol " ++ getDeclSymbol entry ++ " has already been declared in global scope")
           Nothing -> insertDecl entry tbl
-      checkMain :: SymTable -> SymTable 
-      checkMain tbl = 
+      checkMain :: SymTable -> SymTable
+      checkMain tbl =
         case Map.lookup "main" tbl of
           Just (Single _) -> error "main MUST be a function, not a variable"
-          Just m -> if m == Many [] "Int"
-                       then tbl
-                       else error "wrong type for main function"
+          Just m ->
+            if m == Many [] "Int"
+              then tbl
+              else error "wrong type for main function"
           Nothing -> error "missing declaration of main function"
    in checkMain $ foldr addIfAbsent Map.empty ds
 
@@ -83,7 +85,7 @@ buildSymTreeE tbl (BlockExpr ds e, sr) =
     dtbls = foldl buildTbls [tbl] ds
     symds = zipWith buildSymTreeD dtbls ds
     syme = buildSymTreeE (last dtbls) e
-buildSymTreeE tbl s@(Subs i, sr) = 
+buildSymTreeE tbl s@(Subs i, sr) =
   case Map.lookup i tbl of
     Just _ -> (Subs i, SymData tbl sr)
     Nothing -> astSemanticErr s ("undeclared symbol " ++ i)
@@ -91,7 +93,7 @@ buildSymTreeE tbl c@(CallExpr i pexprs, sr) =
   case Map.lookup i tbl of
     Nothing -> astSemanticErr c ("undeclared function " ++ i)
     Just (Single _) -> astSemanticErr c ("attempt to call a variable " ++ i ++ " like a function")
-    Just _ -> 
+    Just _ ->
       (CallExpr i (map (buildSymTreeE tbl) pexprs), SymData tbl sr)
 
 typecheckD :: DeclAug SymData -> DeclAug SymData
@@ -123,14 +125,14 @@ typecheckE c@(innerc@(CallExpr i pexprs), SymData tbl sr) =
       getParamTypes (Many ts t) = ts
       pTypes = getParamTypes callEntry
       matchParamType :: ExprAug SymData -> Type -> ExprAug SymData
-      matchParamType expr t = 
+      matchParamType expr t =
         let passedType = getType expr
-         in if passedType == t 
-           then expr
-           else typeError c t expr passedType
-  in if length pTypes /= length pexprs 
+         in if passedType == t
+              then expr
+              else typeError c t expr passedType
+   in if length pTypes /= length pexprs
         then astSemanticErr (innerc, sr) ("passed " ++ show (length pexprs) ++ " parameter(s) to a function that takes " ++ show (length pTypes) ++ " parameter(s)")
-        else (CallExpr i (zipWith matchParamType pexprs pTypes), SymData tbl sr) 
+        else (CallExpr i (zipWith matchParamType pexprs pTypes), SymData tbl sr)
 
 getType :: ExprAug SymData -> Type
 getType (LitInt _, _) = "Int"
