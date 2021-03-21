@@ -25,8 +25,8 @@ validateSemantics p =
       checkGlobalLet d = d
       symTrees = map (buildGlobalSymTree globalScope . checkGlobalLet) globals
    in -- comment for debugging, as typecheck is not yet implemented
-      --SymTreeList $ map (SymDeclAug . typecheckD) symTrees
-      SymTreeList $ map SymDeclAug symTrees
+      SymTreeList $ map (SymDeclAug . typecheckD) symTrees
+      --SymTreeList $ map SymDeclAug symTrees
 
 isLit :: ExprAug SpanRec -> Bool
 isLit (LitInt _, _) = True
@@ -77,12 +77,28 @@ buildSymTreeE tbl (BlockExpr ds e, sr) =
     syme = buildSymTreeE (last dtbls) e
 
 typecheckD :: DeclAug SymData -> DeclAug SymData
-typecheckD l@(Let _ _ e, SymData sr tbl) =
-  let t1 = getEntryType $ getDeclEntry l
+typecheckD l@(Let _ _ e, SymData tbl _) =
+  let t1 = getDeclType l
       t2 = getType e
    in if t1 == t2
         then l
         else typeError l t1 e t2
+typecheckD f@(DefFn i ps rt e, s) =
+  let t1 = getDeclType f
+      t2 = getType e
+  in if t1 == t2
+        then (DefFn i ps rt (typecheckE e), s)
+        else typeError f t1 e t2
+
+typecheckE :: ExprAug SymData -> ExprAug SymData 
+typecheckE i@(LitInt _, _) = i
+typecheckE s@(LitString _, _) = s
+typecheckE f@(LitFloat _, _) = f
+typecheckE c@(LitChar _, _) = c
+typecheckE b@(LitBool _, _) = b
+typecheckE r@(Return, _) = r
+typecheckE (BlockExpr ds rexpr, s) = 
+  (BlockExpr (map typecheckD ds) (typecheckE rexpr), s)
 
 getType :: ExprAug SymData -> Type
 getType (LitInt _, _) = "Int"
@@ -91,3 +107,4 @@ getType (LitFloat _, _) = "Float"
 getType (LitChar _, _) = "Char"
 getType (LitBool _, _) = "Bool"
 getType (Return, _) = "Void"
+getType (BlockExpr _ rexpr, _) = getType rexpr
