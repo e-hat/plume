@@ -22,7 +22,8 @@ languageDef =
           "not",
           "and",
           "or",
-          "return"
+          "return",
+          "main"
         ],
       Tok.reservedOpNames =
         [ "+",

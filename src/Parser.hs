@@ -151,7 +151,7 @@ deffn :: P.Parsec String () (DeclAug SpanRec)
 deffn =
   declWrapper $ do
     L.reserved "def"
-    ident <- L.identifier
+    ident <- P.try L.identifier P.<|> (L.reserved "main" >> return "main")
     params <- L.parens $ P.sepBy L.param (L.reservedOp ",")
     L.reservedOp ":"
     returnType <- L.typeName
