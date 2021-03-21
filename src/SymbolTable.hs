@@ -24,6 +24,10 @@ getDeclEntry (Let t _ _, _) = Single t
 getDeclEntry (DefFn _ ps r _, _) = Many (map (fst . getParam) ps) r
 getDeclEntry _ = error "getDeclEntry used on non-let or non-deffn" 
 
+getEntryType :: TEntry -> Type
+getEntryType (Single t) = t
+getEntryType (Many _ t) = t
+
 getSymKV :: DeclAug t -> (Identifier, TEntry)
 getSymKV (Let t i _, _) = (i, Single t)
 getSymKV d@(DefFn i _ _ _, _) = (i, getDeclEntry d)

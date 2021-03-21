@@ -18,8 +18,8 @@ validateSemantics p =
       buildGlobalSymTree tbl o = buildSymTreeD tbl o
       symTrees = map (buildGlobalSymTree globalScope) globals
    -- comment for debugging, as typecheck is not yet implemented
-   --in SymTreeList $ map (SymDeclAug . typecheckD) symTrees
-   in SymTreeList $ map SymDeclAug symTrees
+   in SymTreeList $ map (SymDeclAug . typecheckD) symTrees
+   --in SymTreeList $ map SymDeclAug symTrees
 
 buildGlobalScope :: [DeclAug SpanRec] -> SymTable
 buildGlobalScope ds =
@@ -61,7 +61,11 @@ buildSymTreeE tbl (BlockExpr ds e, sr) =
       syme = buildSymTreeE (last dtbls) e
 
 typecheckD :: DeclAug SymData -> DeclAug SymData
-typecheckD = undefined
+typecheckD l@(Let _ _ e, SymData sr tbl) = 
+  let t1 = getEntryType $ getDeclEntry l
+      t2 = getType e
+   in if t1 == t2 then l
+                  else typeError l t1 e t2
 
 getType :: ExprAug SymData -> Type
-getType = undefined
+getType (LitInt _, _) = "Int"
