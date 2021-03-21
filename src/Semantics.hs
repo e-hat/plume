@@ -16,10 +16,23 @@ validateSemantics p =
         (Let t i (buildSymTreeE mytbl e), SymData mytbl sr)
           where mytbl = Map.delete (getDeclSymbol l) tbl
       buildGlobalSymTree tbl o = buildSymTreeD tbl o
-      symTrees = map (buildGlobalSymTree globalScope) globals
+      checkGlobalLet :: DeclAug SpanRec -> DeclAug SpanRec 
+      checkGlobalLet l@(Let _ _ e, sr) = 
+        if isLit e then l
+                   else astSemanticErr l "a global let MUST be a literal value"
+      checkGlobalLet d = d
+      symTrees = map (buildGlobalSymTree globalScope . checkGlobalLet) globals
    -- comment for debugging, as typecheck is not yet implemented
    in SymTreeList $ map (SymDeclAug . typecheckD) symTrees
    --in SymTreeList $ map SymDeclAug symTrees
+
+isLit :: ExprAug SpanRec -> Bool 
+isLit (LitInt _, _) = True 
+isLit (LitFloat _, _) = True 
+isLit (LitString _, _) = True 
+isLit (LitChar _, _) = True
+isLit (LitBool _, _) = True
+isLit _ = False
 
 buildGlobalScope :: [DeclAug SpanRec] -> SymTable
 buildGlobalScope ds =
