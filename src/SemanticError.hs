@@ -1,15 +1,29 @@
-module SemanticError (astSemanticErr, ErrRep) where
+module SemanticError (astSemanticErr, typeError) where
 
 import Syntax
+import SymbolTable
+
 import Text.Printf (errorShortFormat, printf)
 
 -- general error handling
 astSemanticErr :: (ErrRep t) => (t, SpanRec) -> String -> a
-astSemanticErr (d, s)  = wrapStmtName s (errRep d)
+astSemanticErr (d, s) = wrapStmtName s (errRep d)
   where
     wrapStmtName :: SpanRec -> String -> String -> a
     wrapStmtName sr name msg =
-      error $ printf "\n****************\nError: %s\n In `%s` at %s\n****************" msg name (show sr)
+      error 
+        $ printf "%sError: %s\n In `%s` at %s%s" starBlock msg name (show sr) starBlock
+
+typeError :: (ErrRep t, ErrRep u) => (t, SymData) -> Type -> (u, SymData) -> Type -> a
+typeError (n1, SymData _ s1) t1 (n2, SymData _ s2) = 
+  wrapStmtName (errRep n1) s1 t1 (errRep n2) s2
+    where 
+      wrapStmtName :: String -> SpanRec -> Type -> String -> SpanRec -> Type -> a
+      wrapStmtName sym1 sr1 ty1 sym2 sr2 ty2 =
+        error 
+          $ printf "%sError: could not unify type `%s` with type `%s`\nfor symbols `%s` at %s and `%s` at %s respectively%s" starBlock ty1 ty2 sym1 (show sr1) sym2 (show sr2) starBlock
+
+starBlock = "\n************************\n"
 
 class ErrRep a where
   errRep :: a -> String
