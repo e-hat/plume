@@ -26,7 +26,6 @@ validateSemantics p =
       symTrees = map (buildGlobalSymTree globalScope . checkGlobalLet) globals
    in -- comment for debugging, as typecheck is not yet implemented
       SymTreeList $ map (SymDeclAug . typecheckD) symTrees
-
 --SymTreeList $ map SymDeclAug symTrees
 
 isLit :: ExprAug SpanRec -> Bool
