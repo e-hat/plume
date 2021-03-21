@@ -28,6 +28,9 @@ getEntryType :: TEntry -> Type
 getEntryType (Single t) = t
 getEntryType (Many _ t) = t
 
+getDeclType :: DeclAug t -> Type
+getDeclType d = getEntryType $ getDeclEntry d
+
 getSymKV :: DeclAug t -> (Identifier, TEntry)
 getSymKV (Let t i _, _) = (i, Single t)
 getSymKV d@(DefFn i _ _ _, _) = (i, getDeclEntry d)
