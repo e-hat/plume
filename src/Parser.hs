@@ -127,7 +127,6 @@ expression =
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
-    P.<|> P.try returnexpr
     P.<?> "an expression (something that has a result)"
 
 letdecl :: P.Parsec String () (DeclAug SpanRec)
@@ -190,13 +189,27 @@ calldecl =
     L.reservedOp ";"
     return $ declFromExpr stmt
 
+ifbodyexpr :: P.Parsec String () (ExprAug SpanRec)
+ifbodyexpr =
+  P.try opExpression
+    P.<|> P.try subs
+    P.<|> P.try callexpr
+    P.<|> P.try ifexpr
+    P.<|> P.try blockexpr
+    P.<|> P.try int 
+    P.<|> P.try float
+    P.<|> P.try string
+    P.<|> P.try bool
+    P.<|> P.try char
+    P.<|> P.try returnexpr
+
 ifexpr :: P.Parsec String () (ExprAug SpanRec)
 ifexpr =
   exprWrapper $ do
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    firstexpr <- expression
+    firstexpr <- ifbodyexpr
     elseifs <- P.many $ P.try elseifexpr
     elsecase <- P.optionMaybe $ P.try elseexpr
     return $ IfExpr cond firstexpr elseifs elsecase
@@ -219,7 +232,7 @@ elseifexpr =
     L.reserved "if"
     cond <- opExpression
     L.reservedOp "=>"
-    (,) cond <$> expression
+    (,) cond <$> ifbodyexpr
 
 elseifdecl :: P.Parsec String () (ExprAug SpanRec, DeclAug SpanRec)
 elseifdecl =
@@ -235,7 +248,7 @@ elseexpr =
   do
     L.reserved "else"
     L.reservedOp "=>"
-    expression
+    ifbodyexpr
 
 elsedecl :: P.Parsec String () (DeclAug SpanRec)
 elsedecl =
@@ -244,11 +257,24 @@ elsedecl =
     L.reservedOp "=>"
     bodyDeclaration
 
+blockreturnexpr :: P.Parsec String () (ExprAug SpanRec)
+blockreturnexpr =
+  P.try opExpression
+    P.<|> P.try subs
+    P.<|> P.try callexpr
+    P.<|> P.try ifexpr
+    P.<|> P.try int
+    P.<|> P.try float
+    P.<|> P.try string
+    P.<|> P.try bool
+    P.<|> P.try char
+    P.<|> P.try returnexpr
+
 blockexpr :: P.Parsec String () (ExprAug SpanRec)
 blockexpr =
   exprWrapper . L.braces $ do
     decls <- P.many bodyDeclaration
-    BlockExpr decls <$> expression
+    BlockExpr decls <$> blockreturnexpr
 
 blockdecl :: P.Parsec String () (DeclAug SpanRec)
 blockdecl =
