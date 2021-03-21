@@ -67,5 +67,12 @@ typecheckD l@(Let _ _ e, SymData sr tbl) =
    in if t1 == t2 then l
                   else typeError l t1 e t2
 
+-- TODO: add these to list of reserved words
 getType :: ExprAug SymData -> Type
 getType (LitInt _, _) = "Int"
+getType (LitString _, _) = "String"
+getType (LitFloat _, _) = "Float"
+getType (LitChar _, _) = "Char"
+getType (LitBool _, _) = "Bool"
+getType (Return, _) = "Void"
+
