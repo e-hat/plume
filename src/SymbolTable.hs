@@ -31,6 +31,9 @@ getEntryType (Many _ t) = t
 getDeclType :: DeclAug t -> Type
 getDeclType d = getEntryType $ getDeclEntry d
 
+lookupSymbolType :: Identifier -> SymTable -> Type
+lookupSymbolType i tbl = getEntryType $ tbl Map.! i
+
 getSymKV :: DeclAug t -> (Identifier, TEntry)
 getSymKV (Let t i _, _) = (i, Single t)
 getSymKV d@(DefFn i _ _ _, _) = (i, getDeclEntry d)

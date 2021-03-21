@@ -26,7 +26,8 @@ validateSemantics p =
       symTrees = map (buildGlobalSymTree globalScope . checkGlobalLet) globals
    in -- comment for debugging, as typecheck is not yet implemented
       SymTreeList $ map (SymDeclAug . typecheckD) symTrees
-      --SymTreeList $ map SymDeclAug symTrees
+
+--SymTreeList $ map SymDeclAug symTrees
 
 isLit :: ExprAug SpanRec -> Bool
 isLit (LitInt _, _) = True
@@ -43,7 +44,15 @@ buildGlobalScope ds =
         case Map.lookup (getDeclSymbol entry) tbl of
           Just _ -> astSemanticErr entry ("symbol " ++ getDeclSymbol entry ++ " has already been declared in global scope")
           Nothing -> insertDecl entry tbl
-   in foldr addIfAbsent Map.empty ds
+      checkMain :: SymTable -> SymTable 
+      checkMain tbl = 
+        case Map.lookup "main" tbl of
+          Just (Single _) -> error "main MUST be a function, not a variable"
+          Just m -> if m == Many [] "Int"
+                       then tbl
+                       else error "wrong type for main function"
+          Nothing -> error "missing declaration of main function"
+   in checkMain $ foldr addIfAbsent Map.empty ds
 
 buildSymTreeD :: SymTable -> DeclAug SpanRec -> DeclAug SymData
 buildSymTreeD tbl l@(Let t i e, sr) =
@@ -75,6 +84,10 @@ buildSymTreeE tbl (BlockExpr ds e, sr) =
     dtbls = foldl buildTbls [tbl] ds
     symds = zipWith buildSymTreeD dtbls ds
     syme = buildSymTreeE (last dtbls) e
+buildSymTreeE tbl s@(Subs i, sr) = 
+  case Map.lookup i tbl of
+    Just _ -> (Subs i, SymData tbl sr)
+    Nothing -> astSemanticErr s ("undeclared symbol " ++ i)
 
 typecheckD :: DeclAug SymData -> DeclAug SymData
 typecheckD l@(Let _ _ e, SymData tbl _) =
@@ -86,19 +99,20 @@ typecheckD l@(Let _ _ e, SymData tbl _) =
 typecheckD f@(DefFn i ps rt e, s) =
   let t1 = getDeclType f
       t2 = getType e
-  in if t1 == t2
+   in if t1 == t2
         then (DefFn i ps rt (typecheckE e), s)
         else typeError f t1 e t2
 
-typecheckE :: ExprAug SymData -> ExprAug SymData 
+typecheckE :: ExprAug SymData -> ExprAug SymData
 typecheckE i@(LitInt _, _) = i
 typecheckE s@(LitString _, _) = s
 typecheckE f@(LitFloat _, _) = f
 typecheckE c@(LitChar _, _) = c
 typecheckE b@(LitBool _, _) = b
 typecheckE r@(Return, _) = r
-typecheckE (BlockExpr ds rexpr, s) = 
+typecheckE (BlockExpr ds rexpr, s) =
   (BlockExpr (map typecheckD ds) (typecheckE rexpr), s)
+typecheckE s@(Subs _, _) = s
 
 getType :: ExprAug SymData -> Type
 getType (LitInt _, _) = "Int"
@@ -108,3 +122,4 @@ getType (LitChar _, _) = "Char"
 getType (LitBool _, _) = "Bool"
 getType (Return, _) = "Void"
 getType (BlockExpr _ rexpr, _) = getType rexpr
+getType (Subs s, SymData tbl _) = lookupSymbolType s tbl
