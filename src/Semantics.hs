@@ -88,6 +88,12 @@ buildSymTreeE tbl s@(Subs i, sr) =
   case Map.lookup i tbl of
     Just _ -> (Subs i, SymData tbl sr)
     Nothing -> astSemanticErr s ("undeclared symbol " ++ i)
+buildSymTreeE tbl c@(CallExpr i pexprs, sr) =
+  case Map.lookup i tbl of
+    Nothing -> astSemanticErr c ("undeclared function " ++ i)
+    Just (Single _) -> astSemanticErr c ("attempt to call a variable " ++ i ++ " like a function")
+    Just _ -> 
+      (CallExpr i (map (buildSymTreeE tbl) pexprs), SymData tbl sr)
 
 typecheckD :: DeclAug SymData -> DeclAug SymData
 typecheckD l@(Let _ _ e, SymData tbl _) =
@@ -113,6 +119,19 @@ typecheckE r@(Return, _) = r
 typecheckE (BlockExpr ds rexpr, s) =
   (BlockExpr (map typecheckD ds) (typecheckE rexpr), s)
 typecheckE s@(Subs _, _) = s
+typecheckE c@(innerc@(CallExpr i pexprs), SymData tbl sr) =
+  let callEntry = tbl Map.! i
+      getParamTypes (Many ts t) = ts
+      pTypes = getParamTypes callEntry
+      matchParamType :: ExprAug SymData -> Type -> ExprAug SymData
+      matchParamType expr t = 
+        let passedType = getType expr
+         in if passedType == t 
+           then expr
+           else typeError c t expr passedType
+  in if length pTypes /= length pexprs 
+        then astSemanticErr (innerc, sr) ("passed " ++ show (length pexprs) ++ " parameter(s) to a function that takes " ++ show (length pTypes) ++ " parameter(s)")
+        else (CallExpr i (zipWith matchParamType pexprs pTypes), SymData tbl sr) 
 
 getType :: ExprAug SymData -> Type
 getType (LitInt _, _) = "Int"
@@ -123,3 +142,4 @@ getType (LitBool _, _) = "Bool"
 getType (Return, _) = "Void"
 getType (BlockExpr _ rexpr, _) = getType rexpr
 getType (Subs s, SymData tbl _) = lookupSymbolType s tbl
+getType (CallExpr i _, SymData tbl _) = lookupSymbolType i tbl
