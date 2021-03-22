@@ -207,7 +207,7 @@ ifexpr =
     L.reservedOp "=>"
     firstexpr <- ifbodyexpr
     elseifs <- P.many $ P.try elseifexpr
-    elsecase <- P.optionMaybe $ P.try elseexpr
+    elsecase <-P.try elseexpr
     return $ IfExpr cond firstexpr elseifs elsecase
 
 ifdecl :: P.Parsec String () (DeclAug SpanRec)

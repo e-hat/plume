@@ -37,7 +37,9 @@ data Decl t
 data Expr t
   = Subs Identifier
   | CallExpr Identifier [ExprAug t]
-  | IfExpr (ExprAug t) (ExprAug t) [(ExprAug t, ExprAug t)] (Maybe (ExprAug t))
+  -- note that IfExpr REQUIRES an else branch, otherwise a function could only 
+  -- sometimes return a value
+  | IfExpr (ExprAug t) (ExprAug t) [(ExprAug t, ExprAug t)] (ExprAug t)
   | BlockExpr [DeclAug t] (ExprAug t)
   | BinOp Op (ExprAug t) (ExprAug t)
   | UnaryOp Op (ExprAug t)
@@ -125,7 +127,7 @@ instance PrettyVal ASTExprAug where
   prettyVal (ASTExprAug (Subs i, _)) = Con "Subs" [String i]
   prettyVal (ASTExprAug (CallExpr i es, _)) = Con "CallExpr" [String i, Con "Params passed" [prettyVal (map ASTExprAug es)]]
   prettyVal (ASTExprAug (IfExpr c e ees me, _)) =
-    Con "IfExpr" [Con "Condition" [prettyVal $ ASTExprAug c], Con "IfResult" [prettyVal $ ASTExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (ASTExprAug <$> me)]]
+    Con "IfExpr" [Con "Condition" [prettyVal $ ASTExprAug c], Con "IfResult" [prettyVal $ ASTExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (ASTExprAug me)]]
     where
       augEFPair (e1, e2) = (ASTExprAug e1, ASTExprAug e2)
   prettyVal (ASTExprAug (BlockExpr ds e, _)) = Con "BlockExpr" [prettyVal (map ASTDeclAug ds), prettyVal $ ASTExprAug e]

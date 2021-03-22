@@ -121,14 +121,14 @@ buildSymTreeE tbl s@(Subs i, sr) =
     Nothing -> astSemanticErr s ("undeclared symbol " ++ i)
 -- practically identical to CallDecl
 buildSymTreeE tbl c@(CallExpr {}, _) = buildSymTreeCall tbl c
-buildSymTreeE tbl i@(IfExpr b fe eis me, sr) =
+buildSymTreeE tbl i@(IfExpr b fe eis e, sr) =
   let buildSymTreeEF symtbl (eib, eie) =
         (buildSymTreeE symtbl eib, buildSymTreeE symtbl eie)
    in ( IfExpr
           (buildSymTreeE tbl b)
           (buildSymTreeE tbl fe)
           (map (buildSymTreeEF tbl) eis)
-          (buildSymTreeE tbl <$> me),
+          (buildSymTreeE tbl e),
         SymData tbl sr
       )
 ---------------------------SCOPING OPERATOR EXPRS-------------------------------
@@ -188,7 +188,7 @@ typecheckE (BlockExpr ds rexpr, s) =
   (BlockExpr (map typecheckD ds) (typecheckE rexpr), s)
 typecheckE s@(Subs _, _) = s
 typecheckE c@(CallExpr {}, _) = typecheckCall c
-typecheckE i@(IfExpr b fe eis me, s) =
+typecheckE i@(IfExpr b fe eis e, s) =
   let checkCondType :: ExprAug SymData -> ExprAug SymData
       -- first: need to ensure that each condition is a boolean
       checkCondType cond =
@@ -206,12 +206,12 @@ typecheckE i@(IfExpr b fe eis me, s) =
                     then ex
                     else typeError fe t ex branchType
          in map (checkBranch $ getType fe) bs
-      unifiedBranches = unifyBranches (fe : map snd eis ++ maybeToList me)
+      unifiedBranches = unifyBranches (fe : map snd eis ++ [e])
    in ( IfExpr
           (typecheckE $ checkCondType b)
           (typecheckE $ head unifiedBranches)
           (map (uncurry bimap (typecheckE . checkCondType, typecheckE)) eis)
-          (typecheckE <$> me),
+          (typecheckE e),
         s
       )
 --------------------------TYPECHECKING BOOLEAN EXPRS----------------------------

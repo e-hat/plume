@@ -77,7 +77,7 @@ instance PrettyVal SymExprAug where
   prettyVal (SymExprAug (Subs i, SymData scp _)) = Con "Subs" [String $ show scp, String i]
   prettyVal (SymExprAug (CallExpr i es, SymData scp _)) = Con "CallExpr" [String $ show scp, String i, Con "Params passed" [prettyVal (map SymExprAug es)]]
   prettyVal (SymExprAug (IfExpr c e ees me, SymData scp _)) =
-    Con "IfExpr" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug c], Con "IfResult" [prettyVal $ SymExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (SymExprAug <$> me)]]
+    Con "IfExpr" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug c], Con "IfResult" [prettyVal $ SymExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (SymExprAug me)]]
       where augEFPair (e1, e2) = (SymExprAug e1, SymExprAug e2)
   prettyVal (SymExprAug (BlockExpr ds e, SymData scp _)) = Con "BlockExpr" [String $ show scp, prettyVal (map SymDeclAug ds), prettyVal $ SymExprAug e]
   prettyVal (SymExprAug (BinOp o a b, SymData scp _)) = Con "BinOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a, prettyVal $ SymExprAug b]
