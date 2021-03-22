@@ -7,6 +7,8 @@ import SemanticError
 import SymbolTable
 import Syntax
 
+-- this function performs scoping (symbol table building + catching scoping errors)
+-- & typechecking for a given AST
 validateSemantics :: Program -> SymTreeList
 validateSemantics p =
   let globals = map getASTDeclAug (getProgram p)
@@ -37,6 +39,7 @@ isLit (LitChar _, _) = True
 isLit (LitBool _, _) = True
 isLit _ = False
 
+-- handles special case of the global scope
 buildGlobalScope :: [DeclAug SpanRec] -> SymTable
 buildGlobalScope ds =
   let addIfAbsent :: DeclAug SpanRec -> SymTable -> SymTable
@@ -55,6 +58,7 @@ buildGlobalScope ds =
           Nothing -> error "missing declaration of main function"
    in checkMain $ foldr addIfAbsent Map.empty ds
 
+-- performs the "scoping" part of validation for declarations
 buildSymTreeD :: SymTable -> DeclAug SpanRec -> DeclAug SymData
 buildSymTreeD tbl l@(Let t i e, sr) =
   case Map.lookup (getDeclSymbol l) tbl of
@@ -69,6 +73,7 @@ buildSymTreeD tbl r@(Reassign i e, sr) =
     Just _ -> (Reassign i (buildSymTreeE tbl e), SymData tbl sr)
 buildSymTreeD tbl c@(CallDecl {}, _) = buildSymTreeCall tbl c
 
+-- performs the "scoping" part of validation for expressions
 buildSymTreeE :: SymTable -> ExprAug SpanRec -> ExprAug SymData
 -- Literals are easy
 -- By definition, they don't have much to do with the Symbol table
@@ -95,6 +100,8 @@ buildSymTreeE tbl s@(Subs i, sr) =
     Just _ -> (Subs i, SymData tbl sr)
     Nothing -> astSemanticErr s ("undeclared symbol " ++ i)
 buildSymTreeE tbl c@(CallExpr {}, _) = buildSymTreeCall tbl c
+
+-- performs the typechecking part of validation for declarations
 typecheckD :: DeclAug SymData -> DeclAug SymData
 typecheckD l@(Let _ _ e, SymData tbl _) =
   let t1 = getDeclType l
@@ -111,11 +118,12 @@ typecheckD f@(DefFn i ps rt e, s) =
 typecheckD r@(Reassign i e, s@(SymData tbl _)) =
   let t1 = lookupSymbolType i tbl
       t2 = getType e
-  in if t1 == t2
+   in if t1 == t2
         then (Reassign i (typecheckE e), s)
         else typeError r t1 e t2
 typecheckD c@(CallDecl {}, _) = typecheckCall c
 
+-- performs the typechecking part of validation for expressions
 typecheckE :: ExprAug SymData -> ExprAug SymData
 typecheckE i@(LitInt _, _) = i
 typecheckE s@(LitString _, _) = s
@@ -128,6 +136,7 @@ typecheckE (BlockExpr ds rexpr, s) =
 typecheckE s@(Subs _, _) = s
 typecheckE c@(CallExpr {}, _) = typecheckCall c
 
+-- special function only for expressions to determine which Type they result in
 getType :: ExprAug SymData -> Type
 getType (LitInt _, _) = "Int"
 getType (LitString _, _) = "String"
@@ -140,27 +149,28 @@ getType (Subs s, SymData tbl _) = lookupSymbolType s tbl
 getType (CallExpr i _, SymData tbl _) = lookupSymbolType i tbl
 
 -- sharing functionality between CallExpr and CallDecl
+-- maybe need to do this for Blocks in the future
 class Call t where
-  getId :: t a -> Identifier 
+  getId :: t a -> Identifier
   getPExprs :: t a -> [ExprAug a]
   newCall :: Identifier -> [ExprAug a] -> t a
 
 instance Call Decl where
   getId (CallDecl i _) = i
-  getId _ = undefined 
+  getId _ = undefined
   getPExprs (CallDecl _ ps) = ps
-  getPExprs _ = undefined 
+  getPExprs _ = undefined
   newCall = CallDecl
 
 instance Call Expr where
   getId (CallExpr i _) = i
-  getId _ = undefined 
+  getId _ = undefined
   getPExprs (CallExpr _ ps) = ps
   getPExprs _ = undefined
   newCall = CallExpr
 
 buildSymTreeCall :: (Call t, ErrRep (t SpanRec)) => SymTable -> (t SpanRec, SpanRec) -> (t SymData, SymData)
-buildSymTreeCall tbl c@(cinst, sr) = 
+buildSymTreeCall tbl c@(cinst, sr) =
   case Map.lookup (getId cinst) tbl of
     Nothing -> astSemanticErr c ("undeclared function " ++ getId cinst)
     Just (Single _) -> astSemanticErr c ("attempt to call a variable " ++ getId cinst ++ " like a function")
@@ -168,7 +178,7 @@ buildSymTreeCall tbl c@(cinst, sr) =
       (newCall (getId cinst) (map (buildSymTreeE tbl) (getPExprs cinst)), SymData tbl sr)
 
 typecheckCall :: (Call t, ErrRep (t SymData)) => (t SymData, SymData) -> (t SymData, SymData)
-typecheckCall c@(cinst, SymData tbl sr) = 
+typecheckCall c@(cinst, SymData tbl sr) =
   let i = getId cinst
       pexprs = getPExprs cinst
       callEntry = tbl Map.! i
@@ -178,11 +188,8 @@ typecheckCall c@(cinst, SymData tbl sr) =
       matchParamType expr t =
         let passedType = getType expr
          in if passedType == t
-               then expr
+              then expr
               else typeError c t expr passedType
-         in if length pTypes /= length pexprs
-               then astSemanticErr (cinst, sr) ("passed " ++ show (length pexprs) ++ " parameter(s) to a function that takes " ++ show (length pTypes) ++ " parameter(s)")
+   in if length pTypes /= length pexprs
+        then astSemanticErr (cinst, sr) ("passed " ++ show (length pexprs) ++ " parameter(s) to a function that takes " ++ show (length pTypes) ++ " parameter(s)")
         else (newCall i (zipWith matchParamType pexprs pTypes), SymData tbl sr)
-
-
-
