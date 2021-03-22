@@ -101,9 +101,19 @@ buildSymTreeD tbl r@(Reassign i e, sr) =
 buildSymTreeD tbl c@(CallDecl {}, _) = buildSymTreeCall tbl c
 buildSymTreeD tbl b@(BlockDecl ds, sr) =
   (BlockDecl symds, SymData tbl sr)
-    where
-      dtbls = foldl buildBlockTbls [tbl] ds 
-      symds = zipWith buildSymTreeD dtbls ds
+  where
+    dtbls = foldl buildBlockTbls [tbl] ds
+    symds = zipWith buildSymTreeD dtbls ds
+buildSymTreeD tbl i@(IfDecl b fd eis med, sr) =
+  let buildSymTreeEF symtbl (eib, eid) =
+        (buildSymTreeE symtbl eib, buildSymTreeD symtbl eid)
+   in ( IfDecl
+          (buildSymTreeE tbl b)
+          (buildSymTreeD tbl fd)
+          (map (buildSymTreeEF tbl) eis)
+          (buildSymTreeD tbl <$> med),
+        SymData tbl sr
+      )
 
 -- performs the "scoping" part of validation for expressions
 buildSymTreeE :: SymTable -> ExprAug SpanRec -> ExprAug SymData
@@ -174,13 +184,23 @@ typecheckD r@(Reassign i e, s@(SymData tbl _)) =
 typecheckD c@(CallDecl {}, _) = typecheckCall c
 typecheckD b@(BlockDecl ds, s) =
   (BlockDecl (map typecheckD ds), s)
+typecheckD i@(IfDecl b fd eis med, s) =
+  let applyTpl :: (a -> c, b -> d) -> (a, b) -> (c, d)
+      applyTpl (f, g) (x, y) = (f x, g y)
+   in ( IfDecl 
+      (typecheckE $ handleBTerm i b)
+      (typecheckD fd)
+      (map (applyTpl (typecheckE . handleBTerm i, typecheckD)) eis)
+      (typecheckD <$> med),
+    s 
+  )
 
 -- helper functions for typechecking expressions
 numericalTypes = ["Int", "Float"] -- for arithmetic/relational exprs
 
 -- ensures that the term t is a Bool
-handleBTerm :: ExprAug SymData -> ExprAug SymData -> ExprAug SymData
-handleBTerm t parent =
+handleBTerm :: (ErrRep a) => (a, SymData) -> ExprAug SymData -> ExprAug SymData
+handleBTerm parent t =
   let tType = getType t
    in if tType /= "Bool"
         then typeError parent "Bool" t tType
@@ -207,14 +227,7 @@ typecheckE (BlockExpr ds rexpr, s) =
 typecheckE s@(Subs _, _) = s
 typecheckE c@(CallExpr {}, _) = typecheckCall c
 typecheckE i@(IfExpr b fe eis e, s) =
-  let checkCondType :: ExprAug SymData -> ExprAug SymData
-      -- first: need to ensure that each condition is a boolean
-      checkCondType cond =
-        let condType = getType cond
-         in if condType == "Bool"
-              then cond
-              else typeError i "Bool" b condType
-      -- second: need to unify all types of branch expressions
+  let  -- need to unify all types of branch expressions
       unifyBranches :: [ExprAug SymData] -> [ExprAug SymData]
       unifyBranches bs =
         let checkBranch :: Type -> ExprAug SymData -> ExprAug SymData
@@ -226,13 +239,13 @@ typecheckE i@(IfExpr b fe eis e, s) =
          in map (checkBranch $ getType fe) bs
       unifiedBranches = unifyBranches (fe : map snd eis ++ [e])
    in ( IfExpr
-          (typecheckE $ checkCondType b)
+          (typecheckE $ handleBTerm i b)
           (typecheckE $ head unifiedBranches)
           ( zipWith
               ( curry
                   ( uncurry
                       bimap
-                      (typecheckE . checkCondType, typecheckE)
+                      (typecheckE . handleBTerm i, typecheckE)
                   )
               )
               (map fst eis)
@@ -245,24 +258,23 @@ typecheckE i@(IfExpr b fe eis e, s) =
 typecheckE b@(BinOp And l r, s) =
   ( BinOp
       And
-      (typecheckE $ handleBTerm l b)
-      (typecheckE $ handleBTerm r b),
+      (typecheckE $ handleBTerm b l)
+      (typecheckE $ handleBTerm b r),
     s
   )
 typecheckE b@(BinOp Or l r, s) =
   ( BinOp
       Or
-      (typecheckE $ handleBTerm l b)
-      (typecheckE $ handleBTerm r b),
+      (typecheckE $ handleBTerm b l)
+      (typecheckE $ handleBTerm b r),
     s
   )
 typecheckE b@(UnaryOp Not t, s) =
   ( UnaryOp
       Not
-      (typecheckE $ handleBTerm t b),
+      (typecheckE $ handleBTerm b t),
     s
   )
-
 ------------------------TYPECHECKING ARITH/REL EXPRS-------------------------------
 -- no longer need to pmatch on type of op since all remaining ops take numericalTypes
 typecheckE e@(BinOp op l r, s) =
