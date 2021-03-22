@@ -1,4 +1,4 @@
-module SemanticError (astSemanticErr, typeError) where
+module SemanticError (astSemanticErr, typeError, ErrRep) where
 
 import Syntax
 import SymbolTable
