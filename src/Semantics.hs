@@ -63,6 +63,10 @@ buildSymTreeD tbl l@(Let t i e, sr) =
 buildSymTreeD tbl f@(DefFn i ps t e, sr) =
   let childTbl = foldr insertParam tbl ps
    in (DefFn i ps t (buildSymTreeE childTbl e), SymData tbl sr)
+buildSymTreeD tbl r@(Reassign i e, sr) =
+  case Map.lookup i tbl of
+    Nothing -> astSemanticErr r ("undeclared symbol " ++ i)
+    Just _ -> (Reassign i (buildSymTreeE tbl e), SymData tbl sr)
 
 buildSymTreeE :: SymTable -> ExprAug SpanRec -> ExprAug SymData
 -- Literals are easy
@@ -109,6 +113,12 @@ typecheckD f@(DefFn i ps rt e, s) =
    in if t1 == t2
         then (DefFn i ps rt (typecheckE e), s)
         else typeError f t1 e t2
+typecheckD r@(Reassign i e, s@(SymData tbl _)) =
+  let t1 = lookupSymbolType i tbl
+      t2 = getType e
+  in if t1 == t2
+        then (Reassign i (typecheckE e), s)
+        else typeError r t1 e t2
 
 typecheckE :: ExprAug SymData -> ExprAug SymData
 typecheckE i@(LitInt _, _) = i
