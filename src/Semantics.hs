@@ -256,14 +256,14 @@ typecheckE b@(UnaryOp Not t, s) =
 
 ------------------------TYPECHECKING ARITH/REL EXPRS-------------------------------
 -- no longer need to pmatch on type of op since all remaining ops take numericalTypes
-typecheck e@(BinOp op l r, s) =
+typecheckE e@(BinOp op l r, s) =
   ( BinOp
       op
       (typecheckE $ handleATerm l e)
       (typecheckE $ handleATerm r e),
     s
   )
-typecheck e@(UnaryOp op t, s) =
+typecheckE e@(UnaryOp op t, s) =
   ( UnaryOp
       op
       (typecheckE $ handleATerm t e),
