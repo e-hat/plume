@@ -31,6 +31,8 @@ validateSemantics p =
 
 --SymTreeList $ map SymDeclAug symTrees
 
+-- this function is for verifiying that all Lets in global scope
+-- are literal expressions
 isLit :: ExprAug SpanRec -> Bool
 isLit (LitInt _, _) = True
 isLit (LitFloat _, _) = True
@@ -39,7 +41,16 @@ isLit (LitChar _, _) = True
 isLit (LitBool _, _) = True
 isLit _ = False
 
--- handles special case of the global scope
+--------------------------------------------------------------------------------
+----------------------------------SCOPING---------------------------------------
+--------------------------------------------------------------------------------
+-- "Scoping" is a term I use to refer to 
+-- (1) building the SymbolTableTree, which involves attaching a symbol table to 
+-- each node in the AST that notes which variables are visible at that point in the program
+-- and
+-- (2) checking for scoping errors at the same time
+
+-- builds the initial symbol table that every node has access to, AKA the global scope
 buildGlobalScope :: [DeclAug SpanRec] -> SymTable
 buildGlobalScope ds =
   let addIfAbsent :: DeclAug SpanRec -> SymTable -> SymTable
@@ -47,6 +58,8 @@ buildGlobalScope ds =
         case Map.lookup (getDeclSymbol entry) tbl of
           Just _ -> astSemanticErr entry ("symbol " ++ getDeclSymbol entry ++ " has already been declared in global scope")
           Nothing -> insertDecl entry tbl
+      -- verifies that main exists
+      -- if success, equivalent to `id`
       checkMain :: SymTable -> SymTable
       checkMain tbl =
         case Map.lookup "main" tbl of
@@ -101,6 +114,13 @@ buildSymTreeE tbl s@(Subs i, sr) =
     Nothing -> astSemanticErr s ("undeclared symbol " ++ i)
 buildSymTreeE tbl c@(CallExpr {}, _) = buildSymTreeCall tbl c
 
+--------------------------------------------------------------------------------
+----------------------------------TYPECHECKING----------------------------------
+-------------------------------------------------------------------------------
+-- these functions have the signature Node -> Node
+-- They should act identical to `id` if typechecking succeeds, otherwise they
+-- throw errors
+--
 -- performs the typechecking part of validation for declarations
 typecheckD :: DeclAug SymData -> DeclAug SymData
 typecheckD l@(Let _ _ e, SymData tbl _) =
@@ -148,8 +168,9 @@ getType (BlockExpr _ rexpr, _) = getType rexpr
 getType (Subs s, SymData tbl _) = lookupSymbolType s tbl
 getType (CallExpr i _, SymData tbl _) = lookupSymbolType i tbl
 
--- sharing functionality between CallExpr and CallDecl
--- maybe need to do this for Blocks in the future
+-- sharing functionality between CallExpr and CallDecl because their semantics
+-- are identical
+-- NOTE: maybe need to do this for Blocks as well in the future
 class Call t where
   getId :: t a -> Identifier
   getPExprs :: t a -> [ExprAug a]
