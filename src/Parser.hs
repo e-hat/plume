@@ -129,6 +129,8 @@ letdecl :: P.Parsec String () (DeclAug SpanRec)
 letdecl =
   declWrapper $ do
     t <- L.typeName
+    -- this shouldn't be allowed
+    guard (t /= "Void")
     ident <- L.identifier
     L.reservedOp ":="
     Let t ident <$> expression
