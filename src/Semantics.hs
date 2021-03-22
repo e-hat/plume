@@ -175,6 +175,12 @@ handleBTerm t parent =
    in if tType /= "Bool"
         then typeError parent "Bool" t tType
         else t
+handleATerm :: ExprAug SymData -> ExprAug SymData -> ExprAug SymData 
+handleATerm t parent =
+  let tType = getType t
+   in if tType `notElem` numericalTypes
+         then typeError parent "Float or Int" t tType
+         else t
 
 -- performs the typechecking part of validation for expressions
 typecheckE :: ExprAug SymData -> ExprAug SymData
@@ -210,8 +216,16 @@ typecheckE i@(IfExpr b fe eis e, s) =
    in ( IfExpr
           (typecheckE $ checkCondType b)
           (typecheckE $ head unifiedBranches)
-          (map (uncurry bimap (typecheckE . checkCondType, typecheckE)) eis)
-          (typecheckE e),
+          (zipWith
+            (curry 
+              (uncurry bimap 
+                (typecheckE . checkCondType, typecheckE)
+              )
+            )
+            (map fst eis)
+            (tail $ init unifiedBranches)
+          )
+          (typecheckE $ last unifiedBranches),
         s
       )
 --------------------------TYPECHECKING BOOLEAN EXPRS----------------------------
