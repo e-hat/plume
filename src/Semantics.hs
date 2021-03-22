@@ -146,11 +146,11 @@ buildSymTreeE tbl u@(UnaryOp op t, sr) =
 --
 -- performs the typechecking part of validation for declarations
 typecheckD :: DeclAug SymData -> DeclAug SymData
-typecheckD l@(Let _ _ e, SymData tbl _) =
+typecheckD l@(Let t i e, SymData tbl sr) =
   let t1 = getDeclType l
       t2 = getType e
    in if t1 == t2
-        then l
+        then (Let t i (typecheckE e), SymData tbl sr)
         else typeError l t1 e t2
 typecheckD f@(DefFn i ps rt e, s) =
   let t1 = getDeclType f
