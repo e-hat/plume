@@ -78,6 +78,13 @@ buildGlobalScope ds =
           Nothing -> error "missing declaration of main function"
    in checkMain $ foldr addIfAbsent Map.empty ds
 
+-- shared btwn BlockDecl and BlockExpr for accumulating symbol tables
+buildBlockTbls :: [SymTable] -> DeclAug t -> [SymTable]
+buildBlockTbls tbls l@(Let {}, _) =
+  let t = last tbls
+   in tbls ++ [insertDecl l t]
+buildBlockTbls tbls _ = tbls ++ [last tbls]
+
 -- performs the "scoping" part of validation for declarations
 buildSymTreeD :: SymTable -> DeclAug SpanRec -> DeclAug SymData
 buildSymTreeD tbl l@(Let t i e, sr) =
@@ -92,6 +99,11 @@ buildSymTreeD tbl r@(Reassign i e, sr) =
     Nothing -> astSemanticErr r ("undeclared symbol " ++ i)
     Just _ -> (Reassign i (buildSymTreeE tbl e), SymData tbl sr)
 buildSymTreeD tbl c@(CallDecl {}, _) = buildSymTreeCall tbl c
+buildSymTreeD tbl b@(BlockDecl ds, sr) =
+  (BlockDecl symds, SymData tbl sr)
+    where
+      dtbls = foldl buildBlockTbls [tbl] ds 
+      symds = zipWith buildSymTreeD dtbls ds
 
 -- performs the "scoping" part of validation for expressions
 buildSymTreeE :: SymTable -> ExprAug SpanRec -> ExprAug SymData
@@ -107,12 +119,7 @@ buildSymTreeE tbl (Return, sr) = (Return, SymData tbl sr)
 buildSymTreeE tbl (BlockExpr ds e, sr) =
   (BlockExpr symds syme, SymData tbl sr)
   where
-    buildTbls :: [SymTable] -> DeclAug t -> [SymTable]
-    buildTbls tbls l@(Let {}, _) =
-      let t = last tbls
-       in tbls ++ [insertDecl l t]
-    buildTbls tbls _ = tbls ++ [last tbls]
-    dtbls = foldl buildTbls [tbl] ds
+    dtbls = foldl buildBlockTbls [tbl] ds
     symds = zipWith buildSymTreeD dtbls ds
     syme = buildSymTreeE (last dtbls) e
 buildSymTreeE tbl s@(Subs i, sr) =
@@ -165,6 +172,8 @@ typecheckD r@(Reassign i e, s@(SymData tbl _)) =
         then (Reassign i (typecheckE e), s)
         else typeError r t1 e t2
 typecheckD c@(CallDecl {}, _) = typecheckCall c
+typecheckD b@(BlockDecl ds, s) =
+  (BlockDecl (map typecheckD ds), s)
 
 -- helper functions for typechecking expressions
 numericalTypes = ["Int", "Float"] -- for arithmetic/relational exprs
