@@ -139,7 +139,7 @@ buildSymTreeE tbl u@(UnaryOp op t, sr) =
 
 --------------------------------------------------------------------------------
 ----------------------------------TYPECHECKING----------------------------------
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- these functions have the signature Node -> Node
 -- They should act identical to `id` if typechecking succeeds, otherwise they
 -- throw errors
@@ -169,18 +169,21 @@ typecheckD c@(CallDecl {}, _) = typecheckCall c
 -- helper functions for typechecking expressions
 numericalTypes = ["Int", "Float"] -- for arithmetic/relational exprs
 
+-- ensures that the term t is a Bool
 handleBTerm :: ExprAug SymData -> ExprAug SymData -> ExprAug SymData
 handleBTerm t parent =
   let tType = getType t
    in if tType /= "Bool"
         then typeError parent "Bool" t tType
         else t
-handleATerm :: ExprAug SymData -> ExprAug SymData -> ExprAug SymData 
+
+-- ensures the term t is a numericalType
+handleATerm :: ExprAug SymData -> ExprAug SymData -> ExprAug SymData
 handleATerm t parent =
   let tType = getType t
    in if tType `notElem` numericalTypes
-         then typeError parent "Float or Int" t tType
-         else t
+        then typeError parent "Float or Int" t tType
+        else t
 
 -- performs the typechecking part of validation for expressions
 typecheckE :: ExprAug SymData -> ExprAug SymData
@@ -216,14 +219,15 @@ typecheckE i@(IfExpr b fe eis e, s) =
    in ( IfExpr
           (typecheckE $ checkCondType b)
           (typecheckE $ head unifiedBranches)
-          (zipWith
-            (curry 
-              (uncurry bimap 
-                (typecheckE . checkCondType, typecheckE)
+          ( zipWith
+              ( curry
+                  ( uncurry
+                      bimap
+                      (typecheckE . checkCondType, typecheckE)
+                  )
               )
-            )
-            (map fst eis)
-            (tail $ init unifiedBranches)
+              (map fst eis)
+              (tail $ init unifiedBranches)
           )
           (typecheckE $ last unifiedBranches),
         s
@@ -247,7 +251,23 @@ typecheckE b@(UnaryOp Not t, s) =
   ( UnaryOp
       Not
       (typecheckE $ handleBTerm t b),
-      s
+    s
+  )
+
+------------------------TYPECHECKING ARITH/REL EXPRS-------------------------------
+-- no longer need to pmatch on type of op since all remaining ops take numericalTypes
+typecheck e@(BinOp op l r, s) =
+  ( BinOp
+      op
+      (typecheckE $ handleATerm l e)
+      (typecheckE $ handleATerm r e),
+    s
+  )
+typecheck e@(UnaryOp op t, s) =
+  ( UnaryOp
+      op
+      (typecheckE $ handleATerm t e),
+    s
   )
 
 -- special function only for expressions to determine which Type they result in
