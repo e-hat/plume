@@ -33,6 +33,7 @@ data Decl t
   | CallDecl Identifier [ExprAug t]
   | IfDecl (ExprAug t) (DeclAug t) [(ExprAug t, DeclAug t)] (Maybe (DeclAug t))
   | BlockDecl [DeclAug t]
+  deriving (Functor, Foldable, Traversable)
 
 data Expr t
   = Subs Identifier
@@ -49,6 +50,7 @@ data Expr t
   | LitBool Bool
   | LitChar Char
   | Return
+  deriving (Functor, Foldable, Traversable)
 
 data Op
   = Plus

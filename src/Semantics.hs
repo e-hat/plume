@@ -30,7 +30,7 @@ validateSemantics p =
         globalScope <- buildGlobalScope globals
         globalDecls <- mapM checkGlobalLet globals
         symTrees <- mapM (globalSymTreeD globalScope) globalDecls
-        typechecked <- mapM typecheckD symTrees
+        typechecked <-  traverse typecheckD symTrees
         return $ SymTreeList $ map SymDeclAug symTrees
 
 -- this function is for verifiying that all Lets in global scope
