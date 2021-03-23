@@ -28,8 +28,8 @@ validateSemantics p =
    in do
         let globals = map getASTDeclAug (getProgram p)
         globalScope <- buildGlobalScope globals
-        globalDecls <- mapM checkGlobalLet globals
-        symTrees <- mapM (globalSymTreeD globalScope) globalDecls
+        globalDecls <- traverse checkGlobalLet globals
+        symTrees <- traverse (globalSymTreeD globalScope) globalDecls
         typechecked <-  traverse typecheckD symTrees
         return $ SymTreeList $ map SymDeclAug symTrees
 
@@ -119,7 +119,7 @@ buildSymTreeD tbl i@(IfDecl b fd eis med, sr) =
    in do
         bi <- IfDecl <$> buildSymTreeE tbl b 
                      <*> buildSymTreeD tbl fd 
-                     <*> mapM (buildSymTreeEF tbl) eis 
+                     <*> traverse (buildSymTreeEF tbl) eis 
                      <*> traverse (buildSymTreeD tbl) med 
         return (bi, SymData tbl sr)
 
@@ -151,7 +151,7 @@ buildSymTreeE tbl i@(IfExpr b fe eis e, sr) =
    in do
      symi <- IfExpr <$> buildSymTreeE tbl b 
                     <*> buildSymTreeE tbl fe 
-                    <*> mapM (buildSymTreeEF tbl) eis 
+                    <*> traverse (buildSymTreeEF tbl) eis 
                     <*> buildSymTreeE tbl e
      return (symi, SymData tbl sr)
 ---------------------------SCOPING OPERATOR EXPRS-------------------------------
@@ -197,15 +197,15 @@ typecheckD r@(Reassign i e, s@(SymData tbl _)) =
         else Left $ typeError r t1 e t2
 typecheckD c@(CallDecl {}, _) = typecheckCall c
 typecheckD b@(BlockDecl ds, s) = do
-  tds <- mapM typecheckD ds
+  tds <- traverse typecheckD ds
   return (BlockDecl tds, s)
 typecheckD i@(IfDecl b fd eis med, s) =
   let applyTplM (f, g) (x, y) = (,) <$> f x <*> g y
    in do 
      tb <- handleBTerm i b >>= typecheckE 
      tfd <- typecheckD fd 
-     teisi <- mapM (applyTplM (handleBTerm i, typecheckD)) eis
-     teisf <- mapM (applyTplM (typecheckE, pure)) teisi
+     teisi <- traverse (applyTplM (handleBTerm i, typecheckD)) eis
+     teisf <- traverse (applyTplM (typecheckE, pure)) teisi
      tmed <- traverse typecheckD med
      return (IfDecl tb tfd teisf tmed, s)
 
@@ -242,7 +242,7 @@ typecheckE c@(LitChar _, _) = Right c
 typecheckE b@(LitBool _, _) = Right b
 typecheckE r@(Return, _) = Right r
 typecheckE (BlockExpr ds rexpr, s) = do
-  tds <- mapM typecheckD ds
+  tds <- traverse typecheckD ds
   trexpr <- typecheckE rexpr
   return (BlockExpr tds trexpr, s)
 typecheckE s@(Subs _, _) = Right s
@@ -257,7 +257,7 @@ typecheckE i@(IfExpr b fe eis e, s) =
                in if getType ex == t
                     then Right ex
                     else Left $ typeError fe t ex branchType
-         in mapM (checkBranch $ getType fe) bs
+         in traverse (checkBranch $ getType fe) bs
       combineEFs :: ExprAug SymData -> ExprAug SymData -> Either String (ExprAug SymData, ExprAug SymData)
       combineEFs cond branch =
         (,) <$> (handleBTerm cond i >>= typecheckE) <*> typecheckE branch
@@ -366,7 +366,7 @@ buildSymTreeCall tbl c@(cinst, sr) =
               ++ " like a function"
           )
     Just _ -> do
-      symc <- newCall (getId cinst) <$> mapM (buildSymTreeE tbl) (getPExprs cinst)
+      symc <- newCall (getId cinst) <$> traverse (buildSymTreeE tbl) (getPExprs cinst)
       return (symc, SymData tbl sr)
 
 typecheckCall ::
