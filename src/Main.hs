@@ -1,51 +1,65 @@
 module Main where
 
+import Control.Monad
+import Data.Semigroup ((<>))
+import Options.Applicative
 import Parser
-import Syntax
 import Semantics
-
+import Syntax
 import qualified Text.Parsec as P
 import Text.Show.Pretty
-import Options.Applicative
 
-import Data.Semigroup ((<>))
+data CLInput = CLInput
+  { filename :: String,
+    printAST :: Bool
+  }
 
-handleNodes :: Either P.ParseError Program -> IO ()
-handleNodes (Left err) = error $ show err
-handleNodes (Right ns) = dumpIO ns
+data Input = ASTInput String | ValInput String
 
-data CLInput = CLInput 
-  { filename :: String 
-  , printAST :: Bool }
+astInput :: Parser Input
+astInput =
+  ASTInput
+    <$> strOption
+      ( long "print-ast"
+          <> short 'a'
+          <> metavar "FILENAME"
+          <> help "Print the AST of the input file"
+      )
 
-clinput :: Parser CLInput
-clinput = CLInput <$>
-  argument str 
-    ( metavar "FILE" 
-   <> help "Plume source file to be compiled" )
-  <*> switch 
-    ( long "print-ast"
-   <> short 'a'
-   <> help "Print the AST generated for this Plume source file" 
-   <> showDefault )
+valInput :: Parser Input
+valInput =
+  ValInput
+    <$> strOption
+      ( long "validate-sem"
+          <> short 'v'
+          <> metavar "FILENAME"
+          <> help "Validate the semantics of the input file"
+      )
+
+input :: Parser Input 
+input = astInput <|> valInput
 
 main :: IO ()
 main = run =<< execParser opts
   where
-    opts = info (clinput <**> helper)
-      ( fullDesc
-     <> progDesc "Compile a Plume source file"
-     <> header "Plume - strongly, statically typed programming language" )
+    opts =
+      info
+        (input <**> helper)
+        ( fullDesc
+            <> progDesc "Compile a Plume source file"
+            <> header "Plume - strongly, statically typed programming language"
+        )
 
-run :: CLInput -> IO ()
-run (CLInput f True) = do
+run :: Input -> IO ()
+run (ASTInput f) = do
   nodes <- P.parse program f <$> readFile f
-  case nodes of 
-    Left err -> error $ show err
+  case nodes of
+    Left err -> print err
     Right p -> dumpIO p
-
-run (CLInput f False) = do
+run (ValInput f) = do
   nodes <- P.parse program f <$> readFile f
-  case nodes of 
-    Left err -> error $ show err
-    Right p -> dumpIO $ validateSemantics p
+  case nodes of
+    Left err -> print err
+    Right p -> case validateSemantics p of 
+             Left err -> putStrLn err
+             Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
