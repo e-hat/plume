@@ -1,17 +1,17 @@
 module Main where
 
+import BytecodeGen
 import Control.Monad
 import Data.Semigroup ((<>))
 import Options.Applicative
 import Parser
 import Semantics
 import Syntax
-import VirtualMachine
-import BytecodeGen
 import qualified Text.Parsec as P
 import Text.Show.Pretty
+import VirtualMachine
 
-data Input = ASTInput String | ValInput String | RunInst1Input String
+data Input = ASTInput String | ValInput String | RunInput String
 
 astInput :: Parser Input
 astInput =
@@ -33,17 +33,30 @@ valInput =
           <> help "Validate the semantics of the input file"
       )
 
-inst1Input :: Parser Input 
-inst1Input = 
-  RunInst1Input 
-  <$> strOption
-    ( long "run-inst1-bytecode"
-        <> metavar "FILENAME"
-        <> help "Run the Inst1 bytecode using the VM for the given input file"
-    )
+compileOptions :: Parser Input
+compileOptions = astInput <|> valInput
 
-input :: Parser Input 
-input = astInput <|> valInput <|> inst1Input
+runArg :: Parser Input
+runArg = 
+  RunInput <$> argument str (metavar "FILE")
+
+input :: Parser Input
+input = 
+  hsubparser 
+    (
+      command "compile" 
+        (
+          info 
+            (compileOptions <**> helper) 
+            (progDesc "Compile a Plume source file")
+        )
+      <> command "run"
+        (
+          info 
+            (runArg <**> helper)
+            (progDesc "Run a Plume program")
+        )
+    )
 
 main :: IO ()
 main = run =<< execParser opts
@@ -51,10 +64,7 @@ main = run =<< execParser opts
     opts =
       info
         (input <**> helper)
-        ( fullDesc
-            <> progDesc "Compile a Plume source file"
-            <> header "Plume - strongly, statically typed programming language"
-        )
+        (progDesc "Plume - strongly, statically typed programming language")
 
 run :: Input -> IO ()
 run (ASTInput f) = do
@@ -66,13 +76,13 @@ run (ValInput f) = do
   nodes <- P.parse program f <$> readFile f
   case nodes of
     Left err -> print err
-    Right p -> case validateSemantics p of 
-             Left err -> putStrLn err
-             Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
-run (RunInst1Input f) = do 
-  nodes <- P.parse program f <$> readFile f 
-  case nodes of 
-    Left err -> print err 
-    Right p -> case validateSemantics p of 
-                 Left err -> putStrLn err 
-                 Right trees -> runBytecode $ genBytecode trees
+    Right p -> case validateSemantics p of
+      Left err -> putStrLn err
+      Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
+run (RunInput f) = do
+  nodes <- P.parse program f <$> readFile f
+  case nodes of
+    Left err -> print err
+    Right p -> case validateSemantics p of
+      Left err -> putStrLn err
+      Right trees -> runBytecode $ genBytecode trees
