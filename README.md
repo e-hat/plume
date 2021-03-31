@@ -25,6 +25,8 @@ Plume currently only supports the following type of program (note: this is *extr
 def main(): Int := 42
 ```
 
+This program exits with a status of `42`. It exemplifies the motivation of the Plume syntax well -- `def main(): Int` is a function definition declaration that is assigned to the expression `42`, which is just an integer literal. 
+
 ### Examples
 I will put an examples in this section when the language is capable of running small programs. However, below is what I'm aiming towards:
 
