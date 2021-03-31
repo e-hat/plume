@@ -1,9 +1,1 @@
-def factorial(Int n): Int :=
-  if n < 2 => 1
-  else     => n * factorial(n - 1)
-
-def main(String arg): Int := {
-  print("Hello world!\n");
-  print(factorial(5));
-  0
-}
+def main(): Int := 42
