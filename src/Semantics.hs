@@ -72,12 +72,12 @@ buildGlobalScope ds =
       checkMain :: SymTable -> Either String SymTable
       checkMain tbl =
         case Map.lookup "main" tbl of
-          Just (Single _) -> error "main MUST be a function, not a variable"
+          Just (Single _) -> Left "main MUST be a function, not a variable"
           Just m ->
             if m == Many [] "Int"
               then Right tbl
               else Left "wrong type for main function, expected main(): Int"
-          Nothing -> error "missing declaration of main function"
+          Nothing -> Left "missing declaration of main function"
    in do
         globalScope <- foldM addIfAbsent Map.empty ds
         checkMain globalScope
