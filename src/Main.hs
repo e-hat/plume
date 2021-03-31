@@ -6,15 +6,12 @@ import Options.Applicative
 import Parser
 import Semantics
 import Syntax
+import VirtualMachine
+import BytecodeGen
 import qualified Text.Parsec as P
 import Text.Show.Pretty
 
-data CLInput = CLInput
-  { filename :: String,
-    printAST :: Bool
-  }
-
-data Input = ASTInput String | ValInput String
+data Input = ASTInput String | ValInput String | RunInst1Input String
 
 astInput :: Parser Input
 astInput =
@@ -36,8 +33,17 @@ valInput =
           <> help "Validate the semantics of the input file"
       )
 
+inst1Input :: Parser Input 
+inst1Input = 
+  RunInst1Input 
+  <$> strOption
+    ( long "run-inst1-bytecode"
+        <> metavar "FILENAME"
+        <> help "Run the Inst1 bytecode using the VM for the given input file"
+    )
+
 input :: Parser Input 
-input = astInput <|> valInput
+input = astInput <|> valInput <|> inst1Input
 
 main :: IO ()
 main = run =<< execParser opts
@@ -63,3 +69,10 @@ run (ValInput f) = do
     Right p -> case validateSemantics p of 
              Left err -> putStrLn err
              Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
+run (RunInst1Input f) = do 
+  nodes <- P.parse program f <$> readFile f 
+  case nodes of 
+    Left err -> print err 
+    Right p -> case validateSemantics p of 
+                 Left err -> putStrLn err 
+                 Right trees -> runBytecode $ genBytecode trees

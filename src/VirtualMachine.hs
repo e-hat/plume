@@ -1,13 +1,13 @@
 module VirtualMachine where
 
-import FirstIntermediate
+import BytecodeGen
 import System.Exit
 
-runInst1Program :: [Inst1] -> IO ()
-runInst1Program = mapM_ runInst1
+runBytecode :: [Inst] -> IO ()
+runBytecode = mapM_ runInst
 
-runInst1 :: Inst1 -> IO ()
-runInst1 (Exit v) = case v of
+runInst :: Inst -> IO ()
+runInst (Exit v) = case v of
                       0 -> exitSuccess
                       _ -> exitWith $ ExitFailure (fromIntegral v)
-runInst1 _ = error "haven't implemented this yet"
+runInst _ = error "haven't implemented this yet"
