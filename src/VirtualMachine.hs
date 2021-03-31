@@ -7,7 +7,7 @@ runBytecode :: [Inst] -> IO ()
 runBytecode = mapM_ runInst
 
 runInst :: Inst -> IO ()
-runInst (Exit v) = case v of
+runInst (Ret v) = case v of
                       0 -> exitSuccess
                       _ -> exitWith $ ExitFailure (fromIntegral v)
 runInst _ = error "haven't implemented this yet"
