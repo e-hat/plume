@@ -29,8 +29,8 @@ validateSemantics p =
         let globals = map getASTDeclAug (getProgram p)
         globalScope <- buildGlobalScope globals
         globalDecls <- traverse checkGlobalLet globals
-        symTrees <- traverse (globalSymTreeD globalScope) globalDecls
-        typechecked <-  traverse typecheckD symTrees
+        symTrees <- 
+          traverse (globalSymTreeD globalScope >=> typecheckD) globalDecls
         return $ SymTreeList $ map SymDeclAug symTrees
 
 -- this function is for verifiying that all Lets in global scope
@@ -76,7 +76,7 @@ buildGlobalScope ds =
           Just m ->
             if m == Many [] "Int"
               then Right tbl
-              else Left "wrong type for main function"
+              else Left "wrong type for main function, expected main(): Int"
           Nothing -> error "missing declaration of main function"
    in do
         globalScope <- foldM addIfAbsent Map.empty ds
