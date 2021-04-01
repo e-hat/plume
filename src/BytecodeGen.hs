@@ -1,6 +1,6 @@
 module BytecodeGen where
 
-import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import SymbolTable
 import Syntax
 
@@ -8,14 +8,14 @@ data Inst = Ret Integer
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
-    getLabelTable :: M.Map String Integer
+    getLabelTable :: S.Set (String, Integer)
   }
 
 genBytecode :: SymTreeList -> BytecodeProgram
 genBytecode trees =
   foldr
     (genGlobalTree . getSymDeclAug)
-    (BytecodeProgram [] M.empty)
+    (BytecodeProgram [] S.empty)
     (getSymTreeList trees)
 
 genGlobalTree :: DeclAug SymData -> BytecodeProgram -> BytecodeProgram
