@@ -3,11 +3,11 @@ module VirtualMachine where
 import BytecodeGen
 import System.Exit
 
-runBytecode :: [Inst] -> IO ()
-runBytecode = mapM_ runInst
+runBytecode :: BytecodeProgram -> IO ()
+runBytecode b@(BytecodeProgram is tbl) = mapM_ (runInst b) is
 
-runInst :: Inst -> IO ()
-runInst (Ret v) = case v of
+runInst :: BytecodeProgram -> Inst -> IO ()
+runInst _ (Ret v) = case v of
                       0 -> exitSuccess
                       _ -> exitWith $ ExitFailure (fromIntegral v)
-runInst _ = error "haven't implemented this yet"
+runInst _ _ = error "haven't implemented this yet"

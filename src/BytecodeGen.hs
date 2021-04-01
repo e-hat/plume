@@ -1,13 +1,25 @@
 module BytecodeGen where
 
+import qualified Data.Map.Strict as M
 import SymbolTable
 import Syntax
 
 data Inst = Ret Integer
 
-genBytecode :: SymTreeList -> [Inst]
-genBytecode trees = concatMap (genGlobalTree . getSymDeclAug) (getSymTreeList trees)
+data BytecodeProgram = BytecodeProgram
+  { getInstructions :: [Inst],
+    getLabelTable :: M.Map String Integer
+  }
 
-genGlobalTree :: DeclAug SymData -> [Inst]
-genGlobalTree (DefFn "main" [] "Int" (LitInt v, _), _) = [Ret v]
-genGlobalTree _ = error "haven't implemented this yet"
+genBytecode :: SymTreeList -> BytecodeProgram
+genBytecode trees =
+  foldr
+    (genGlobalTree . getSymDeclAug)
+    (BytecodeProgram [] M.empty)
+    (getSymTreeList trees)
+
+genGlobalTree :: DeclAug SymData -> BytecodeProgram -> BytecodeProgram
+genGlobalTree
+  (DefFn "main" [] "Int" (LitInt v, _), _)
+  (BytecodeProgram is lt) = BytecodeProgram (is ++ [Ret v]) lt
+genGlobalTree _ _ = error "haven't implemented this yet"

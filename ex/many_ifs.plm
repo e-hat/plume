@@ -1,4 +1,9 @@
-def main(String args): Int := {
-    func(5, 6);
-    0
+def main(): Int := {
+    if 5 > 4 => {
+        runfunc();
+    }
+    else if 5 < 3 => runfunc();
+    else => runfunc();
+    if 5 < 3 => runfunc()
+    else => runfunc()
 }
