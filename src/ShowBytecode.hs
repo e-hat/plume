@@ -10,7 +10,7 @@ instance Show BytecodeProgram where
     let is' = map ((++ "\n") . show) is
         ftbl = M.fromList $ map swap (M.toList tbl)
         fmtInst :: Integer -> String -> String
-        fmtInst ln i' = printf "%08d@% 5s" ln i'
+        fmtInst ln i' = printf "%08d@\t%s" ln i'
         zipNums :: Integer -> String -> String
         zipNums ln i' = 
           case M.lookup ln ftbl of 
@@ -20,7 +20,10 @@ instance Show BytecodeProgram where
 
 instance Show Value where
   show (Register n) = "$" ++ show n
-  show p = show p
+  show (VInt v) = show v
+  show (VBool b) = show b
+  show (VByte b) = show b
+  show (VFloat f) = show f
 
 instance Show Inst where
   show (Ret v) = printf "Ret %s" (show v)
