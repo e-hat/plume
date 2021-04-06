@@ -12,11 +12,11 @@ instance Show BytecodeProgram where
         fmtInst :: Integer -> String -> String
         fmtInst ln i' = printf "%08d@\t%s" ln i'
         zipNums :: Integer -> String -> String
-        zipNums ln i' = 
-          case M.lookup ln ftbl of 
+        zipNums ln i' =
+          case M.lookup ln ftbl of
             Just l -> printf "%s:\n%s" l (fmtInst ln i')
-            Nothing -> fmtInst ln i'     
-     in concat $ zipWith zipNums [1..] is'
+            Nothing -> fmtInst ln i'
+     in concat $ zipWith zipNums [1 ..] is'
 
 instance Show Value where
   show (Register n) = "$" ++ show n

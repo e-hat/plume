@@ -13,7 +13,7 @@ data Value
 
 data Inst = Ret Value | Move Value Value
 
-registerStore = [1..]
+registerStore = [1 ..]
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],

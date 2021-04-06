@@ -21,9 +21,9 @@ type DeclAug t = (Decl t, t)
 type ExprAug t = (Expr t, t)
 
 -- each stmt in Plume is either a declaration or an expression
--- this is an "augmented" tree structure 
+-- this is an "augmented" tree structure
 -- it allows me to maintain the same "shape" of the tree, but carry different
--- data on each node depending on what I'm doing, e.g. I need just span info for 
+-- data on each node depending on what I'm doing, e.g. I need just span info for
 -- all errors, but I'll need a symbol table on each node for type checking.
 -- t represents that additional piece of data unrelated to tree structure
 data Decl t
@@ -38,9 +38,9 @@ data Decl t
 data Expr t
   = Subs Identifier
   | CallExpr Identifier [ExprAug t]
-  -- note that IfExpr REQUIRES an else branch, otherwise a function could only 
-  -- sometimes return a value
-  | IfExpr (ExprAug t) (ExprAug t) [(ExprAug t, ExprAug t)] (ExprAug t)
+  | -- note that IfExpr REQUIRES an else branch, otherwise a function could only
+    -- sometimes return a value
+    IfExpr (ExprAug t) (ExprAug t) [(ExprAug t, ExprAug t)] (ExprAug t)
   | BlockExpr [DeclAug t] (ExprAug t)
   | BinOp Op (ExprAug t) (ExprAug t)
   | UnaryOp Op (ExprAug t)

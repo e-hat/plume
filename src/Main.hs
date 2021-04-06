@@ -1,12 +1,12 @@
 module Main where
 
 import BytecodeGen
-import ShowBytecode
 import Control.Monad
 import Data.Semigroup ((<>))
 import Options.Applicative
 import Parser
 import Semantics
+import ShowBytecode
 import Syntax
 import qualified Text.Parsec as P
 import Text.Show.Pretty
@@ -34,39 +34,38 @@ valInput =
           <> help "Validate the semantics of the input file"
       )
 
-printBytecodeInput :: Parser Input 
-printBytecodeInput = 
-  PrintBytecodeInput 
-  <$> strOption 
-    ( long "print-bytecode" 
-        <> short 'b'
-        <> metavar "FILENAME"
-        <> help "Print the bytecode generated for the input file"
-    )
+printBytecodeInput :: Parser Input
+printBytecodeInput =
+  PrintBytecodeInput
+    <$> strOption
+      ( long "print-bytecode"
+          <> short 'b'
+          <> metavar "FILENAME"
+          <> help "Print the bytecode generated for the input file"
+      )
 
 compileOptions :: Parser Input
 compileOptions = astInput <|> valInput <|> printBytecodeInput
 
 runArg :: Parser Input
-runArg = 
+runArg =
   RunInput <$> argument str (metavar "FILE")
 
 input :: Parser Input
-input = 
-  hsubparser 
-    (
-      command "compile" 
-        (
-          info 
-            (compileOptions <**> helper) 
+input =
+  hsubparser
+    ( command
+        "compile"
+        ( info
+            (compileOptions <**> helper)
             (progDesc "Compile a Plume source file")
         )
-      <> command "run"
-        (
-          info 
-            (runArg <**> helper)
-            (progDesc "Run a Plume program")
-        )
+        <> command
+          "run"
+          ( info
+              (runArg <**> helper)
+              (progDesc "Run a Plume program")
+          )
     )
 
 main :: IO ()
@@ -90,12 +89,12 @@ run (ValInput f) = do
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
       Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
-run (PrintBytecodeInput f) = do 
-  nodes <- P.parse program f <$> readFile f 
-  case nodes of 
-    Left err -> print err 
-    Right p -> case validateSemantics p of  
-      Left err -> putStrLn err 
+run (PrintBytecodeInput f) = do
+  nodes <- P.parse program f <$> readFile f
+  case nodes of
+    Left err -> print err
+    Right p -> case validateSemantics p of
+      Left err -> putStrLn err
       Right trees -> print $ genBytecode trees
 run (RunInput f) = do
   nodes <- P.parse program f <$> readFile f
