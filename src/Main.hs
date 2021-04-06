@@ -12,7 +12,7 @@ import qualified Text.Parsec as P
 import Text.Show.Pretty
 import VirtualMachine
 
-data Input = ASTInput String | ValInput String | RunInput String
+data Input = ASTInput String | ValInput String | RunInput String | PrintBytecodeInput String
 
 astInput :: Parser Input
 astInput =
@@ -34,8 +34,18 @@ valInput =
           <> help "Validate the semantics of the input file"
       )
 
+printBytecodeInput :: Parser Input 
+printBytecodeInput = 
+  PrintBytecodeInput 
+  <$> strOption 
+    ( long "print-bytecode" 
+        <> short 'b'
+        <> metavar "FILENAME"
+        <> help "Print the bytecode generated for the input file"
+    )
+
 compileOptions :: Parser Input
-compileOptions = astInput <|> valInput
+compileOptions = astInput <|> valInput <|> printBytecodeInput
 
 runArg :: Parser Input
 runArg = 
@@ -80,10 +90,17 @@ run (ValInput f) = do
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
       Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
+run (PrintBytecodeInput f) = do 
+  nodes <- P.parse program f <$> readFile f 
+  case nodes of 
+    Left err -> print err 
+    Right p -> case validateSemantics p of  
+      Left err -> putStrLn err 
+      Right trees -> print $ genBytecode trees
 run (RunInput f) = do
   nodes <- P.parse program f <$> readFile f
   case nodes of
     Left err -> print err
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
-      Right trees -> print $ genBytecode trees
+      Right trees -> runBytecode $ genBytecode trees
