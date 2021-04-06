@@ -1,6 +1,7 @@
 module Main where
 
 import BytecodeGen
+import ShowBytecode
 import Control.Monad
 import Data.Semigroup ((<>))
 import Options.Applicative
@@ -85,4 +86,4 @@ run (RunInput f) = do
     Left err -> print err
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
-      Right trees -> runBytecode $ genBytecode trees
+      Right trees -> print $ genBytecode trees
