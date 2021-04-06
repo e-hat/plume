@@ -11,7 +11,7 @@ data Value
   | VFloat Float
   | VByte Char
 
-data Inst = Ret Value | Move Integer Value
+data Inst = Ret Value | Move Value Value
 
 registerStore = [1..]
 
