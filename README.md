@@ -35,7 +35,7 @@ This compiler will be written in Haskell with a Parsec-based frontend and will t
 
 <a name="curr"></a>
 
-## Current State
+### Current State
 The latest progress is the creation of a type-checking system and a system for validating scoping errors. The next step is to begin with the translation part of the compiler. Plume is in a "get this to work" state. I have forgone the creation of some basic programming constructs (i.e for-loops, custom types, system calls, etc) in order to accelerate progress toward getting a small subset of my language to compile and run successfully. Once that is achieved, the focus will be on expanding that subset. 
 
 Plume currently only supports the following type of program (note: this is *extremely* temporary):
