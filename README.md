@@ -48,11 +48,11 @@ This program exits with a status of `42`. It exemplifies the motivation of the P
 
 <a name="use">
 
-# Usage
+## Usage
 
 <a name="in"></a>
 
-## Installation
+### Installation
 
 This project relies on [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) to build and manage dependencies. Once you have that, do the following:
 * Clone the repo and `cd` into it, then run `stack install`.
@@ -61,7 +61,7 @@ This project relies on [stack](https://docs.haskellstack.org/en/stable/install_a
 
 <a name="write"></a>
 
-## How to write Plume programs
+### How to write Plume programs
 
 At some point I'll give an in depth discussion about the syntax rules of plume, but here's a simplified version. Statements in plume are either declarations or expressions.
 
@@ -105,7 +105,7 @@ Note that every plume program needs a `main` with that signature. I'll add some 
 
 <a name="run"></a>
 
-## How to run Plume programs
+### How to run Plume programs
 
 Here's a brief overview of the available commands, but I would recommend looking at `plume --help` since I don't know if I want to keep updating this list. 
 
