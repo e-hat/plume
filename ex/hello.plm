@@ -1,3 +1,4 @@
 Int value := 42
 def other(): Int := value
+def other1(): Bool := false
 def main(): Int := value

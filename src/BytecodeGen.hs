@@ -10,7 +10,7 @@ data Value
   = Register Integer
   | VBool Bool
   | VInt Integer
-  | VFloat Float
+  | VFloat Double
   | VByte Char
 
 data Inst = Ret Value | Move Value Value
@@ -68,10 +68,19 @@ genGlobalTree (Let "Int" i (LitInt v, _), _) = do
   s <- get
   let vars = getGlobalVars s
   setGlobalVars $ M.insert i (VInt v) vars
-genGlobalTree (DefFn i [] "Int" (LitInt v, _), _) = do
+genGlobalTree (DefFn i [] _ (LitInt v, _), _) = do
   appendLabel i
   appendInst $ Ret (VInt v)
-genGlobalTree (DefFn fi [] "Int" (Subs i, _), _) = do
+genGlobalTree (DefFn i [] _ (LitBool v, _), _) = do 
+  appendLabel i 
+  appendInst $ Ret (VBool v)
+genGlobalTree (DefFn i [] _ (LitChar v, _), _) = do
+  appendLabel i
+  appendInst $ Ret (VByte v)
+genGlobalTree (DefFn i [] _ (LitFloat v, _), _) = do 
+  appendLabel i 
+  appendInst $ Ret (VFloat v)
+genGlobalTree (DefFn fi [] _ (Subs i, _), _) = do
   appendLabel fi
   s <- get
   let rvs = getVarRegisters s
