@@ -31,15 +31,15 @@ setCurrentProgram :: BytecodeProgram -> State GState ()
 setCurrentProgram b = modify $ \s -> s {getCurrentProgram = b}
 
 appendInst :: Inst -> State GState ()
-appendInst i = do 
-  s <- get 
+appendInst i = do
+  s <- get
   let prog = getCurrentProgram s
   setCurrentProgram $ prog {getInstructions = getInstructions prog ++ [i]}
 
 appendLabel :: String -> State GState ()
-appendLabel l = do 
-  s <- get 
-  let prog = getCurrentProgram s 
+appendLabel l = do
+  s <- get
+  let prog = getCurrentProgram s
   let tbl = getLabelTable prog
   let loc = toInteger (1 + length (getInstructions prog))
   setCurrentProgram $ prog {getLabelTable = M.insert l loc tbl}
@@ -64,21 +64,21 @@ genBytecode trees =
    in getCurrentProgram result
 
 genGlobalTree :: DeclAug SymData -> State GState ()
-genGlobalTree (Let "Int" i (LitInt v, _), _) = do 
+genGlobalTree (Let "Int" i (LitInt v, _), _) = do
   s <- get
   let vars = getGlobalVars s
   setGlobalVars $ M.insert i (VInt v) vars
-genGlobalTree (DefFn "main" [] "Int" (LitInt v, _), _) = do 
+genGlobalTree (DefFn "main" [] "Int" (LitInt v, _), _) = do
   appendLabel "main"
   appendInst $ Ret (VInt v)
-genGlobalTree (DefFn "main" [] "Int" (Subs i, _), _) = do 
+genGlobalTree (DefFn "main" [] "Int" (Subs i, _), _) = do
   appendLabel "main"
   s <- get
   let rvs = getVarRegisters s
-  case M.lookup i rvs of 
+  case M.lookup i rvs of
     Just _ -> error "haven't implemented this yet"
-    Nothing -> do 
-      let gvs = getGlobalVars s 
+    Nothing -> do
+      let gvs = getGlobalVars s
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
-        Just v -> appendInst (Ret v) 
+        Just v -> appendInst (Ret v)
