@@ -68,11 +68,11 @@ genGlobalTree (Let "Int" i (LitInt v, _), _) = do
   s <- get
   let vars = getGlobalVars s
   setGlobalVars $ M.insert i (VInt v) vars
-genGlobalTree (DefFn "main" [] "Int" (LitInt v, _), _) = do
-  appendLabel "main"
+genGlobalTree (DefFn i [] "Int" (LitInt v, _), _) = do
+  appendLabel i
   appendInst $ Ret (VInt v)
-genGlobalTree (DefFn "main" [] "Int" (Subs i, _), _) = do
-  appendLabel "main"
+genGlobalTree (DefFn fi [] "Int" (Subs i, _), _) = do
+  appendLabel fi
   s <- get
   let rvs = getVarRegisters s
   case M.lookup i rvs of
