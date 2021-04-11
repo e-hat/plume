@@ -15,8 +15,6 @@ data Value
 
 data Inst = Ret Value | Move Value Value
 
-registerStore = [1 ..]
-
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
     getLabelTable :: M.Map String Integer
@@ -41,15 +39,15 @@ setVarRegisters vr = modify $ \s -> s { getVarRegisters = vr }
 setGlobalVars :: S.Set String -> State GState ()
 setGlobalVars gv = modify $ \s -> s { getGlobalVars = gv }
 
-genBytecode :: SymTreeList -> BytecodeProgram
-genBytecode trees =
-  foldr
-    (genGlobalTree . getSymDeclAug)
-    (BytecodeProgram [] M.empty)
-    (getSymTreeList trees)
+initState :: GState 
+initState = GState (BytecodeProgram [] M.empty) [1..] M.empty S.empty
 
-genGlobalTree :: DeclAug SymData -> BytecodeProgram -> BytecodeProgram
-genGlobalTree
-  (DefFn "main" [] "Int" (LitInt v, _), _)
-  (BytecodeProgram is lt) = BytecodeProgram (is ++ [Ret $ VInt v]) lt
-genGlobalTree _ _ = error "haven't implemented this yet"
+genBytecode :: SymTreeList -> BytecodeProgram
+genBytecode trees = 
+  let statefulProgram = 
+        traverse (genGlobalTree . getSymDeclAug) (getSymTreeList trees)
+      (_, result) = runState statefulProgram initState
+   in getCurrentProgram result
+
+genGlobalTree :: DeclAug SymData -> State GState ()
+genGlobalTree _ = error "haven't implemented this yet"
