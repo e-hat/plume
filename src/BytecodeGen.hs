@@ -1,6 +1,8 @@
 module BytecodeGen where
 
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
+import Control.Monad.State
 import SymbolTable
 import Syntax
 
@@ -19,6 +21,25 @@ data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
     getLabelTable :: M.Map String Integer
   }
+
+data GState = GState 
+  { getCurrentProgram :: BytecodeProgram,
+    getOpenRegisters :: [Integer],
+    getVarRegisters :: M.Map String Integer, 
+    getGlobalVars :: S.Set String
+  }
+
+setCurrentProgram :: BytecodeProgram -> State GState ()
+setCurrentProgram b = modify $ \s -> s { getCurrentProgram = b }
+
+setOpenRegisters :: [Integer] -> State GState () 
+setOpenRegisters rs = modify $ \s -> s { getOpenRegisters = rs }
+
+setVarRegisters :: M.Map String Integer -> State GState () 
+setVarRegisters vr = modify $ \s -> s { getVarRegisters = vr }
+
+setGlobalVars :: S.Set String -> State GState ()
+setGlobalVars gv = modify $ \s -> s { getGlobalVars = gv }
 
 genBytecode :: SymTreeList -> BytecodeProgram
 genBytecode trees =

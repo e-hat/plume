@@ -23,5 +23,6 @@ executable plume
                        parsec,
                        pretty-show,
                        optparse-applicative,
-                       containers
+                       containers,
+                       mtl
 
