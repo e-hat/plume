@@ -1,1 +1,2 @@
-def main(): Int := 42
+Int value := 42
+def main(): Int := value
