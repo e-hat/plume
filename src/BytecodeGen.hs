@@ -71,14 +71,14 @@ genGlobalTree (Let "Int" i (LitInt v, _), _) = do
 genGlobalTree (DefFn i [] _ (LitInt v, _), _) = do
   appendLabel i
   appendInst $ Ret (VInt v)
-genGlobalTree (DefFn i [] _ (LitBool v, _), _) = do 
-  appendLabel i 
+genGlobalTree (DefFn i [] _ (LitBool v, _), _) = do
+  appendLabel i
   appendInst $ Ret (VBool v)
 genGlobalTree (DefFn i [] _ (LitChar v, _), _) = do
   appendLabel i
   appendInst $ Ret (VByte v)
-genGlobalTree (DefFn i [] _ (LitFloat v, _), _) = do 
-  appendLabel i 
+genGlobalTree (DefFn i [] _ (LitFloat v, _), _) = do
+  appendLabel i
   appendInst $ Ret (VFloat v)
 genGlobalTree (DefFn fi [] _ (Subs i, _), _) = do
   appendLabel fi
