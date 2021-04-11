@@ -63,11 +63,17 @@ genBytecode trees =
       (_, result) = runState statefulProgram initState
    in getCurrentProgram result
 
-genGlobalTree :: DeclAug SymData -> State GState ()
-genGlobalTree (Let "Int" i (LitInt v, _), _) = do
+addGlobalVar :: String -> Value -> State GState ()
+addGlobalVar i v = do
   s <- get
   let vars = getGlobalVars s
-  setGlobalVars $ M.insert i (VInt v) vars
+  setGlobalVars $ M.insert i v vars
+
+genGlobalTree :: DeclAug SymData -> State GState ()
+genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
+genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
+genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
+genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
 genGlobalTree (DefFn i [] _ (LitInt v, _), _) = do
   appendLabel i
   appendInst $ Ret (VInt v)
