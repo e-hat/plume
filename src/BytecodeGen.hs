@@ -101,6 +101,12 @@ genGlobalTree (DefFn i [] _ e, _) = do
   appendInst Ret
 
 genDecl :: DeclAug SymData -> State GState ()
+genDecl (Let _ i e, _) = do 
+  r <- getNextRegister 
+  genExprInto r e  
+  s <- get 
+  let vrs = getVarRegisters s 
+  setVarRegisters (M.insert i r vrs)
 genDecl _ = error "haven't implemented this yet"
 
 genExprInto :: Integer -> ExprAug SymData -> State GState ()
@@ -111,7 +117,7 @@ genExprInto t (Subs i, _) = do
   s <- get
   let rvs = getVarRegisters s
   case M.lookup i rvs of
-    Just reg -> error "haven't implemented this"
+    Just reg -> appendInst (Move (Register reg) (Register t))
     Nothing -> do
       let gvs = getGlobalVars s
       case M.lookup i gvs of
