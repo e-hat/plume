@@ -260,7 +260,7 @@ typecheckE i@(IfExpr b fe eis e, s) =
          in traverse (checkBranch $ getType fe) bs
       combineEFs :: ExprAug SymData -> ExprAug SymData -> Either String (ExprAug SymData, ExprAug SymData)
       combineEFs cond branch =
-        (,) <$> (handleBTerm cond i >>= typecheckE) <*> typecheckE branch
+        (,) <$> (handleBTerm i cond >>= typecheckE) <*> typecheckE branch
    in do
         tb <- handleBTerm b i >>= typecheckE
         unifiedBranches <- unifyBranches (fe : map snd eis ++ [e])
