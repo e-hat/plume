@@ -1,10 +1,11 @@
-module BytecodeGen 
-( Inst (..)
-, Value (..)
-, BytecodeProgram (..)
-, genBytecode
-, retReg
-) where
+module BytecodeGen
+  ( Inst (..),
+    Value (..),
+    BytecodeProgram (..),
+    genBytecode,
+    retReg,
+  )
+where
 
 import Control.Monad.State
 import Data.Foldable
@@ -101,19 +102,18 @@ genGlobalTree (DefFn i [] _ e, _) = do
   appendInst Ret
 
 genDecl :: DeclAug SymData -> State GState ()
-genDecl (Let _ i e, _) = do 
-  r <- getNextRegister 
-  genExprInto r e  
-  s <- get 
-  let vrs = getVarRegisters s 
+genDecl (Let _ i e, _) = do
+  r <- getNextRegister
+  genExprInto r e
+  s <- get
+  let vrs = getVarRegisters s
   setVarRegisters (M.insert i r vrs)
-genDecl (Reassign i e, _) = do 
-  s <- get 
+genDecl (Reassign i e, _) = do
+  s <- get
   let rvs = getVarRegisters s
-  case M.lookup i rvs of 
-    Just r -> genExprInto r e 
+  case M.lookup i rvs of
+    Just r -> genExprInto r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
-      
 genDecl _ = error "haven't implemented this yet"
 
 genExprInto :: Integer -> ExprAug SymData -> State GState ()
