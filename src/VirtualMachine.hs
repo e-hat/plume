@@ -27,6 +27,7 @@ runBytecode b@(BytecodeProgram is tbl) =
       (rslt, _) = runState (runFrom start) (VMState M.empty b start True)
    in rslt
 
+-- allows for program to dictate control flow, otherwise continues to next instruction
 runFrom :: Integer -> State VMState (IO ())
 runFrom start = do
   s <- get

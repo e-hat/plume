@@ -14,6 +14,7 @@ import qualified Data.Set as S
 import SymbolTable
 import Syntax
 
+-- types of values that can be moved around
 data Value
   = Register Integer
   | VBool Bool
@@ -35,6 +36,7 @@ data GState = GState
     getGlobalVars :: M.Map String Value
   }
 
+-- helper functions for managing state
 setCurrentProgram :: BytecodeProgram -> State GState ()
 setCurrentProgram b = modify $ \s -> s {getCurrentProgram = b}
 
@@ -78,6 +80,9 @@ retVal v = Move v (Register retReg)
 initState :: GState
 initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty
 
+-------------------------------------------------------------------------------
+----------------------------- BYTECODE GENERATION -----------------------------
+-------------------------------------------------------------------------------
 genBytecode :: SymTreeList -> BytecodeProgram
 genBytecode trees =
   let statefulProgram =
@@ -85,6 +90,7 @@ genBytecode trees =
       (_, result) = runState statefulProgram initState
    in getCurrentProgram result
 
+-- this will need to be rewritten using memory constructs instead
 addGlobalVar :: String -> Value -> State GState ()
 addGlobalVar i v = do
   s <- get
@@ -116,6 +122,7 @@ genDecl (Reassign i e, _) = do
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
 genDecl _ = error "haven't implemented this yet"
 
+-- puts the result of an expression into the specified register
 genExprInto :: Integer -> ExprAug SymData -> State GState ()
 genExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
