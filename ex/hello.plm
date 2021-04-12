@@ -1,8 +1,7 @@
-Int value := 42
-Bool value2 := true
-Char otherone := '\0'
-def other(): Int := value
-def other1(): Bool := false
-def func(): Char := otherone 
-def func2(): Bool := value2
-def main(): Int := value
+def factorial(Int n): Int := 
+    if n <= 1 => 1
+    else if n = 2 => 255
+    else => n * factorial(n - 1)
+
+def main(): Int := factorial(5)
+
