@@ -38,13 +38,23 @@ This compiler will be written in Haskell with a Parsec-based frontend and will t
 ### Current State
 The latest progress is the creation of a type-checking system and a system for validating scoping errors. The next step is to begin with the translation part of the compiler. Plume is in a "get this to work" state. I have forgone the creation of some basic programming constructs (i.e for-loops, custom types, system calls, etc) in order to accelerate progress toward getting a small subset of my language to compile and run successfully. Once that is achieved, the focus will be on expanding that subset. 
 
-Plume currently only supports the following type of program (note: this is *extremely* temporary):
+Plume supports running the following program, where each feature is labelled:
 
 ```
-def main(): Int := 42
+# global variables
+Int global := 5
+# functions and block expressions
+def main(): Int := {
+  # local variables
+  Bool torf := true
+  # reassignment
+  torf <- false
+  # returning 5 as the exit code
+  global
+}
 ```
 
-This program exits with a status of `42`. It exemplifies the motivation of the Plume syntax well -- `def main(): Int` is a function definition declaration that is assigned to the expression `42`, which is just an integer literal. 
+This program exits with a status of `5`. After doing arithmetic/boolean expressions, I will add if expressions/declarations. Then, function calls will be added, which will probably be the most difficult. Note that only primitive types are currently allowed as, I have not yet added a "stack" concept to the bytecode (or the VM, for that matter). Also, it is impossible to reassign global variables. I am deciding whether or not I should be setting memory locations for global variables in bytecode or if that should be distracted. These are fun problems to be considering!
 
 <a name="use">
 
