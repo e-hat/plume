@@ -53,6 +53,14 @@ setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 setGlobalVars :: M.Map String Value -> State GState ()
 setGlobalVars gv = modify $ \s -> s {getGlobalVars = gv}
 
+getNextRegister :: State GState Integer 
+getNextRegister = do 
+  s <- get 
+  let rs = getOpenRegisters s 
+  let result = head rs 
+  setOpenRegisters $ tail rs 
+  return result
+
 initState :: GState
 initState = GState (BytecodeProgram [] M.empty) [1 ..] M.empty M.empty
 
@@ -91,9 +99,18 @@ genGlobalTree (DefFn fi [] _ (Subs i, _), _) = do
   s <- get
   let rvs = getVarRegisters s
   case M.lookup i rvs of
-    Just _ -> error "haven't implemented this yet"
+    Just reg -> appendInst (Ret (Register reg))
     Nothing -> do
       let gvs = getGlobalVars s
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> appendInst (Ret v)
+
+genDecl :: DeclAug SymData -> State GState ()
+genDecl _ = error "haven't implemented this yet"
+
+--genExprInto :: Integer -> ExprAug SymData -> State GState ()
+--genExprInto t (BlockExpr ds e, _) = do 
+--  traverse_ genDecl ds
+--  r <- getNextRegister
+--  genExprInto r e
