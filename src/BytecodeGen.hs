@@ -1,6 +1,13 @@
-module BytecodeGen where
+module BytecodeGen 
+( Inst (..)
+, Value (..)
+, BytecodeProgram (..)
+, genBytecode
+, retReg
+) where
 
 import Control.Monad.State
+import Data.Foldable
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import SymbolTable
@@ -13,7 +20,7 @@ data Value
   | VFloat Double
   | VByte Char
 
-data Inst = Ret Value | Move Value Value
+data Inst = Ret | Move Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -53,16 +60,22 @@ setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 setGlobalVars :: M.Map String Value -> State GState ()
 setGlobalVars gv = modify $ \s -> s {getGlobalVars = gv}
 
-getNextRegister :: State GState Integer 
-getNextRegister = do 
-  s <- get 
-  let rs = getOpenRegisters s 
-  let result = head rs 
-  setOpenRegisters $ tail rs 
+getNextRegister :: State GState Integer
+getNextRegister = do
+  s <- get
+  let rs = getOpenRegisters s
+  let result = head rs
+  setOpenRegisters $ tail rs
   return result
 
+retReg :: Integer
+retReg = 0
+
+retVal :: Value -> Inst
+retVal v = Move v (Register retReg)
+
 initState :: GState
-initState = GState (BytecodeProgram [] M.empty) [1 ..] M.empty M.empty
+initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty
 
 genBytecode :: SymTreeList -> BytecodeProgram
 genBytecode trees =
@@ -82,35 +95,29 @@ genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
 genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
-genGlobalTree (DefFn i [] _ (LitInt v, _), _) = do
+genGlobalTree (DefFn i [] _ e, _) = do
   appendLabel i
-  appendInst $ Ret (VInt v)
-genGlobalTree (DefFn i [] _ (LitBool v, _), _) = do
-  appendLabel i
-  appendInst $ Ret (VBool v)
-genGlobalTree (DefFn i [] _ (LitChar v, _), _) = do
-  appendLabel i
-  appendInst $ Ret (VByte v)
-genGlobalTree (DefFn i [] _ (LitFloat v, _), _) = do
-  appendLabel i
-  appendInst $ Ret (VFloat v)
-genGlobalTree (DefFn fi [] _ (Subs i, _), _) = do
-  appendLabel fi
-  s <- get
-  let rvs = getVarRegisters s
-  case M.lookup i rvs of
-    Just reg -> appendInst (Ret (Register reg))
-    Nothing -> do
-      let gvs = getGlobalVars s
-      case M.lookup i gvs of
-        Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
-        Just v -> appendInst (Ret v)
+  genExprInto retReg e
+  appendInst Ret
 
 genDecl :: DeclAug SymData -> State GState ()
 genDecl _ = error "haven't implemented this yet"
 
---genExprInto :: Integer -> ExprAug SymData -> State GState ()
---genExprInto t (BlockExpr ds e, _) = do 
---  traverse_ genDecl ds
---  r <- getNextRegister
---  genExprInto r e
+genExprInto :: Integer -> ExprAug SymData -> State GState ()
+genExprInto t (BlockExpr ds e, _) = do
+  traverse_ genDecl ds
+  genExprInto t e
+genExprInto t (Subs i, _) = do
+  s <- get
+  let rvs = getVarRegisters s
+  case M.lookup i rvs of
+    Just reg -> error "haven't implemented this"
+    Nothing -> do
+      let gvs = getGlobalVars s
+      case M.lookup i gvs of
+        Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
+        Just v -> appendInst (Move v (Register t))
+genExprInto t (LitInt v, _) = appendInst $ Move (VInt v) (Register t)
+genExprInto t (LitBool v, _) = appendInst $ Move (VBool v) (Register t)
+genExprInto t (LitChar v, _) = appendInst $ Move (VByte v) (Register t)
+genExprInto t (LitFloat v, _) = appendInst $ Move (VFloat v) (Register t)
