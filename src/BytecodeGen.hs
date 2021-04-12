@@ -107,6 +107,13 @@ genDecl (Let _ i e, _) = do
   s <- get 
   let vrs = getVarRegisters s 
   setVarRegisters (M.insert i r vrs)
+genDecl (Reassign i e, _) = do 
+  s <- get 
+  let rvs = getVarRegisters s
+  case M.lookup i rvs of 
+    Just r -> genExprInto r e 
+    Nothing -> error "I need to implement memory to make reassignments of global variables work!"
+      
 genDecl _ = error "haven't implemented this yet"
 
 genExprInto :: Integer -> ExprAug SymData -> State GState ()
