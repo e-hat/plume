@@ -262,7 +262,7 @@ typecheckE i@(IfExpr b fe eis e, s) =
       combineEFs cond branch =
         (,) <$> (handleBTerm i cond >>= typecheckE) <*> typecheckE branch
    in do
-        tb <- handleBTerm b i >>= typecheckE
+        tb <- handleBTerm i b >>= typecheckE
         unifiedBranches <- unifyBranches (fe : map snd eis ++ [e])
         tfe <- typecheckE $ head unifiedBranches
         teis <- zipWithM combineEFs (map fst eis) (tail $ init unifiedBranches)
