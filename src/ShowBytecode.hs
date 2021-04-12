@@ -29,5 +29,5 @@ instance Show Value where
   show (VFloat f) = show f
 
 instance Show Inst where
-  show (Ret v) = printf "Ret %s" (show v)
-  show (Move v r) = printf "Mov %s -> %s" (show r) (show v)
+  show (Move v r) = printf "Mov %s -> %s" (show v) (show r)
+  show Ret = "Ret"
