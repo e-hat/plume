@@ -42,7 +42,11 @@ runFrom start = do
 
 runInst :: Inst -> State VMState (IO ())
 runInst (Move v (Register r)) = do 
-  setRegister r v
+  s <- get 
+  let rs = getRegisters s
+  case v of 
+    (Register src) -> setRegister r (rs M.! src)
+    val -> setRegister r val
   return (pure ())
 runInst Ret = do
   s <- get 
