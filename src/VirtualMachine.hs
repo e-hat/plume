@@ -24,17 +24,17 @@ setRegister r v = do
 lookupRegister :: Integer -> VMState -> Value
 lookupRegister r s = getRegisters s M.! r
 
-addVal :: VMState -> Value -> Value -> Value
-addVal _ (VInt l) (VInt r) = VInt (l + r)
-addVal _ (VFloat l) (VInt r) = VFloat (l + fromIntegral r)
-addVal _ (VInt l) (VFloat r) = VFloat (fromIntegral l + r)
-addVal _ (VFloat l) (VFloat r) = VFloat (l + r)
-addVal s (Register lr) r = 
+arithComb :: VMState -> (forall a. Num a => a -> a -> a) -> Value -> Value -> Value
+arithComb _ op (VInt l) (VInt r) = VInt (op l r)
+arithComb _ op (VFloat l) (VInt r) = VFloat (op l (fromIntegral r))
+arithComb _ op (VInt l) (VFloat r) = VFloat (op (fromIntegral l) r)
+arithComb _ op (VFloat l) (VFloat r) = VFloat (op l r)
+arithComb s op (Register lr) r = 
   let l = lookupRegister lr s
-   in addVal s l r
-addVal s l (Register rr) = 
+   in arithComb s op l r
+arithComb s op l (Register rr) = 
   let r = lookupRegister rr s 
-   in addVal s l r
+   in arithComb s op l r
 
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b@(BytecodeProgram is tbl) =
@@ -61,16 +61,20 @@ runInst :: Inst -> State VMState (IO ())
 runInst (Move v (Register r)) = do
   s <- get
   case v of
-    (Register src) -> setRegister r (lookupRegister src s)
+    Register src -> setRegister r (lookupRegister src s)
     val -> setRegister r val
   return (pure ())
-runInst (Add l r (Register dst)) = do
-  s <- get
-  setRegister dst (addVal s l r)
-  return (pure ())
+runInst (Add l r reg) = runBinArithInst (+) l r reg
+runInst (Sub l r reg) = runBinArithInst (-) l r reg
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}
   case getRegisters s M.! retReg of
-    (VInt 0) -> return exitSuccess
-    (VInt v) -> return $ exitWith $ ExitFailure (fromIntegral v)
+    VInt 0 -> return exitSuccess
+    VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
+
+runBinArithInst :: (forall a. Num a => a -> a -> a) -> Value -> Value -> Value -> State VMState (IO ())
+runBinArithInst op l r (Register dst) = do 
+  s <- get 
+  setRegister dst (arithComb s op l r)
+  return (pure ())
