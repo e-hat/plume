@@ -26,6 +26,7 @@ data Inst
   = Ret
   | Move Value Value
   | Add Value Value Value
+  | Sub Value Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -130,10 +131,10 @@ moveExprInto :: Integer -> ExprAug SymData -> State GState ()
 moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   moveExprInto t e
-moveExprInto t (BinOp Plus l r, _) = do
+moveExprInto t b@(BinOp _ l r, _) = do
   lval <- genExprValue l 
   rval <- genExprValue r
-  appendInst (Add lval rval (Register t))
+  appendInst (binOpMapping b lval rval (Register t))
 moveExprInto t e = do 
   v <- genExprValue e 
   appendInst (Move v (Register t))
@@ -154,9 +155,14 @@ genExprValue (Subs i, _) = do
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
-genExprValue (BinOp Plus l r, _) = do 
+genExprValue b@(BinOp _ l r, _) = do 
   n <- getNextRegister 
   lval <- genExprValue l 
   rval <- genExprValue r
-  appendInst (Add lval rval (Register n))
+  appendInst (binOpMapping b lval rval (Register n))
   return (Register n)
+
+binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
+binOpMapping (BinOp Plus _ _, _) = Add
+binOpMapping (BinOp Minus _ _, _) = Sub
+
