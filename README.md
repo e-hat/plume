@@ -84,7 +84,7 @@ This example should clarify some things and show some of the common syntax:
 ```
 # here's a function definition. These are only allowed in global scope.
 # it is assigned to an expression, more specifically, a block expression
-def func1(a: Int, b: Int): String := {
+def func1(Int a, Int b): String := {
   # a block expression is a list of declarations followed by an expression
   # the first here is a let declaration
   Int fact := factorial(a)
