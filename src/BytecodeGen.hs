@@ -22,9 +22,10 @@ data Value
   | VFloat Double
   | VByte Char
 
-data Inst = Ret 
-          | Move Value Value
-          | Add Value Value Value
+data Inst
+  = Ret
+  | Move Value Value
+  | Add Value Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -139,11 +140,11 @@ genExprInto t (Subs i, _) = do
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> appendInst (Move v (Register t))
-genExprInto t (BinOp Plus l r, _) = do 
-  lr <- getNextRegister 
-  rr <- getNextRegister 
-  genExprInto lr l 
-  genExprInto rr r 
+genExprInto t (BinOp Plus l r, _) = do
+  lr <- getNextRegister
+  rr <- getNextRegister
+  genExprInto lr l
+  genExprInto rr r
   appendInst (Add (Register lr) (Register rr) (Register t))
 genExprInto t (LitInt v, _) = appendInst $ Move (VInt v) (Register t)
 genExprInto t (LitBool v, _) = appendInst $ Move (VBool v) (Register t)
