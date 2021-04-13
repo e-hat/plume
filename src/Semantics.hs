@@ -302,7 +302,7 @@ typecheckE eq@(BinOp NotEqual l r, s) =
 -- no longer need to pmatch on type of op since all remaining ops take numericalTypes
 typecheckE e@(BinOp op l r, s) = do
   tl <- handleATerm e l >>= typecheckE
-  tr <- handleATerm e l >>= typecheckE
+  tr <- handleATerm e r >>= typecheckE
   return (BinOp op tl tr, s)
 typecheckE e@(UnaryOp op t, s) = do
   tt <- handleATerm e t >>= typecheckE
