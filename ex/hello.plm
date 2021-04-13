@@ -1,7 +1,14 @@
-def factorial(Int n): Int := 
-    if n <= 1 => 1
-    else if n = 2 => 255
-    else => n * factorial(n - 1)
+def other(): Char := 'a'
+def other1(): Float := {
+    Float f1 := 2555.000
+    Float f2 := 2211.0
+    f1 + f2
+}
 
-def main(): Int := factorial(5)
+def main(): Int := {
+    Float f := 2.0e2
+    Float l := f + 22
+    Int r := 2 - 4
+    r + 2 - 2 + 2
+}
 
