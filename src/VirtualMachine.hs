@@ -24,11 +24,17 @@ setRegister r v = do
 lookupRegister :: Integer -> VMState -> Value
 lookupRegister r s = getRegisters s M.! r
 
-addVal :: Value -> Value -> Value
-addVal (VInt l) (VInt r) = VInt (l + r)
-addVal (VFloat l) (VInt r) = VFloat (l + fromIntegral r)
-addVal (VInt l) (VFloat r) = VFloat (fromIntegral l + r)
-addVal (VFloat l) (VFloat r) = VFloat (l + r)
+addVal :: VMState -> Value -> Value -> Value
+addVal _ (VInt l) (VInt r) = VInt (l + r)
+addVal _ (VFloat l) (VInt r) = VFloat (l + fromIntegral r)
+addVal _ (VInt l) (VFloat r) = VFloat (fromIntegral l + r)
+addVal _ (VFloat l) (VFloat r) = VFloat (l + r)
+addVal s (Register lr) r = 
+  let l = lookupRegister lr s
+   in addVal s l r
+addVal s l (Register rr) = 
+  let r = lookupRegister rr s 
+   in addVal s l r
 
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b@(BytecodeProgram is tbl) =
@@ -58,11 +64,9 @@ runInst (Move v (Register r)) = do
     (Register src) -> setRegister r (lookupRegister src s)
     val -> setRegister r val
   return (pure ())
-runInst (Add (Register l) (Register r) (Register dst)) = do
+runInst (Add l r (Register dst)) = do
   s <- get
-  let lval = lookupRegister l s
-  let rval = lookupRegister r s
-  setRegister dst (addVal lval rval)
+  setRegister dst (addVal s l r)
   return (pure ())
 runInst Ret = do
   s <- get
