@@ -31,3 +31,4 @@ instance Show Value where
 instance Show Inst where
   show (Move v r) = printf "Mov %s -> %s" (show v) (show r)
   show Ret = "Ret"
+  show (Add v1 v2 r) = printf "Add (%s, %s) -> %s" (show v1) (show v2) (show r)
