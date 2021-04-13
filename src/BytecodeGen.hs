@@ -107,13 +107,13 @@ genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
 genGlobalTree (DefFn i [] _ e, _) = do
   appendLabel i
-  genExprInto retReg e
+  moveExprInto retReg e
   appendInst Ret
 
 genDecl :: DeclAug SymData -> State GState ()
 genDecl (Let _ i e, _) = do
   r <- getNextRegister
-  genExprInto r e
+  moveExprInto r e
   s <- get
   let vrs = getVarRegisters s
   setVarRegisters (M.insert i r vrs)
@@ -121,32 +121,42 @@ genDecl (Reassign i e, _) = do
   s <- get
   let rvs = getVarRegisters s
   case M.lookup i rvs of
-    Just r -> genExprInto r e
+    Just r -> moveExprInto r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
-genExprInto :: Integer -> ExprAug SymData -> State GState ()
-genExprInto t (BlockExpr ds e, _) = do
+moveExprInto :: Integer -> ExprAug SymData -> State GState ()
+moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
-  genExprInto t e
-genExprInto t (Subs i, _) = do
+  moveExprInto t e
+moveExprInto t (BinOp Plus l r, _) = do
+  lval <- genExprValue l 
+  rval <- genExprValue r
+  appendInst (Add lval rval (Register t))
+moveExprInto t e = do 
+  v <- genExprValue e 
+  appendInst (Move v (Register t))
+
+
+genExprValue :: ExprAug SymData -> State GState Value
+genExprValue (LitInt v, _) = return (VInt v)
+genExprValue (LitBool v, _) = return (VBool v)
+genExprValue (LitChar v, _) = return (VByte v)
+genExprValue (LitFloat v, _) = return (VFloat v)
+genExprValue (Subs i, _) = do
   s <- get
   let rvs = getVarRegisters s
   case M.lookup i rvs of
-    Just reg -> appendInst (Move (Register reg) (Register t))
+    Just reg -> return (Register reg)
     Nothing -> do
       let gvs = getGlobalVars s
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
-        Just v -> appendInst (Move v (Register t))
-genExprInto t (BinOp Plus l r, _) = do
-  lr <- getNextRegister
-  rr <- getNextRegister
-  genExprInto lr l
-  genExprInto rr r
-  appendInst (Add (Register lr) (Register rr) (Register t))
-genExprInto t (LitInt v, _) = appendInst $ Move (VInt v) (Register t)
-genExprInto t (LitBool v, _) = appendInst $ Move (VBool v) (Register t)
-genExprInto t (LitChar v, _) = appendInst $ Move (VByte v) (Register t)
-genExprInto t (LitFloat v, _) = appendInst $ Move (VFloat v) (Register t)
+        Just v -> return v
+genExprValue (BinOp Plus l r, _) = do 
+  n <- getNextRegister 
+  lval <- genExprValue l 
+  rval <- genExprValue r
+  appendInst (Add lval rval (Register n))
+  return (Register n)
