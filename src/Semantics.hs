@@ -337,12 +337,17 @@ getType (BinOp NotEqual _ _, _) = "Bool"
 -- arithmetic operations
 -- each term has been verified to have the same type (either Int or Float)
 -- by the typechecking step, so getting the type of the first term is enough
-getType (BinOp Plus f _, _) = getType f
-getType (BinOp Minus f _, _) = getType f
-getType (BinOp Mul f _, _) = getType f
-getType (BinOp Divide f _, _) = getType f
-getType (BinOp IntDivide f _, _) = "Int"
+getType (BinOp Plus l r, _) = promoteType (getType l) (getType r)
+getType (BinOp Minus l r, _) = promoteType (getType l) (getType r)
+getType (BinOp Mul l r, _) = promoteType (getType l) (getType r)
+getType (BinOp Divide _ _, _) = "Float"
+getType (BinOp IntDivide _ _, _) = "Int"
 getType (UnaryOp Neg e, _) = getType e
+
+promoteType :: Type -> Type -> Type 
+promoteType "Float" _ = "Float"
+promoteType _ "Float" = "Float"
+promoteType "Int" "Int" = "Int"
 
 -- sharing functionality between CallExpr and CallDecl because their semantics
 -- are identical
