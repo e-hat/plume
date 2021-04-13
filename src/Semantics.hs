@@ -281,6 +281,23 @@ typecheckE b@(UnaryOp Not t, s) = do
   tt <- handleBTerm b t >>= typecheckE
   return (UnaryOp Not tt, s)
 
+------------------------SPECIAL REL. EXPRS--------------------------------------
+typecheckE eq@(BinOp Equal l r, s) = 
+  let lt = getType l 
+      rt = getType r 
+   in if lt /= rt
+     then Left $ typeError l lt r rt 
+     else do 
+       teq <- BinOp Equal <$> typecheckE l <*> typecheckE r 
+       return (teq, s)
+typecheckE eq@(BinOp NotEqual l r, s) = 
+  let lt = getType l 
+      rt = getType r 
+   in if lt /= rt
+     then Left $ typeError l lt r rt 
+     else do 
+       teq <- BinOp NotEqual <$> typecheckE l <*> typecheckE r 
+       return (teq, s)
 ------------------------TYPECHECKING ARITH/REL EXPRS-------------------------------
 -- no longer need to pmatch on type of op since all remaining ops take numericalTypes
 typecheckE e@(BinOp op l r, s) = do
