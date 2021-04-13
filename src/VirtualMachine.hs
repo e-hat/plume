@@ -66,6 +66,7 @@ runInst (Move v (Register r)) = do
   return (pure ())
 runInst (Add l r reg) = runBinArithInst (+) l r reg
 runInst (Sub l r reg) = runBinArithInst (-) l r reg
+runInst (Mult l r reg) = runBinArithInst (*) l r reg
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}
