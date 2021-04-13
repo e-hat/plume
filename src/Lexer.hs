@@ -62,9 +62,7 @@ semicolon = Tok.semi lexer
 
 whiteSpace = Tok.whiteSpace lexer
 
-integer = Tok.integer lexer
-
-float = Tok.float lexer
+natOrFloat = Tok.naturalOrFloat lexer
 
 char = Tok.charLiteral lexer
 

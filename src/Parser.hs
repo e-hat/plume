@@ -62,16 +62,18 @@ opExpression :: P.Parsec String () (ExprAug SpanRec)
 opExpression = Ex.buildExpressionParser opTable term
 
 term =
-  L.parens opExpression P.<|> P.try callexpr P.<|> P.try subs P.<|> int P.<|> float P.<|> bool
+  L.parens opExpression P.<|> P.try callexpr P.<|> P.try subs P.<|> natOrFloat P.<|> bool
 
 ------------------------------------------------------
 ------------------literal parsing---------------------
 ------------------------------------------------------
-int :: P.Parsec String () (ExprAug SpanRec)
-int = exprWrapper $ LitInt <$> L.integer
 
-float :: P.Parsec String () (ExprAug SpanRec)
-float = exprWrapper $ LitFloat <$> L.float
+natOrFloat :: P.Parsec String () (ExprAug SpanRec)
+natOrFloat = exprWrapper $ do 
+  num <- L.natOrFloat 
+  case num of 
+    Left i -> return $ LitInt i
+    Right f -> return $ LitFloat f
 
 string :: P.Parsec String () (ExprAug SpanRec)
 string = exprWrapper $ LitString <$> L.string
@@ -118,8 +120,7 @@ expression =
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
     P.<|> P.try blockexpr
-    P.<|> P.try int
-    P.<|> P.try float
+    P.<|> P.try natOrFloat
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
@@ -161,8 +162,7 @@ paramexpr =
   P.try opExpression
     P.<|> P.try subs
     P.<|> P.try callexpr
-    P.<|> P.try int
-    P.<|> P.try float
+    P.<|> P.try natOrFloat
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
@@ -194,8 +194,7 @@ ifbodyexpr =
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
     P.<|> P.try blockexpr
-    P.<|> P.try int
-    P.<|> P.try float
+    P.<|> P.try natOrFloat
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
@@ -261,8 +260,7 @@ blockreturnexpr =
     P.<|> P.try subs
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
-    P.<|> P.try int
-    P.<|> P.try float
+    P.<|> P.try natOrFloat
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
