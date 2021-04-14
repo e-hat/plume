@@ -1,5 +1,6 @@
 module VirtualMachine where
 
+import ShowBytecode
 import BytecodeGen
 import Control.Monad.State
 import qualified Data.Map.Strict as M
@@ -47,7 +48,9 @@ arithComb s op l (Register rr) =
 
 divComb :: VMState -> Value -> Value -> Value
 divComb _ (VInt l) (VInt r) = VInt (l `quot` r)
+divComb _ (VFloat l) (VInt 0) = error "Divide by zero"
 divComb _ (VFloat l) (VInt r) = VFloat (l / fromIntegral r)
+divComb _ (VInt l) (VFloat 0.0) = error "Divide by zero"
 divComb _ (VInt l) (VFloat r) = VFloat (fromIntegral l / r)
 divComb _ (VFloat l) (VFloat r) = VFloat (l / r)
 divComb s (Register lr) r =
