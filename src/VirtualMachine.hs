@@ -15,16 +15,25 @@ data VMState = VMState
 setRegisters :: M.Map Integer Value -> State VMState ()
 setRegisters new = modify $ \s -> s {getRegisters = new}
 
+evaluateValue :: Value -> ()
+evaluateValue (VInt i) = seq i ()
+evaluateValue (VFloat f) = seq f ()
+evaluateValue (Register t) = seq t ()
+evaluateValue (VBool b) = seq b ()
+evaluateValue (VByte b) = seq b ()
+
 setRegister :: Integer -> Value -> State VMState ()
 setRegister r v = do
   s <- get
   let cur = getRegisters s
-  setRegisters (M.insert r v cur)
+  evaluateValue v `seq` setRegisters (M.insert r v cur)
 
 lookupRegister :: Integer -> VMState -> Value
 lookupRegister r s = getRegisters s M.! r
 
-arithComb :: VMState -> (forall a. Num a => a -> a -> a) -> Value -> Value -> Value
+type BinArithOp = forall a. Num a => a -> a -> a
+
+arithComb :: VMState -> BinArithOp -> Value -> Value -> Value
 arithComb _ op (VInt l) (VInt r) = VInt (op l r)
 arithComb _ op (VFloat l) (VInt r) = VFloat (op l (fromIntegral r))
 arithComb _ op (VInt l) (VFloat r) = VFloat (op (fromIntegral l) r)
@@ -35,6 +44,18 @@ arithComb s op (Register lr) r =
 arithComb s op l (Register rr) = 
   let r = lookupRegister rr s 
    in arithComb s op l r
+
+divComb :: VMState -> Value -> Value -> Value 
+divComb _ (VInt l) (VInt r) = VInt (l `quot` r)
+divComb _ (VFloat l) (VInt r) = VFloat (l / fromIntegral r)
+divComb _ (VInt l) (VFloat r) = VFloat (fromIntegral l / r)
+divComb _ (VFloat l) (VFloat r) = VFloat (l / r)
+divComb s (Register lr) r = 
+  let l = lookupRegister lr s 
+   in divComb s l r 
+divComb s l (Register rr) = 
+  let r = lookupRegister rr s 
+   in divComb s l r
 
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b@(BytecodeProgram is tbl) =
@@ -64,9 +85,13 @@ runInst (Move v (Register r)) = do
     Register src -> setRegister r (lookupRegister src s)
     val -> setRegister r val
   return (pure ())
-runInst (Add l r reg) = runBinArithInst (+) l r reg
-runInst (Sub l r reg) = runBinArithInst (-) l r reg
-runInst (Mult l r reg) = runBinArithInst (*) l r reg
+runInst (Add l r dst) = runBinArithInst (+) l r dst
+runInst (Sub l r dst) = runBinArithInst (-) l r dst
+runInst (Mult l r dst) = runBinArithInst (*) l r dst
+runInst (Div l r (Register dst)) = do 
+  s <- get 
+  setRegister dst (divComb s l r)
+  return (pure ())
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}
@@ -74,7 +99,7 @@ runInst Ret = do
     VInt 0 -> return exitSuccess
     VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
 
-runBinArithInst :: (forall a. Num a => a -> a -> a) -> Value -> Value -> Value -> State VMState (IO ())
+runBinArithInst :: BinArithOp -> Value -> Value -> Value -> State VMState (IO ())
 runBinArithInst op l r (Register dst) = do 
   s <- get 
   setRegister dst (arithComb s op l r)
