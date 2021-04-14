@@ -46,8 +46,8 @@ unary s f =
     return (asExprAug . UnaryOp f)
 
 opTable =
-  [ [unary "-" Neg],
-    [ binary "*" Mul Ex.AssocLeft,
+  [ [unary "-" Negate],
+    [ binary "*" Multiply Ex.AssocLeft,
       binary "/" Divide Ex.AssocLeft
     ],
     [binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft],

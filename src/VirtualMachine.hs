@@ -90,7 +90,7 @@ runInst (Move v (Register r)) = do
   return (pure ())
 runInst (Add l r dst) = runBinArithInst (+) l r dst
 runInst (Sub l r dst) = runBinArithInst (-) l r dst
-runInst (Mult l r dst) = runBinArithInst (*) l r dst
+runInst (Mul l r dst) = runBinArithInst (*) l r dst
 runInst (Div l r (Register dst)) = do
   s <- get
   setRegister dst (divComb s l r)

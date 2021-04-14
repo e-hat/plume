@@ -54,10 +54,10 @@ data Expr t
 
 data Op
   = Plus
-  | Mul
+  | Multiply
   | Minus
   | Divide
-  | Neg
+  | Negate
   | And
   | Or
   | Not

@@ -337,7 +337,7 @@ getType (BinOp NotEqual _ _, _) = "Bool"
 -- arithmetic operations
 -- each term has been verified to have the same type (either Int or Float)
 -- by the typechecking step, so getting the type of the first term is enough
-getType (UnaryOp Neg e, _) = getType e
+getType (UnaryOp Negate e, _) = getType e
 getType (BinOp _ l r, _) = promoteType (getType l) (getType r)
 
 promoteType :: Type -> Type -> Type 

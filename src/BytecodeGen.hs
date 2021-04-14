@@ -27,8 +27,9 @@ data Inst
   | Move Value Value
   | Add Value Value Value
   | Sub Value Value Value
-  | Mult Value Value Value
+  | Mul Value Value Value
   | Div Value Value Value
+  | Neg Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -164,5 +165,5 @@ genExprValue b@(BinOp _ l r, _) = do
 binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
 binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
-binOpMapping (BinOp Mul _ _, _) = Mult
+binOpMapping (BinOp Multiply _ _, _) = Mul
 binOpMapping (BinOp Divide _ _, _) = Div
