@@ -34,3 +34,4 @@ instance Show Inst where
   show (Add v1 v2 r) = printf "Add (%s, %s) -> %s" (show v1) (show v2) (show r)
   show (Sub v1 v2 r) = printf "Sub (%s, %s) -> %s" (show v1) (show v2) (show r)
   show (Mult v1 v2 r) = printf "Mul (%s, %s) -> %s" (show v1) (show v2) (show r)
+  show (Div v1 v2 r) = printf "Div (%s, %s) -> %s" (show v1) (show v2) (show r)
