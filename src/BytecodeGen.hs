@@ -3,7 +3,7 @@ module BytecodeGen
     Value (..),
     BytecodeProgram (..),
     genBytecode,
-    retReg,
+    retReg
   )
 where
 
@@ -28,6 +28,7 @@ data Inst
   | Add Value Value Value
   | Sub Value Value Value
   | Mult Value Value Value
+  | Div Value Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -158,13 +159,12 @@ genExprValue (Subs i, _) = do
         Just v -> return v
 genExprValue b@(BinOp _ l r, _) = do 
   n <- getNextRegister 
-  lval <- genExprValue l 
-  rval <- genExprValue r
-  appendInst (binOpMapping b lval rval (Register n))
+  moveExprInto n b
   return (Register n)
 
 binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
 binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
 binOpMapping (BinOp Mul _ _, _) = Mult
+binOpMapping (BinOp Divide _ _, _) = Div
 
