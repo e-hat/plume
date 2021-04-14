@@ -138,6 +138,9 @@ moveExprInto t b@(BinOp _ l r, _) = do
   lval <- genExprValue l
   rval <- genExprValue r
   appendInst (binOpMapping b lval rval (Register t))
+moveExprInto t u@(UnaryOp Negate e, _) = do
+  val <- genExprValue e 
+  appendInst (Neg val (Register t))
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
@@ -160,6 +163,10 @@ genExprValue (Subs i, _) = do
 genExprValue b@(BinOp _ l r, _) = do
   n <- getNextRegister
   moveExprInto n b
+  return (Register n)
+genExprValue u@(UnaryOp Negate e, _) = do 
+  n <- getNextRegister 
+  moveExprInto n u 
   return (Register n)
 
 binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
