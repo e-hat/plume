@@ -48,8 +48,7 @@ unary s f =
 opTable =
   [ [unary "-" Neg],
     [ binary "*" Mul Ex.AssocLeft,
-      binary "/" Divide Ex.AssocLeft,
-      binary "//" IntDivide Ex.AssocLeft
+      binary "/" Divide Ex.AssocLeft
     ],
     [binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft],
     [binary "<" Less Ex.AssocLeft, binary ">" Greater Ex.AssocLeft, binary "<=" Leq Ex.AssocLeft, binary ">=" Geq Ex.AssocLeft, binary "=" Equal Ex.AssocLeft, binary "!=" NotEqual Ex.AssocLeft],

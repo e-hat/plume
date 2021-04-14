@@ -57,7 +57,6 @@ data Op
   | Mul
   | Minus
   | Divide
-  | IntDivide
   | Neg
   | And
   | Or
