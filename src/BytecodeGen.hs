@@ -3,7 +3,7 @@ module BytecodeGen
     Value (..),
     BytecodeProgram (..),
     genBytecode,
-    retReg
+    retReg,
   )
 where
 
@@ -134,13 +134,12 @@ moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   moveExprInto t e
 moveExprInto t b@(BinOp _ l r, _) = do
-  lval <- genExprValue l 
+  lval <- genExprValue l
   rval <- genExprValue r
   appendInst (binOpMapping b lval rval (Register t))
-moveExprInto t e = do 
-  v <- genExprValue e 
+moveExprInto t e = do
+  v <- genExprValue e
   appendInst (Move v (Register t))
-
 
 genExprValue :: ExprAug SymData -> State GState Value
 genExprValue (LitInt v, _) = return (VInt v)
@@ -157,8 +156,8 @@ genExprValue (Subs i, _) = do
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
-genExprValue b@(BinOp _ l r, _) = do 
-  n <- getNextRegister 
+genExprValue b@(BinOp _ l r, _) = do
+  n <- getNextRegister
   moveExprInto n b
   return (Register n)
 
@@ -167,4 +166,3 @@ binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
 binOpMapping (BinOp Mul _ _, _) = Mult
 binOpMapping (BinOp Divide _ _, _) = Div
-

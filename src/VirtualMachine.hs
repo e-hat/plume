@@ -38,23 +38,23 @@ arithComb _ op (VInt l) (VInt r) = VInt (op l r)
 arithComb _ op (VFloat l) (VInt r) = VFloat (op l (fromIntegral r))
 arithComb _ op (VInt l) (VFloat r) = VFloat (op (fromIntegral l) r)
 arithComb _ op (VFloat l) (VFloat r) = VFloat (op l r)
-arithComb s op (Register lr) r = 
+arithComb s op (Register lr) r =
   let l = lookupRegister lr s
    in arithComb s op l r
-arithComb s op l (Register rr) = 
-  let r = lookupRegister rr s 
+arithComb s op l (Register rr) =
+  let r = lookupRegister rr s
    in arithComb s op l r
 
-divComb :: VMState -> Value -> Value -> Value 
+divComb :: VMState -> Value -> Value -> Value
 divComb _ (VInt l) (VInt r) = VInt (l `quot` r)
 divComb _ (VFloat l) (VInt r) = VFloat (l / fromIntegral r)
 divComb _ (VInt l) (VFloat r) = VFloat (fromIntegral l / r)
 divComb _ (VFloat l) (VFloat r) = VFloat (l / r)
-divComb s (Register lr) r = 
-  let l = lookupRegister lr s 
-   in divComb s l r 
-divComb s l (Register rr) = 
-  let r = lookupRegister rr s 
+divComb s (Register lr) r =
+  let l = lookupRegister lr s
+   in divComb s l r
+divComb s l (Register rr) =
+  let r = lookupRegister rr s
    in divComb s l r
 
 runBytecode :: BytecodeProgram -> IO ()
@@ -88,8 +88,8 @@ runInst (Move v (Register r)) = do
 runInst (Add l r dst) = runBinArithInst (+) l r dst
 runInst (Sub l r dst) = runBinArithInst (-) l r dst
 runInst (Mult l r dst) = runBinArithInst (*) l r dst
-runInst (Div l r (Register dst)) = do 
-  s <- get 
+runInst (Div l r (Register dst)) = do
+  s <- get
   setRegister dst (divComb s l r)
   return (pure ())
 runInst Ret = do
@@ -100,7 +100,7 @@ runInst Ret = do
     VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
 
 runBinArithInst :: BinArithOp -> Value -> Value -> Value -> State VMState (IO ())
-runBinArithInst op l r (Register dst) = do 
-  s <- get 
+runBinArithInst op l r (Register dst) = do
+  s <- get
   setRegister dst (arithComb s op l r)
   return (pure ())
