@@ -54,7 +54,7 @@ def main(): Int := {
 }
 ```
 
-This program exits with a status of `5`. After doing arithmetic/boolean expressions, I will add if expressions/declarations. Then, function calls will be added, which will probably be the most difficult. Note that only primitive types are currently allowed as, I have not yet added a "stack" concept to the bytecode (or the VM, for that matter). Also, it is impossible to reassign global variables. I am deciding whether or not I should be setting memory locations for global variables in bytecode or if that should be distracted. These are fun problems to be considering!
+This program exits with a status of `5`. After doing arithmetic/boolean expressions, I will add if expressions/declarations. Then, function calls will be added, which will probably be the most difficult. Note that only primitive types are currently allowed as, I have not yet added a "stack" concept to the bytecode (or the VM, for that matter). Also, it is impossible to reassign global variables. I am deciding whether or not I should be setting memory locations for global variables in bytecode or if that should be abstracted. These are fun problems to be considering!
 
 <a name="use">
 
