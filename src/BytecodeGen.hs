@@ -32,6 +32,7 @@ data Inst
   | Neg Value Value
   | IAnd Value Value Value 
   | IOr Value Value Value 
+  | Inv Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -143,6 +144,9 @@ moveExprInto t b@(BinOp _ l r, _) = do
 moveExprInto t u@(UnaryOp Negate e, _) = do
   val <- genExprValue e 
   appendInst (Neg val (Register t))
+moveExprInto t u@(UnaryOp Not e, _) = do 
+  val <- genExprValue e 
+  appendInst (Inv val (Register t))
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
@@ -166,7 +170,7 @@ genExprValue b@(BinOp _ l r, _) = do
   n <- getNextRegister
   moveExprInto n b
   return (Register n)
-genExprValue u@(UnaryOp Negate e, _) = do 
+genExprValue u@(UnaryOp _ e, _) = do 
   n <- getNextRegister 
   moveExprInto n u 
   return (Register n)
