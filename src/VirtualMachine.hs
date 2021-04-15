@@ -60,6 +60,16 @@ divComb s l (Register rr) =
   let r = lookupRegister rr s
    in divComb s l r
 
+type BinBoolOp = Bool -> Bool -> Bool 
+boolComb :: VMState -> BinBoolOp -> Value -> Value -> Value 
+boolComb _ op (VBool l) (VBool r) = VBool (op l r)
+boolComb s op (Register lr) r =
+  let l = lookupRegister lr s 
+   in boolComb s op l r 
+boolComb s op l (Register rr) = 
+  let r = lookupRegister rr s 
+   in boolComb s op l r
+
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b@(BytecodeProgram is tbl) =
   let start = tbl M.! "main"
@@ -106,6 +116,8 @@ runInst (Neg v (Register dst)) = do
       negateVal s (Register t) = 
         let v = lookupRegister t s
          in negateVal s v
+runInst (IAnd l r dst) = runBinBoolInst (&&) l r dst
+runInst (IOr l r dst) = runBinBoolInst (||) l r dst
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}
@@ -117,4 +129,10 @@ runBinArithInst :: BinArithOp -> Value -> Value -> Value -> State VMState (IO ()
 runBinArithInst op l r (Register dst) = do
   s <- get
   setRegister dst (arithComb s op l r)
+  return (pure ())
+
+runBinBoolInst :: BinBoolOp -> Value -> Value -> Value -> State VMState (IO ())
+runBinBoolInst op l r (Register dst) = do 
+  s <- get 
+  setRegister dst (boolComb s op l r)
   return (pure ())
