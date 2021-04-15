@@ -39,3 +39,6 @@ instance Show Inst where
   show (IOr v1 v2 r) = printf "Or (%s, %s) -> %s" (show v1) (show v2) (show r)
   show (Neg v1 r) = printf "Neg %s -> %s" (show v1) (show r)
   show (Inv v1 r) = printf "Inv %s -> %s" (show v1) (show r)
+  show (Cmp v1 v2) = printf "Cmp %s, %s" (show v1) (show v2)
+  show (Jmp l) = printf "Jmp %s" l
+  show (JmpIfFalse l) = printf "JmpIfFalse %s" l
