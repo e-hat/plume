@@ -30,6 +30,8 @@ data Inst
   | Mul Value Value Value
   | Div Value Value Value
   | Neg Value Value
+  | IAnd Value Value Value 
+  | IOr Value Value Value 
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -174,3 +176,5 @@ binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
 binOpMapping (BinOp Multiply _ _, _) = Mul
 binOpMapping (BinOp Divide _ _, _) = Div
+binOpMapping (BinOp And _ _, _) = IAnd 
+binOpMapping (BinOp Or _ _,  _) = IOr
