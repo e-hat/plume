@@ -23,7 +23,8 @@ languageDef =
           "and",
           "or",
           "return",
-          "main"
+          "main",
+          "yield"
         ],
       Tok.reservedOpNames =
         [ "+",

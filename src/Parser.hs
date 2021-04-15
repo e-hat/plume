@@ -114,7 +114,7 @@ bodyDeclaration =
 
 expression :: P.Parsec String () (ExprAug SpanRec)
 expression =
-  P.try opExpression
+    P.try opExpression
     P.<|> P.try subs
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
@@ -124,6 +124,9 @@ expression =
     P.<|> P.try bool
     P.<|> P.try char
     P.<?> "an expression (something that has a result)"
+
+yieldexpr :: P.Parsec String () (ExprAug SpanRec)
+yieldexpr = L.reserved "yield" >> expression
 
 letdecl :: P.Parsec String () (DeclAug SpanRec)
 letdecl =
@@ -255,7 +258,8 @@ elsedecl =
 
 blockreturnexpr :: P.Parsec String () (ExprAug SpanRec)
 blockreturnexpr =
-  P.try opExpression
+    P.try yieldexpr
+    P.<|> P.try opExpression
     P.<|> P.try subs
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
