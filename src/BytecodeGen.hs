@@ -11,6 +11,7 @@ import Control.Monad.State
 import Data.Foldable
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Text.Printf (errorShortFormat, printf)
 import SymbolTable
 import Syntax
 
@@ -33,6 +34,9 @@ data Inst
   | IAnd Value Value Value 
   | IOr Value Value Value 
   | Inv Value Value
+  | Cmp Value Value 
+  | Jmp String 
+  | JmpIfFalse String
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -43,7 +47,8 @@ data GState = GState
   { getCurrentProgram :: BytecodeProgram,
     getOpenRegisters :: [Integer],
     getVarRegisters :: M.Map String Integer,
-    getGlobalVars :: M.Map String Value
+    getGlobalVars :: M.Map String Value,
+    getOpenLabelNums :: [Integer]
   }
 
 -- helper functions for managing state
@@ -67,6 +72,9 @@ appendLabel l = do
 setOpenRegisters :: [Integer] -> State GState ()
 setOpenRegisters rs = modify $ \s -> s {getOpenRegisters = rs}
 
+setOpenLabelNums :: [Integer] -> State GState ()
+setOpenLabelNums ls = modify $ \s -> s {getOpenLabelNums = ls}
+
 setVarRegisters :: M.Map String Integer -> State GState ()
 setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 
@@ -81,6 +89,14 @@ getNextRegister = do
   setOpenRegisters $ tail rs
   return result
 
+getNextLabel :: State GState String 
+getNextLabel = do 
+  s <- get 
+  let ls = getOpenLabelNums s 
+  let result = head ls 
+  setOpenLabelNums $ tail ls 
+  return (printf "*%06d*" result)
+
 retReg :: Integer
 retReg = 0
 
@@ -88,7 +104,7 @@ retVal :: Value -> Inst
 retVal v = Move v (Register retReg)
 
 initState :: GState
-initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty
+initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [ 1 .. ]
 
 -------------------------------------------------------------------------------
 ----------------------------- BYTECODE GENERATION -----------------------------
@@ -147,6 +163,30 @@ moveExprInto t u@(UnaryOp Negate e, _) = do
 moveExprInto t u@(UnaryOp Not e, _) = do 
   val <- genExprValue e 
   appendInst (Inv val (Register t))
+moveExprInto t i@(IfExpr ic ie eifs ee, _) = 
+  let genCE :: String -> [(ExprAug SymData, ExprAug SymData)] -> State GState ()
+      genCE exit [(cond,body)] = do 
+        cresult <- genExprValue cond
+        appendInst (Cmp cresult (VBool True))
+        elbl <- getNextLabel
+        appendInst (JmpIfFalse elbl)
+        moveExprInto t body 
+        appendInst (Jmp exit)
+        appendLabel elbl 
+        moveExprInto t ee
+      genCE exit ((cond,body):rest) = do 
+        cresult <- genExprValue cond 
+        appendInst (Cmp cresult (VBool True))
+        nextCond <- getNextLabel 
+        appendInst (JmpIfFalse nextCond)
+        moveExprInto t body 
+        appendInst (Jmp exit)
+        appendLabel nextCond
+        genCE exit rest
+   in do 
+     exit <- getNextLabel 
+     genCE exit ((ic,ie):eifs)
+     appendLabel exit 
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
@@ -166,13 +206,9 @@ genExprValue (Subs i, _) = do
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
-genExprValue b@(BinOp _ l r, _) = do
-  n <- getNextRegister
-  moveExprInto n b
-  return (Register n)
-genExprValue u@(UnaryOp _ e, _) = do 
+genExprValue e = do 
   n <- getNextRegister 
-  moveExprInto n u 
+  moveExprInto n e 
   return (Register n)
 
 binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
