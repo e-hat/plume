@@ -10,7 +10,8 @@ data VMState = VMState
   { getRegisters :: M.Map Integer Value,
     getCurrentProgram :: BytecodeProgram,
     getIPtr :: Integer,
-    getRunning :: Bool
+    getRunning :: Bool,
+    getLastComp :: Bool
   }
 
 setRegisters :: M.Map Integer Value -> State VMState ()
@@ -29,8 +30,16 @@ setRegister r v = do
   let cur = getRegisters s
   evaluateValue v `seq` setRegisters (M.insert r v cur)
 
+setLastComp :: Bool -> State VMState ()
+setLastComp b = 
+  modify $ \s -> s {getLastComp = seq b () `seq` b}
+
 lookupRegister :: Integer -> VMState -> Value
 lookupRegister r s = getRegisters s M.! r
+
+setIPtr :: Integer -> State VMState ()
+setIPtr i = 
+  modify $ \s -> s {getIPtr = seq i () `seq` i}
 
 type BinArithOp = forall a. Num a => a -> a -> a
 
@@ -73,7 +82,7 @@ boolComb s op l (Register rr) =
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b@(BytecodeProgram is tbl) =
   let start = tbl M.! "main"
-      (rslt, _) = runState (runFrom start) (VMState M.empty b start True)
+      (rslt, _) = runState (runFrom start) (VMState M.empty b start True False)
    in rslt
 
 -- allows for program to dictate control flow, otherwise continues to next instruction
@@ -128,6 +137,26 @@ runInst (Inv v (Register dst)) = do
          in invertVal s v
 runInst (IAnd l r dst) = runBinBoolInst (&&) l r dst
 runInst (IOr l r dst) = runBinBoolInst (||) l r dst
+runInst (Cmp v1 v2) = 
+  case (v1,v2) of 
+    (VBool l, VBool r) -> pure <$> setLastComp (l && r)
+    (Register lr, r) -> do 
+      s <- get 
+      let l = lookupRegister lr s      
+      runInst (Cmp l r)
+    (l, Register rr) -> do 
+      s <- get 
+      let r = lookupRegister rr s 
+      runInst (Cmp l r)
+runInst (Jmp lbl) = do 
+  s <- get 
+  let lbltbl = getLabelTable $ getCurrentProgram s
+  pure <$> setIPtr (lbltbl M.! lbl)
+runInst (JmpIfFalse lbl) = do 
+  s <- get 
+  if not $ getLastComp s 
+    then runInst (Jmp lbl)
+    else return (pure ())
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}
