@@ -95,6 +95,17 @@ runInst (Div l r (Register dst)) = do
   s <- get
   setRegister dst (divComb s l r)
   return (pure ())
+runInst (Neg v (Register dst)) = do 
+  s <- get 
+  setRegister dst (negateVal s v)
+  return (pure ())
+    where 
+      negateVal :: VMState -> Value -> Value
+      negateVal _ (VFloat v) = VFloat (negate v)
+      negateVal _ (VInt v) = VInt (negate v)
+      negateVal s (Register t) = 
+        let v = lookupRegister t s
+         in negateVal s v
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}
