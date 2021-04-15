@@ -38,3 +38,4 @@ instance Show Inst where
   show (IAnd v1 v2 r) = printf "And (%s, %s) -> %s" (show v1) (show v2) (show r)
   show (IOr v1 v2 r) = printf "Or (%s, %s) -> %s" (show v1) (show v2) (show r)
   show (Neg v1 r) = printf "Neg %s -> %s" (show v1) (show r)
+  show (Inv v1 r) = printf "Inv %s -> %s" (show v1) (show r)
