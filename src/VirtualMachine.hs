@@ -116,6 +116,16 @@ runInst (Neg v (Register dst)) = do
       negateVal s (Register t) = 
         let v = lookupRegister t s
          in negateVal s v
+runInst (Inv v (Register dst)) = do 
+  s <- get 
+  setRegister dst (invertVal s v)
+  return (pure ())
+    where 
+      invertVal :: VMState -> Value -> Value 
+      invertVal _ (VBool v) = VBool (not v)
+      invertVal s (Register t) = 
+        let v = lookupRegister t s
+         in invertVal s v
 runInst (IAnd l r dst) = runBinBoolInst (&&) l r dst
 runInst (IOr l r dst) = runBinBoolInst (||) l r dst
 runInst Ret = do
