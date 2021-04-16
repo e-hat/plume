@@ -11,8 +11,10 @@ data VMState = VMState
     getCurrentProgram :: BytecodeProgram,
     getIPtr :: Integer,
     getRunning :: Bool,
-    getLastComp :: Bool
+    getLastComp :: CmpResult
   }
+
+data CmpResult = RL | RG | REqual
 
 setRegisters :: M.Map Integer Value -> State VMState ()
 setRegisters new = modify $ \s -> s {getRegisters = new}
@@ -30,7 +32,7 @@ setRegister r v = do
   let cur = getRegisters s
   evaluateValue v `seq` setRegisters (M.insert r v cur)
 
-setLastComp :: Bool -> State VMState ()
+setLastComp :: CmpResult -> State VMState ()
 setLastComp b = 
   modify $ \s -> s {getLastComp = seq b () `seq` b}
 
@@ -79,10 +81,31 @@ boolComb s op l (Register rr) =
   let r = lookupRegister rr s 
    in boolComb s op l r
 
+compareVal :: VMState -> Value -> Value -> CmpResult 
+compareVal _ (VInt l) (VInt r) 
+  | l > r = RG 
+  | l < r = RL 
+  | otherwise = REqual
+compareVal s f@(VFloat l) (VInt r) = compareVal s f (VFloat $ fromIntegral r)
+compareVal s (VInt l) f@(VFloat r) = compareVal s (VFloat $ fromIntegral l) f
+compareVal _ (VFloat l) (VFloat r) 
+  | l > r = RG 
+  | l < r = RL 
+  | otherwise = REqual 
+compareVal _ (VBool l) (VBool r) 
+  | l == r = REqual 
+  | otherwise = RL
+compareVal s (Register lr) r = 
+  let l = lookupRegister lr s
+   in compareVal s l r
+compareVal s l (Register rr) = 
+  let r = lookupRegister rr s 
+   in compareVal s l r
+
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b@(BytecodeProgram is tbl) =
   let start = tbl M.! "main"
-      (rslt, _) = runState (runFrom start) (VMState M.empty b start True False)
+      (rslt, _) = runState (runFrom start) (VMState M.empty b start True REqual)
    in rslt
 
 -- allows for program to dictate control flow, otherwise continues to next instruction
@@ -137,26 +160,44 @@ runInst (Inv v (Register dst)) = do
          in invertVal s v
 runInst (IAnd l r dst) = runBinBoolInst (&&) l r dst
 runInst (IOr l r dst) = runBinBoolInst (||) l r dst
-runInst (Cmp v1 v2) = 
-  case (v1,v2) of 
-    (VBool l, VBool r) -> pure <$> setLastComp (l && r)
-    (Register lr, r) -> do 
-      s <- get 
-      let l = lookupRegister lr s      
-      runInst (Cmp l r)
-    (l, Register rr) -> do 
-      s <- get 
-      let r = lookupRegister rr s 
-      runInst (Cmp l r)
+runInst (Cmp v1 v2) = do 
+  s <- get 
+  setLastComp (compareVal s v1 v2)
+  return (pure ())
 runInst (Jmp lbl) = do 
   s <- get 
   let lbltbl = getLabelTable $ getCurrentProgram s
   pure <$> setIPtr (lbltbl M.! lbl)
-runInst (JmpIfFalse lbl) = do 
+runInst (JmpNotEqual lbl) = do 
   s <- get 
-  if not $ getLastComp s 
-    then runInst (Jmp lbl)
-    else return (pure ())
+  case getLastComp s of
+    REqual -> return (pure ())
+    _ -> runInst (Jmp lbl)
+runInst (JmpEqual lbl) = do 
+  s <- get 
+  case getLastComp s of 
+    REqual -> runInst (Jmp lbl)
+    _ -> return (pure ())
+runInst (JmpLeq lbl) = do 
+  s <- get 
+  case getLastComp s of 
+    RG -> return (pure ())
+    _ -> runInst (Jmp lbl)
+runInst (JmpL lbl) = do 
+  s <- get 
+  case getLastComp s of 
+    RL -> runInst (Jmp lbl)
+    _ -> return (pure ())
+runInst (JmpGeq lbl) = do 
+  s <- get 
+  case getLastComp s of 
+    RL -> return (pure ())
+    _ -> runInst (Jmp lbl)
+runInst (JmpG lbl) = do 
+  s <- get 
+  case getLastComp s of 
+    RG -> runInst (Jmp lbl)
+    _ -> return (pure ())
 runInst Ret = do
   s <- get
   put $ s {getRunning = False}

@@ -35,7 +35,12 @@ data Inst
   | Inv Value Value
   | Cmp Value Value 
   | Jmp String 
-  | JmpIfFalse String
+  | JmpNotEqual String
+  | JmpEqual String
+  | JmpGeq String
+  | JmpLeq String 
+  | JmpL String 
+  | JmpG String 
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -152,6 +157,12 @@ moveExprInto :: Integer -> ExprAug SymData -> State GState ()
 moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   moveExprInto t e
+moveExprInto t b@(BinOp Leq l r, _) = moveRelInto t b
+moveExprInto t b@(BinOp Less l r, _) = moveRelInto t b
+moveExprInto t b@(BinOp Geq l r, _) = moveRelInto t b 
+moveExprInto t b@(BinOp Greater l r, _) = moveRelInto t b 
+moveExprInto t b@(BinOp Equal l r, _) = moveRelInto t b 
+moveExprInto t b@(BinOp NotEqual l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp _ l r, _) = do
   lval <- genExprValue l
   rval <- genExprValue r
@@ -168,7 +179,7 @@ moveExprInto t i@(IfExpr ic ie eifs ee, _) =
         cresult <- genExprValue cond
         appendInst (Cmp cresult (VBool True))
         elbl <- getNextLabel
-        appendInst (JmpIfFalse elbl)
+        appendInst (JmpNotEqual elbl)
         moveExprInto t body 
         appendInst (Jmp exit)
         appendLabel elbl 
@@ -177,7 +188,7 @@ moveExprInto t i@(IfExpr ic ie eifs ee, _) =
         cresult <- genExprValue cond 
         appendInst (Cmp cresult (VBool True))
         nextCond <- getNextLabel 
-        appendInst (JmpIfFalse nextCond)
+        appendInst (JmpNotEqual nextCond)
         moveExprInto t body 
         appendInst (Jmp exit)
         appendLabel nextCond
@@ -189,6 +200,20 @@ moveExprInto t i@(IfExpr ic ie eifs ee, _) =
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
+
+moveRelInto :: Integer -> ExprAug SymData -> State GState () 
+moveRelInto t rel@(BinOp _ l r, _) = do
+  lval <- genExprValue l 
+  rval <- genExprValue r 
+  appendInst (Cmp lval rval) 
+  exit <- getNextLabel 
+  success <- getNextLabel 
+  appendInst (relOpMapping rel success)
+  appendInst (Move (VBool False) (Register t))
+  appendInst (Jmp exit)
+  appendLabel success 
+  appendInst (Move (VBool True) (Register t))
+  appendLabel exit
 
 genExprValue :: ExprAug SymData -> State GState Value
 genExprValue (LitInt v, _) = return (VInt v)
@@ -217,3 +242,11 @@ binOpMapping (BinOp Multiply _ _, _) = Mul
 binOpMapping (BinOp Divide _ _, _) = Div
 binOpMapping (BinOp And _ _, _) = IAnd 
 binOpMapping (BinOp Or _ _,  _) = IOr
+
+relOpMapping :: ExprAug SymData -> (String -> Inst) 
+relOpMapping (BinOp Leq _ _, _) = JmpLeq 
+relOpMapping (BinOp Less _ _, _) = JmpL 
+relOpMapping (BinOp Geq _ _, _) = JmpGeq 
+relOpMapping (BinOp Greater _ _, _) = JmpG 
+relOpMapping (BinOp Equal _ _, _) = JmpEqual 
+relOpMapping (BinOp NotEqual _ _, _) = JmpNotEqual
