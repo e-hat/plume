@@ -10,7 +10,6 @@ where
 import Control.Monad.State
 import Data.Foldable
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 import Text.Printf (errorShortFormat, printf)
 import SymbolTable
 import Syntax
