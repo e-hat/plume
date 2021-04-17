@@ -41,9 +41,10 @@ instance Show Inst where
   show (Inv v1 r) = printf "Inv %s -> %s" (show v1) (show r)
   show (Cmp v1 v2) = printf "Cmp %s, %s" (show v1) (show v2)
   show (Jmp l) = printf "Jmp %s" l
-  show (JmpEqual l) = printf "JmpEqual %s" l
-  show (JmpNotEqual l) = printf "JmpNotEqual %s" l 
-  show (JmpL l) = printf "JmpL %s" l
-  show (JmpLeq l) = printf "JmpLeq %s" l 
-  show (JmpG l) = printf "JmpG %s" l
-  show (JmpGeq l) = printf "JmpGeq %s" l
+  show (JmpNotEqual l) = printf "Jmp %s" l
+  show (CmovE v r) = printf "CmovE %s -> %s" (show v) (show r)
+  show (CmovNE v r) = printf "CmovNE %s -> %s" (show v) (show r) 
+  show (CmovL v r) = printf "CmovL %s -> %s" (show v) (show r)
+  show (CmovLE v r) = printf "CmovLE %s -> %s" (show v) (show r)
+  show (CmovG v r) = printf "CmovG %s -> %s" (show v) (show r)
+  show (CmovGE v r) = printf "CmovGE %s -> %s" (show v) (show r)

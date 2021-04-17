@@ -36,11 +36,12 @@ data Inst
   | Cmp Value Value 
   | Jmp String 
   | JmpNotEqual String
-  | JmpEqual String
-  | JmpGeq String
-  | JmpLeq String 
-  | JmpL String 
-  | JmpG String 
+  | CmovE Value Value 
+  | CmovNE Value Value 
+  | CmovLE Value Value 
+  | CmovL Value Value 
+  | CmovGE Value Value 
+  | CmovG Value Value
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -153,6 +154,7 @@ genDecl (Reassign i e, _) = do
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
+-- this is the core of how plume allows a variable to be assigned to any expression
 moveExprInto :: Integer -> ExprAug SymData -> State GState ()
 moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
@@ -206,15 +208,13 @@ moveRelInto t rel@(BinOp _ l r, _) = do
   lval <- genExprValue l 
   rval <- genExprValue r 
   appendInst (Cmp lval rval) 
-  exit <- getNextLabel 
-  success <- getNextLabel 
-  appendInst (relOpMapping rel success)
   appendInst (Move (VBool False) (Register t))
-  appendInst (Jmp exit)
-  appendLabel success 
-  appendInst (Move (VBool True) (Register t))
-  appendLabel exit
+  appendInst (relOpMapping rel (VBool True) (Register t))
 
+-- this is for AST nodes that could possibly have 
+-- their literal values placed directly into bytecode 
+-- instead of being put into a register, like literals and globals
+-- this HUGELY cuts down on the number of move instructions generated
 genExprValue :: ExprAug SymData -> State GState Value
 genExprValue (LitInt v, _) = return (VInt v)
 genExprValue (LitBool v, _) = return (VBool v)
@@ -230,6 +230,7 @@ genExprValue (Subs i, _) = do
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
+-- for everything else, it needs to be stored in a register
 genExprValue e = do 
   n <- getNextRegister 
   moveExprInto n e 
@@ -243,10 +244,10 @@ binOpMapping (BinOp Divide _ _, _) = Div
 binOpMapping (BinOp And _ _, _) = IAnd 
 binOpMapping (BinOp Or _ _,  _) = IOr
 
-relOpMapping :: ExprAug SymData -> (String -> Inst) 
-relOpMapping (BinOp Leq _ _, _) = JmpLeq 
-relOpMapping (BinOp Less _ _, _) = JmpL 
-relOpMapping (BinOp Geq _ _, _) = JmpGeq 
-relOpMapping (BinOp Greater _ _, _) = JmpG 
-relOpMapping (BinOp Equal _ _, _) = JmpEqual 
-relOpMapping (BinOp NotEqual _ _, _) = JmpNotEqual
+relOpMapping :: ExprAug SymData -> (Value -> Value -> Inst) 
+relOpMapping (BinOp Leq _ _, _) = CmovLE
+relOpMapping (BinOp Less _ _, _) = CmovL 
+relOpMapping (BinOp Geq _ _, _) = CmovGE 
+relOpMapping (BinOp Greater _ _, _) = CmovG 
+relOpMapping (BinOp Equal _ _, _) = CmovE 
+relOpMapping (BinOp NotEqual _ _, _) = CmovNE

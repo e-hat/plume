@@ -170,33 +170,38 @@ runInst (Jmp lbl) = do
   pure <$> setIPtr (lbltbl M.! lbl)
 runInst (JmpNotEqual lbl) = do 
   s <- get 
-  case getLastComp s of
+  case getLastComp s of 
     REqual -> return (pure ())
     _ -> runInst (Jmp lbl)
-runInst (JmpEqual lbl) = do 
+runInst (CmovNE v r) = do 
+  s <- get 
+  case getLastComp s of
+    REqual -> return (pure ())
+    _ -> runInst (Move v r)
+runInst (CmovE v r) = do 
   s <- get 
   case getLastComp s of 
-    REqual -> runInst (Jmp lbl)
+    REqual -> runInst (Move v r)
     _ -> return (pure ())
-runInst (JmpLeq lbl) = do 
+runInst (CmovLE v r) = do 
   s <- get 
   case getLastComp s of 
     RG -> return (pure ())
-    _ -> runInst (Jmp lbl)
-runInst (JmpL lbl) = do 
+    _ -> runInst (Move v r)
+runInst (CmovL v r) = do 
   s <- get 
   case getLastComp s of 
-    RL -> runInst (Jmp lbl)
+    RL -> runInst (Move v r)
     _ -> return (pure ())
-runInst (JmpGeq lbl) = do 
+runInst (CmovGE v r) = do 
   s <- get 
   case getLastComp s of 
     RL -> return (pure ())
-    _ -> runInst (Jmp lbl)
-runInst (JmpG lbl) = do 
+    _ -> runInst (Move v r)
+runInst (CmovG v r) = do 
   s <- get 
   case getLastComp s of 
-    RG -> runInst (Jmp lbl)
+    RG -> runInst (Move v r)
     _ -> return (pure ())
 runInst Ret = do
   s <- get
