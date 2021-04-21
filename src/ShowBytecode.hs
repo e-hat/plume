@@ -14,10 +14,10 @@ instance Show BytecodeProgram where
         zipNums :: Integer -> String -> String
         zipNums ln i' =
           case map snd (filter ((== ln) . fst) ftbl) of
-            l:ls  -> 
-              printf "%s:\n" l ++
-                concatMap (printf "%s:\n") ls ++
-                  fmtInst ln i'
+            l : ls ->
+              printf "%s:\n" l
+                ++ concatMap (printf "%s:\n") ls
+                ++ fmtInst ln i'
             [] -> fmtInst ln i'
      in concat $ zipWith zipNums [1 ..] is'
 
@@ -42,8 +42,8 @@ instance Show Inst where
   show (Cmp v1 v2) = printf "Cmp %s, %s" (show v1) (show v2)
   show (Jmp l) = printf "Jmp %s" l
   show (JmpEqual l) = printf "JmpEqual %s" l
-  show (JmpNotEqual l) = printf "JmpNotEqual %s" l 
+  show (JmpNotEqual l) = printf "JmpNotEqual %s" l
   show (JmpL l) = printf "JmpL %s" l
-  show (JmpLeq l) = printf "JmpLeq %s" l 
+  show (JmpLeq l) = printf "JmpLeq %s" l
   show (JmpG l) = printf "JmpG %s" l
   show (JmpGeq l) = printf "JmpGeq %s" l

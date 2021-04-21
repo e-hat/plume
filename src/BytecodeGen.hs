@@ -10,9 +10,9 @@ where
 import Control.Monad.State
 import Data.Foldable
 import qualified Data.Map.Strict as M
-import Text.Printf (errorShortFormat, printf)
 import SymbolTable
 import Syntax
+import Text.Printf (errorShortFormat, printf)
 
 -- types of values that can be moved around
 data Value
@@ -30,17 +30,17 @@ data Inst
   | Mul Value Value Value
   | Div Value Value Value
   | Neg Value Value
-  | IAnd Value Value Value 
-  | IOr Value Value Value 
+  | IAnd Value Value Value
+  | IOr Value Value Value
   | Inv Value Value
-  | Cmp Value Value 
-  | Jmp String 
+  | Cmp Value Value
+  | Jmp String
   | JmpNotEqual String
   | JmpEqual String
   | JmpGeq String
-  | JmpLeq String 
-  | JmpL String 
-  | JmpG String 
+  | JmpLeq String
+  | JmpL String
+  | JmpG String
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -84,8 +84,8 @@ setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 
 setVarRegister :: String -> Integer -> State GState ()
 setVarRegister i r = do
-  s <- get 
-  let vrs = getVarRegisters s 
+  s <- get
+  let vrs = getVarRegisters s
   setVarRegisters (M.insert i r vrs)
 
 setGlobalVars :: M.Map String Value -> State GState ()
@@ -99,12 +99,12 @@ getNextRegister = do
   setOpenRegisters $ tail rs
   return result
 
-getNextLabel :: State GState String 
-getNextLabel = do 
-  s <- get 
-  let ls = getOpenLabelNums s 
-  let result = head ls 
-  setOpenLabelNums $ tail ls 
+getNextLabel :: State GState String
+getNextLabel = do
+  s <- get
+  let ls = getOpenLabelNums s
+  let result = head ls
+  setOpenLabelNums $ tail ls
   return (printf "*%06d*" result)
 
 -- equivalent of %eax in this bytecode is $0
@@ -115,7 +115,7 @@ retVal :: Value -> Inst
 retVal v = Move v (Register retReg)
 
 initState :: GState
-initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [ 1 .. ]
+initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [1 ..]
 
 -------------------------------------------------------------------------------
 ----------------------------- BYTECODE GENERATION -----------------------------
@@ -143,21 +143,21 @@ genGlobalTree (DefFn i ps "Void" e, _) = do
   appendLabel i
   setupParams ps
   genVoidExpr e
-genGlobalTree (DefFn i ps _ e, _) = do 
-  appendLabel i 
+genGlobalTree (DefFn i ps _ e, _) = do
+  appendLabel i
   setupParams ps
-  moveExprInto retReg e 
+  moveExprInto retReg e
   appendInst Ret
 
--- the calling convention in this compiler's bytecode will be that 
+-- the calling convention in this compiler's bytecode will be that
 -- each function's parameters occupy the lowest registers (greater than $0)
--- this function sets the variable to register mapping to make this true, 
--- and also makes sure that other variables in this function know the lowest 
+-- this function sets the variable to register mapping to make this true,
+-- and also makes sure that other variables in this function know the lowest
 -- registers are occupied
 setupParams :: [Param] -> State GState ()
-setupParams ps = do 
-  zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1..]
-  s <- get 
+setupParams ps = do
+  zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1 ..]
+  s <- get
   let lowestOpenReg = head $ getOpenRegisters s
   let maxParamRegBound = toInteger $ length ps + 1
   setOpenRegisters [max lowestOpenReg maxParamRegBound ..]
@@ -173,29 +173,29 @@ genDecl (Reassign i e, _) = do
   case M.lookup i rvs of
     Just r -> moveExprInto r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
-genDecl (BlockDecl ds, _) = traverse_ genDecl ds 
-genDecl (IfDecl ic ie eifs me, _) = 
-  let genCE :: String -> [(ExprAug SymData, DeclAug SymData)] -> State GState () 
-      genCE exit [(cond, body)] = 
-        case me of 
-          Just e -> do 
-            elseLbl <- getNextLabel 
-            genConditional cond (genDecl body) elseLbl 
+genDecl (BlockDecl ds, _) = traverse_ genDecl ds
+genDecl (IfDecl ic ie eifs me, _) =
+  let genCE :: String -> [(ExprAug SymData, DeclAug SymData)] -> State GState ()
+      genCE exit [(cond, body)] =
+        case me of
+          Just e -> do
+            elseLbl <- getNextLabel
+            genConditional cond (genDecl body) elseLbl
             appendInst (Jmp exit)
-            appendLabel elseLbl 
-            genDecl e 
-          Nothing -> do 
+            appendLabel elseLbl
+            genDecl e
+          Nothing -> do
             genConditional cond (genDecl body) exit
-      genCE exit ((cond, body) : rest) = do 
-        nextCond <- getNextLabel 
-        genConditional cond (genDecl body) nextCond 
+      genCE exit ((cond, body) : rest) = do
+        nextCond <- getNextLabel
+        genConditional cond (genDecl body) nextCond
         appendInst (Jmp exit)
-        appendLabel nextCond 
-        genCE exit rest 
+        appendLabel nextCond
+        genCE exit rest
    in do
-     exit <- getNextLabel
-     genCE exit ((ic, ie) : eifs)
-     appendLabel exit
+        exit <- getNextLabel
+        genCE exit ((ic, ie) : eifs)
+        appendLabel exit
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
@@ -205,70 +205,71 @@ moveExprInto t (BlockExpr ds e, _) = do
   moveExprInto t e
 moveExprInto t b@(BinOp Leq l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp Less l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp Geq l r, _) = moveRelInto t b 
-moveExprInto t b@(BinOp Greater l r, _) = moveRelInto t b 
-moveExprInto t b@(BinOp Equal l r, _) = moveRelInto t b 
+moveExprInto t b@(BinOp Geq l r, _) = moveRelInto t b
+moveExprInto t b@(BinOp Greater l r, _) = moveRelInto t b
+moveExprInto t b@(BinOp Equal l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp NotEqual l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp _ l r, _) = do
   lval <- genExprValue l
   rval <- genExprValue r
   appendInst (binOpMapping b lval rval (Register t))
 moveExprInto t u@(UnaryOp Negate e, _) = do
-  val <- genExprValue e 
+  val <- genExprValue e
   appendInst (Neg val (Register t))
-moveExprInto t u@(UnaryOp Not e, _) = do 
-  val <- genExprValue e 
+moveExprInto t u@(UnaryOp Not e, _) = do
+  val <- genExprValue e
   appendInst (Inv val (Register t))
 moveExprInto t i@(IfExpr {}, _) = genIfElseStructure (moveExprInto t) i
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
 
--- this function takes a condition, a body to execute if that condition is 
+-- this function takes a condition, a body to execute if that condition is
 -- true, and a place to jump to if that condition is false. Equivalent to:
--- if cond => body 
--- IMPORTANT NOTE: it leaves the control flow of the bytecode INSIDE the body 
--- of the statement, after the last instruction. Therefore, It is UP TO THE CALLER to 
--- control what the code does after it executes the body, and also the `fail` 
+-- if cond => body
+-- IMPORTANT NOTE: it leaves the control flow of the bytecode INSIDE the body
+-- of the statement, after the last instruction. Therefore, It is UP TO THE CALLER to
+-- control what the code does after it executes the body, and also the `fail`
 -- label must be appended by the caller
 genConditional :: ExprAug SymData -> State GState () -> String -> State GState ()
-genConditional cond body fail 
-  | isRel cond = 
+genConditional cond body fail
+  | isRel cond =
     let (BinOp _ l r, _) = cond
-     in do 
-        lval <- genExprValue l 
-        rval <- genExprValue r 
-        appendInst (Cmp lval rval)
-        appendInst (relOpInverseMapping cond fail) 
-        body 
-  | otherwise = do 
+     in do
+          lval <- genExprValue l
+          rval <- genExprValue r
+          appendInst (Cmp lval rval)
+          appendInst (relOpInverseMapping cond fail)
+          body
+  | otherwise = do
     cresult <- genExprValue cond
     appendInst (Cmp cresult (VBool True))
     appendInst (JmpNotEqual fail)
     body
 
 genIfElseStructure :: (ExprAug SymData -> State GState ()) -> ExprAug SymData -> State GState ()
-genIfElseStructure bodyGen i@(IfExpr ic ie eifs ee, _) = 
-  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState () 
-      genCE exit nextCond (cond, body) = do 
-        genConditional cond (bodyGen body) nextCond 
+genIfElseStructure bodyGen i@(IfExpr ic ie eifs ee, _) =
+  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState ()
+      genCE exit nextCond (cond, body) = do
+        genConditional cond (bodyGen body) nextCond
         appendInst (Jmp exit)
         appendLabel nextCond
    in do
-     elseLbl <- getNextLabel
-     eifLbls <- replicateM (1 + length eifs) getNextLabel
-     exit <- getNextLabel
-     zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic,ie) : eifs)
-     -- now dealing with else case
-     bodyGen ee
-     appendLabel exit
-moveRelInto :: Integer -> ExprAug SymData -> State GState () 
-moveRelInto t rel = do 
-  false <- getNextLabel 
+        elseLbl <- getNextLabel
+        eifLbls <- replicateM (1 + length eifs) getNextLabel
+        exit <- getNextLabel
+        zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic, ie) : eifs)
+        -- now dealing with else case
+        bodyGen ee
+        appendLabel exit
+
+moveRelInto :: Integer -> ExprAug SymData -> State GState ()
+moveRelInto t rel = do
+  false <- getNextLabel
   exit <- getNextLabel
   genConditional rel (appendInst (Move (VBool True) (Register t))) false
   appendInst (Jmp exit)
-  appendLabel false 
+  appendLabel false
   appendInst (Move (VBool False) (Register t))
   appendLabel exit
 
@@ -288,15 +289,15 @@ genExprValue (Subs i, _) = do
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
 genExprValue (Return, _) = appendInst Ret >> return (VInt 0)
-genExprValue e = do 
-  n <- getNextRegister 
-  moveExprInto n e 
+genExprValue e = do
+  n <- getNextRegister
+  moveExprInto n e
   return (Register n)
 
 genVoidExpr :: ExprAug SymData -> State GState ()
 genVoidExpr (Return, _) = appendInst Ret
-genVoidExpr (BlockExpr ds e, _) = do 
-  traverse_ genDecl ds 
+genVoidExpr (BlockExpr ds e, _) = do
+  traverse_ genDecl ds
   genVoidExpr e
 genVoidExpr i@(IfExpr {}, _) = genIfElseStructure genVoidExpr i
 
@@ -307,28 +308,28 @@ binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
 binOpMapping (BinOp Multiply _ _, _) = Mul
 binOpMapping (BinOp Divide _ _, _) = Div
-binOpMapping (BinOp And _ _, _) = IAnd 
-binOpMapping (BinOp Or _ _,  _) = IOr
+binOpMapping (BinOp And _ _, _) = IAnd
+binOpMapping (BinOp Or _ _, _) = IOr
 
--- used in if statements/other conditionals to greatly reduce the 
--- number of instructions generated by jumping directly based on the result 
--- of a comparison, rather than computing the comparison than comparing the 
--- result to True 
+-- used in if statements/other conditionals to greatly reduce the
+-- number of instructions generated by jumping directly based on the result
+-- of a comparison, rather than computing the comparison than comparing the
+-- result to True
 relOpInverseMapping :: ExprAug SymData -> (String -> Inst)
-relOpInverseMapping (BinOp Leq _ _, _) = JmpG 
-relOpInverseMapping (BinOp Less _ _, _) = JmpGeq 
-relOpInverseMapping (BinOp Geq _ _, _) = JmpL 
-relOpInverseMapping (BinOp Greater _ _, _) = JmpLeq 
-relOpInverseMapping (BinOp Equal _ _, _) = JmpNotEqual 
+relOpInverseMapping (BinOp Leq _ _, _) = JmpG
+relOpInverseMapping (BinOp Less _ _, _) = JmpGeq
+relOpInverseMapping (BinOp Geq _ _, _) = JmpL
+relOpInverseMapping (BinOp Greater _ _, _) = JmpLeq
+relOpInverseMapping (BinOp Equal _ _, _) = JmpNotEqual
 relOpInverseMapping (BinOp NotEqual _ _, _) = JmpEqual
 
--- helps differentiate relationals so that if statements with relationals 
+-- helps differentiate relationals so that if statements with relationals
 -- as the root node of the condition can be generated more efficiently
-isRel :: ExprAug SymData -> Bool 
+isRel :: ExprAug SymData -> Bool
 isRel (BinOp Leq _ _, _) = True
 isRel (BinOp Less _ _, _) = True
 isRel (BinOp Geq _ _, _) = True
 isRel (BinOp Greater _ _, _) = True
-isRel (BinOp Equal _ _, _) = True 
+isRel (BinOp Equal _ _, _) = True
 isRel (BinOp NotEqual _ _, _) = True
 isRel _ = False

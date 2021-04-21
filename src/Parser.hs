@@ -68,9 +68,9 @@ term =
 ------------------------------------------------------
 
 natOrFloat :: P.Parsec String () (ExprAug SpanRec)
-natOrFloat = exprWrapper $ do 
-  num <- L.natOrFloat 
-  case num of 
+natOrFloat = exprWrapper $ do
+  num <- L.natOrFloat
+  case num of
     Left i -> return $ LitInt i
     Right f -> return $ LitFloat f
 
@@ -114,7 +114,7 @@ bodyDeclaration =
 
 expression :: P.Parsec String () (ExprAug SpanRec)
 expression =
-    P.try opExpression
+  P.try opExpression
     P.<|> P.try subs
     P.<|> P.try callexpr
     P.<|> P.try ifexpr
@@ -211,7 +211,7 @@ ifexpr =
     L.reservedOp "=>"
     firstexpr <- ifbodyexpr
     elseifs <- P.many $ P.try elseifexpr
-    elsecase <-P.try elseexpr
+    elsecase <- P.try elseexpr
     return $ IfExpr cond firstexpr elseifs elsecase
 
 ifdecl :: P.Parsec String () (DeclAug SpanRec)
@@ -259,7 +259,7 @@ elsedecl =
 
 blockreturnexpr :: P.Parsec String () (ExprAug SpanRec)
 blockreturnexpr =
-    P.try yieldexpr
+  P.try yieldexpr
     P.<|> P.try opExpression
     P.<|> P.try subs
     P.<|> P.try callexpr

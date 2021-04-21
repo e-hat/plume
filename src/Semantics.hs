@@ -21,15 +21,15 @@ validateSemantics p =
       checkGlobalLet d = Right d
       -- handling let expressions differently since global scope has already been created
       globalSymTreeD :: SymTable -> DeclAug SpanRec -> Either String (DeclAug SymData)
-      globalSymTreeD tbl (Let t i e, sr) = do 
-        bl <- Let t i <$> buildSymTreeE tbl e 
+      globalSymTreeD tbl (Let t i e, sr) = do
+        bl <- Let t i <$> buildSymTreeE tbl e
         return (bl, SymData tbl sr)
       globalSymTreeD tbl d = buildSymTreeD tbl d
    in do
         let globals = map getASTDeclAug (getProgram p)
         globalScope <- buildGlobalScope globals
         globalDecls <- traverse checkGlobalLet globals
-        symTrees <- 
+        symTrees <-
           traverse (globalSymTreeD globalScope >=> typecheckD) globalDecls
         return $ SymTreeList $ map SymDeclAug symTrees
 
@@ -114,13 +114,14 @@ buildSymTreeD tbl b@(BlockDecl ds, sr) = do
   symds <- zipWithM buildSymTreeD dtbls ds
   return (BlockDecl symds, SymData tbl sr)
 buildSymTreeD tbl i@(IfDecl b fd eis med, sr) =
-  let buildSymTreeEF symtbl (eib, eid) = 
-        (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeD symtbl eid 
+  let buildSymTreeEF symtbl (eib, eid) =
+        (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeD symtbl eid
    in do
-        bi <- IfDecl <$> buildSymTreeE tbl b 
-                     <*> buildSymTreeD tbl fd 
-                     <*> traverse (buildSymTreeEF tbl) eis 
-                     <*> traverse (buildSymTreeD tbl) med 
+        bi <-
+          IfDecl <$> buildSymTreeE tbl b
+            <*> buildSymTreeD tbl fd
+            <*> traverse (buildSymTreeEF tbl) eis
+            <*> traverse (buildSymTreeD tbl) med
         return (bi, SymData tbl sr)
 
 -- performs the "scoping" part of validation for expressions
@@ -149,11 +150,12 @@ buildSymTreeE tbl i@(IfExpr b fe eis e, sr) =
   let buildSymTreeEF symtbl (eib, eie) =
         (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeE symtbl eie
    in do
-     symi <- IfExpr <$> buildSymTreeE tbl b 
-                    <*> buildSymTreeE tbl fe 
-                    <*> traverse (buildSymTreeEF tbl) eis 
-                    <*> buildSymTreeE tbl e
-     return (symi, SymData tbl sr)
+        symi <-
+          IfExpr <$> buildSymTreeE tbl b
+            <*> buildSymTreeE tbl fe
+            <*> traverse (buildSymTreeEF tbl) eis
+            <*> buildSymTreeE tbl e
+        return (symi, SymData tbl sr)
 ---------------------------SCOPING OPERATOR EXPRS-------------------------------
 buildSymTreeE tbl b@(BinOp op l r, sr) = do
   bb <- BinOp op <$> buildSymTreeE tbl l <*> buildSymTreeE tbl r
@@ -201,13 +203,13 @@ typecheckD b@(BlockDecl ds, s) = do
   return (BlockDecl tds, s)
 typecheckD i@(IfDecl b fd eis med, s) =
   let applyTplM (f, g) (x, y) = (,) <$> f x <*> g y
-   in do 
-     tb <- handleBTerm i b >>= typecheckE 
-     tfd <- typecheckD fd 
-     teisi <- traverse (applyTplM (handleBTerm i, typecheckD)) eis
-     teisf <- traverse (applyTplM (typecheckE, pure)) teisi
-     tmed <- traverse typecheckD med
-     return (IfDecl tb tfd teisf tmed, s)
+   in do
+        tb <- handleBTerm i b >>= typecheckE
+        tfd <- typecheckD fd
+        teisi <- traverse (applyTplM (handleBTerm i, typecheckD)) eis
+        teisf <- traverse (applyTplM (typecheckE, pure)) teisi
+        tmed <- traverse typecheckD med
+        return (IfDecl tb tfd teisf tmed, s)
 
 -- helper functions for typechecking expressions
 numericalTypes = ["Int", "Float"] -- for arithmetic/relational exprs
@@ -282,22 +284,22 @@ typecheckE b@(UnaryOp Not t, s) = do
   return (UnaryOp Not tt, s)
 
 ------------------------SPECIAL REL. EXPRS--------------------------------------
-typecheckE eq@(BinOp Equal l r, s) = 
-  let lt = getType l 
-      rt = getType r 
+typecheckE eq@(BinOp Equal l r, s) =
+  let lt = getType l
+      rt = getType r
    in if lt /= rt
-     then Left $ typeError l lt r rt 
-     else do 
-       teq <- BinOp Equal <$> typecheckE l <*> typecheckE r 
-       return (teq, s)
-typecheckE eq@(BinOp NotEqual l r, s) = 
-  let lt = getType l 
-      rt = getType r 
+        then Left $ typeError l lt r rt
+        else do
+          teq <- BinOp Equal <$> typecheckE l <*> typecheckE r
+          return (teq, s)
+typecheckE eq@(BinOp NotEqual l r, s) =
+  let lt = getType l
+      rt = getType r
    in if lt /= rt
-     then Left $ typeError l lt r rt 
-     else do 
-       teq <- BinOp NotEqual <$> typecheckE l <*> typecheckE r 
-       return (teq, s)
+        then Left $ typeError l lt r rt
+        else do
+          teq <- BinOp NotEqual <$> typecheckE l <*> typecheckE r
+          return (teq, s)
 ------------------------TYPECHECKING ARITH/REL EXPRS-------------------------------
 -- no longer need to pmatch on type of op since all remaining ops take numericalTypes
 typecheckE e@(BinOp op l r, s) = do
@@ -340,7 +342,7 @@ getType (BinOp NotEqual _ _, _) = "Bool"
 getType (UnaryOp Negate e, _) = getType e
 getType (BinOp _ l r, _) = promoteType (getType l) (getType r)
 
-promoteType :: Type -> Type -> Type 
+promoteType :: Type -> Type -> Type
 promoteType "Float" _ = "Float"
 promoteType _ "Float" = "Float"
 promoteType "Int" "Int" = "Int"
