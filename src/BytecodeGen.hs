@@ -82,6 +82,12 @@ setOpenLabelNums ls = modify $ \s -> s {getOpenLabelNums = ls}
 setVarRegisters :: M.Map String Integer -> State GState ()
 setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 
+setVarRegister :: String -> Integer -> State GState ()
+setVarRegister i r = do
+  s <- get 
+  let vrs = getVarRegisters s 
+  setVarRegisters (M.insert i r vrs)
+
 setGlobalVars :: M.Map String Value -> State GState ()
 setGlobalVars gv = modify $ \s -> s {getGlobalVars = gv}
 
@@ -132,10 +138,10 @@ genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
 genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
-genGlobalTree (DefFn i [] "Void" e, _) = do
+genGlobalTree (DefFn i ps "Void" e, _) = do
   appendLabel i
   genVoidExpr e
-genGlobalTree (DefFn i [] _ e, _) = do 
+genGlobalTree (DefFn i ps _ e, _) = do 
   appendLabel i 
   moveExprInto retReg e 
   appendInst Ret
@@ -144,9 +150,7 @@ genDecl :: DeclAug SymData -> State GState ()
 genDecl (Let _ i e, _) = do
   r <- getNextRegister
   moveExprInto r e
-  s <- get
-  let vrs = getVarRegisters s
-  setVarRegisters (M.insert i r vrs)
+  setVarRegister i r
 genDecl (Reassign i e, _) = do
   s <- get
   let rvs = getVarRegisters s
