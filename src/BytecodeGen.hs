@@ -174,23 +174,18 @@ moveExprInto t u@(UnaryOp Not e, _) = do
   val <- genExprValue e 
   appendInst (Inv val (Register t))
 moveExprInto t i@(IfExpr ic ie eifs ee, _) = 
-  let genCE :: String -> [(ExprAug SymData, ExprAug SymData)] -> State GState ()
-      genCE exit [(cond,body)] = do 
-        elbl <- getNextLabel
-        elseLbl <- getNextLabel 
-        genConditional cond (moveExprInto t body) elseLbl
-        appendInst (Jmp exit)
-        appendLabel elseLbl 
-        moveExprInto t ee
-      genCE exit ((cond,body):rest) = do 
-        nextCond <- getNextLabel
+  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState () 
+      genCE exit nextCond (cond, body) = do 
         genConditional cond (moveExprInto t body) nextCond 
         appendInst (Jmp exit)
         appendLabel nextCond
-        genCE exit rest
-   in do 
-     exit <- getNextLabel 
-     genCE exit ((ic,ie):eifs)
+   in do
+     elseLbl <- getNextLabel
+     eifLbls <- replicateM (1 + length eifs) getNextLabel
+     exit <- getNextLabel
+     zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic,ie) : eifs)
+     -- now dealing with else case
+     moveExprInto t ee
      appendLabel exit 
 moveExprInto t e = do
   v <- genExprValue e
