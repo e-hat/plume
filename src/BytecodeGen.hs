@@ -127,7 +127,7 @@ addGlobalVar i v = do
   let vars = getGlobalVars s
   setGlobalVars $ M.insert i v vars
 
-genGlobalTree :: DeclAug SymData -> State GState ()
+genGlobalTree :: DeclAug a -> State GState ()
 genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
 genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
@@ -137,7 +137,7 @@ genGlobalTree (DefFn i [] _ e, _) = do
   moveExprInto retReg e
   appendInst Ret
 
-genDecl :: DeclAug SymData -> State GState ()
+genDecl :: DeclAug a -> State GState ()
 genDecl (Let _ i e, _) = do
   r <- getNextRegister
   moveExprInto r e
@@ -153,7 +153,7 @@ genDecl (Reassign i e, _) = do
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
-moveExprInto :: Integer -> ExprAug SymData -> State GState ()
+moveExprInto :: Integer -> ExprAug a -> State GState ()
 moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   moveExprInto t e
@@ -174,7 +174,7 @@ moveExprInto t u@(UnaryOp Not e, _) = do
   val <- genExprValue e 
   appendInst (Inv val (Register t))
 moveExprInto t i@(IfExpr ic ie eifs ee, _) = 
-  let genCE :: String -> [(ExprAug SymData, ExprAug SymData)] -> State GState ()
+  let genCE :: String -> [(ExprAug a, ExprAug a)] -> State GState ()
       genCE exit [(cond,body)] = do 
         cresult <- genExprValue cond
         appendInst (Cmp cresult (VBool True))
@@ -201,7 +201,7 @@ moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
 
-moveRelInto :: Integer -> ExprAug SymData -> State GState () 
+moveRelInto :: Integer -> ExprAug a -> State GState () 
 moveRelInto t rel@(BinOp _ l r, _) = do
   lval <- genExprValue l 
   rval <- genExprValue r 
@@ -215,7 +215,7 @@ moveRelInto t rel@(BinOp _ l r, _) = do
   appendInst (Move (VBool True) (Register t))
   appendLabel exit
 
-genExprValue :: ExprAug SymData -> State GState Value
+genExprValue :: ExprAug a -> State GState Value
 genExprValue (LitInt v, _) = return (VInt v)
 genExprValue (LitBool v, _) = return (VBool v)
 genExprValue (LitChar v, _) = return (VByte v)
@@ -235,7 +235,7 @@ genExprValue e = do
   moveExprInto n e 
   return (Register n)
 
-binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
+binOpMapping :: ExprAug a -> (Value -> Value -> Value -> Inst)
 binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
 binOpMapping (BinOp Multiply _ _, _) = Mul
@@ -243,7 +243,7 @@ binOpMapping (BinOp Divide _ _, _) = Div
 binOpMapping (BinOp And _ _, _) = IAnd 
 binOpMapping (BinOp Or _ _,  _) = IOr
 
-relOpMapping :: ExprAug SymData -> (String -> Inst) 
+relOpMapping :: ExprAug a -> (String -> Inst) 
 relOpMapping (BinOp Leq _ _, _) = JmpLeq 
 relOpMapping (BinOp Less _ _, _) = JmpL 
 relOpMapping (BinOp Geq _ _, _) = JmpGeq 
