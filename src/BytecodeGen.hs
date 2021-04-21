@@ -132,9 +132,12 @@ genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
 genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
-genGlobalTree (DefFn i [] _ e, _) = do
+genGlobalTree (DefFn i [] "Void" e, _) = do
   appendLabel i
-  moveExprInto retReg e
+  genVoidExpr e
+genGlobalTree (DefFn i [] _ e, _) = do 
+  appendLabel i 
+  moveExprInto retReg e 
   appendInst Ret
 
 genDecl :: DeclAug SymData -> State GState ()
@@ -239,10 +242,31 @@ genExprValue (Subs i, _) = do
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
+genExprValue (Return, _) = appendInst Ret >> return (VInt 0)
 genExprValue e = do 
   n <- getNextRegister 
   moveExprInto n e 
   return (Register n)
+
+genVoidExpr :: ExprAug SymData -> State GState ()
+genVoidExpr (Return, _) = appendInst Ret
+genVoidExpr (BlockExpr ds e, _) = do 
+  traverse_ genDecl ds 
+  genVoidExpr e
+genVoidExpr (IfExpr ic ie eifs ee, _) = 
+  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState () 
+      genCE exit nextCond (cond, body) = do 
+        genConditional cond (genVoidExpr body) nextCond 
+        appendInst (Jmp exit)
+        appendLabel nextCond
+   in do
+     elseLbl <- getNextLabel
+     eifLbls <- replicateM (1 + length eifs) getNextLabel
+     exit <- getNextLabel
+     zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic,ie) : eifs)
+     -- now dealing with else case
+     genVoidExpr ee
+     appendLabel exit 
 
 -- these mappings allow for dynamic creation of some simple instructions
 -- to avoid annoying boilerplate
