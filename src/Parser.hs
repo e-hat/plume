@@ -123,6 +123,7 @@ expression =
     P.<|> P.try string
     P.<|> P.try bool
     P.<|> P.try char
+    P.<|> P.try returnexpr
     P.<?> "an expression (something that has a result)"
 
 yieldexpr :: P.Parsec String () (ExprAug SpanRec)
