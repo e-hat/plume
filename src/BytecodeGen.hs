@@ -153,6 +153,7 @@ genDecl (Reassign i e, _) = do
   case M.lookup i rvs of
     Just r -> moveExprInto r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
+genDecl (BlockDecl ds, _) = traverse_ genDecl ds 
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
@@ -176,20 +177,7 @@ moveExprInto t u@(UnaryOp Negate e, _) = do
 moveExprInto t u@(UnaryOp Not e, _) = do 
   val <- genExprValue e 
   appendInst (Inv val (Register t))
-moveExprInto t i@(IfExpr ic ie eifs ee, _) = 
-  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState () 
-      genCE exit nextCond (cond, body) = do 
-        genConditional cond (moveExprInto t body) nextCond 
-        appendInst (Jmp exit)
-        appendLabel nextCond
-   in do
-     elseLbl <- getNextLabel
-     eifLbls <- replicateM (1 + length eifs) getNextLabel
-     exit <- getNextLabel
-     zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic,ie) : eifs)
-     -- now dealing with else case
-     moveExprInto t ee
-     appendLabel exit 
+moveExprInto t i@(IfExpr {}, _) = genIfElseStructure (moveExprInto t) i
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
@@ -217,6 +205,21 @@ genConditional cond body fail
     appendInst (JmpNotEqual fail)
     body
 
+genIfElseStructure :: (ExprAug SymData -> State GState ()) -> ExprAug SymData -> State GState ()
+genIfElseStructure bodyGen i@(IfExpr ic ie eifs ee, _) = 
+  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState () 
+      genCE exit nextCond (cond, body) = do 
+        genConditional cond (bodyGen body) nextCond 
+        appendInst (Jmp exit)
+        appendLabel nextCond
+   in do
+     elseLbl <- getNextLabel
+     eifLbls <- replicateM (1 + length eifs) getNextLabel
+     exit <- getNextLabel
+     zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic,ie) : eifs)
+     -- now dealing with else case
+     bodyGen ee
+     appendLabel exit
 moveRelInto :: Integer -> ExprAug SymData -> State GState () 
 moveRelInto t rel = do 
   false <- getNextLabel 
@@ -253,20 +256,7 @@ genVoidExpr (Return, _) = appendInst Ret
 genVoidExpr (BlockExpr ds e, _) = do 
   traverse_ genDecl ds 
   genVoidExpr e
-genVoidExpr (IfExpr ic ie eifs ee, _) = 
-  let genCE :: String -> String -> (ExprAug SymData, ExprAug SymData) -> State GState () 
-      genCE exit nextCond (cond, body) = do 
-        genConditional cond (genVoidExpr body) nextCond 
-        appendInst (Jmp exit)
-        appendLabel nextCond
-   in do
-     elseLbl <- getNextLabel
-     eifLbls <- replicateM (1 + length eifs) getNextLabel
-     exit <- getNextLabel
-     zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic,ie) : eifs)
-     -- now dealing with else case
-     genVoidExpr ee
-     appendLabel exit 
+genVoidExpr i@(IfExpr {}, _) = genIfElseStructure genVoidExpr i
 
 -- these mappings allow for dynamic creation of some simple instructions
 -- to avoid annoying boilerplate
