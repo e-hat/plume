@@ -107,6 +107,7 @@ getNextLabel = do
   setOpenLabelNums $ tail ls 
   return (printf "*%06d*" result)
 
+-- equivalent of %eax in this bytecode is $0
 retReg :: Integer
 retReg = 0
 
@@ -140,11 +141,26 @@ genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
 genGlobalTree (DefFn i ps "Void" e, _) = do
   appendLabel i
+  setupParams ps
   genVoidExpr e
 genGlobalTree (DefFn i ps _ e, _) = do 
   appendLabel i 
+  setupParams ps
   moveExprInto retReg e 
   appendInst Ret
+
+-- the calling convention in this compiler's bytecode will be that 
+-- each function's parameters occupy the lowest registers (greater than $0)
+-- this function sets the variable to register mapping to make this true, 
+-- and also makes sure that other variables in this function know the lowest 
+-- registers are occupied
+setupParams :: [Param] -> State GState ()
+setupParams ps = do 
+  zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1..]
+  s <- get 
+  let lowestOpenReg = head $ getOpenRegisters s
+  let maxParamRegBound = toInteger $ length ps + 1
+  setOpenRegisters [max lowestOpenReg maxParamRegBound ..]
 
 genDecl :: DeclAug SymData -> State GState ()
 genDecl (Let _ i e, _) = do
