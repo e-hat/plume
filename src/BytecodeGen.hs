@@ -154,6 +154,28 @@ genDecl (Reassign i e, _) = do
     Just r -> moveExprInto r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
 genDecl (BlockDecl ds, _) = traverse_ genDecl ds 
+genDecl (IfDecl ic ie eifs me, _) = 
+  let genCE :: String -> [(ExprAug SymData, DeclAug SymData)] -> State GState () 
+      genCE exit [(cond, body)] = 
+        case me of 
+          Just e -> do 
+            elseLbl <- getNextLabel 
+            genConditional cond (genDecl body) elseLbl 
+            appendInst (Jmp exit)
+            appendLabel elseLbl 
+            genDecl e 
+          Nothing -> do 
+            genConditional cond (genDecl body) exit
+      genCE exit ((cond, body) : rest) = do 
+        nextCond <- getNextLabel 
+        genConditional cond (genDecl body) nextCond 
+        appendInst (Jmp exit)
+        appendLabel nextCond 
+        genCE exit rest 
+   in do
+     exit <- getNextLabel
+     genCE exit ((ic, ie) : eifs)
+     appendLabel exit
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
