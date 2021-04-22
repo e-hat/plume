@@ -232,6 +232,14 @@ moveExprInto t u@(UnaryOp Not e, _) = do
   val <- genExprValue e
   appendInst (Inv val (Register t))
 moveExprInto t i@(IfExpr {}, _) = genIfElseStructure (moveExprInto t) i
+moveExprInto t (CallExpr i args, _) = do 
+  let usedRegs = filter (/= t) (retReg : [1..toInteger $ length args])
+  let argRegs = [1..toInteger $ length args]
+  traverse_ (appendInst . Push . Register) usedRegs
+  zipWithM_ moveExprInto argRegs args
+  appendInst (Call i)
+  appendInst (Move (Register retReg) (Register t))
+  traverse_ (appendInst . Pop . Register) (reverse usedRegs)
 moveExprInto t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
