@@ -205,6 +205,10 @@ runInst Ret = do
   case getRegisters s M.! retReg of
     VInt 0 -> return exitSuccess
     VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
+runInst i = do 
+  return $ 
+    putStrLn ("Sorry! I don't support `" ++ show i ++ "` yet!") 
+      >> exitWith (ExitFailure (-1))
 
 runBinArithInst :: BinArithOp -> Value -> Value -> Value -> State VMState (IO ())
 runBinArithInst op l r (Register dst) = do
