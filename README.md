@@ -36,9 +36,9 @@ This compiler will be written in Haskell with a Parsec-based frontend and will t
 <a name="curr"></a>
 
 ### Current State
-The latest progress is the creation of a type-checking system and a system for validating scoping errors. The next step is to begin with the translation part of the compiler. Plume is in a "get this to work" state. I have forgone the creation of some basic programming constructs (i.e for-loops, custom types, system calls, etc) in order to accelerate progress toward getting a small subset of my language to compile and run successfully. Once that is achieved, the focus will be on expanding that subset. 
+I have created a type-checking/scope resolution system (in `src/Semantics.hs`). I am on the tail end of producing Plume bytecode which you can look at using `plume compile -b [plume file]`. For now, I am translating a couple of these Plume bytecode programs into x86-64 assembly to get familiar with that process. Then, I'll split the bytecode into basic blocks and perform register allocation, and then I'll finally be ready to do the final translation and emit x86-64! However, to accelerate progress on this project, I've forgone some basic language constructs such as for-loops and and user-defined types, so I'll add these in later. There is a virtual machine that you can use to run Plume programs (`plume run [plume file]`), but I have suspended progress on that for the time being as well. 
 
-Plume supports running the following program, where each feature is labelled:
+Plume supports running the following program in the virtual machine, where each feature is labelled:
 
 ```
 # global variables
@@ -54,7 +54,7 @@ def main(): Int := {
 }
 ```
 
-This program exits with a status of `5`. After doing arithmetic/boolean expressions, I will add if expressions/declarations. Then, function calls will be added, which will probably be the most difficult. Note that only primitive types are currently allowed as, I have not yet added a "stack" concept to the bytecode (or the VM, for that matter). Also, it is impossible to reassign global variables. I am deciding whether or not I should be setting memory locations for global variables in bytecode or if that should be abstracted. These are fun problems to be considering!
+This program exits with a status of `5`. Note that only primitive types are currently allowed as I have only added very basic memory concepts to the bytecode. 
 
 <a name="use">
 
@@ -119,7 +119,7 @@ Note that every plume program needs a `main` with that signature. I'll add some 
 
 Here's a brief overview of the available commands, but I would recommend looking at `plume --help` since I don't know if I want to keep updating this list. 
 
-To run Plume programs, check out `plume run --help`. You pass it a Plume file, like `plume run plumefile.plm`, and your program will get run! This command uses the VM for Plume bytecode, so it won't be as fast as compiling to x86-64 and assembling then running the output.
+To run Plume programs, check out `plume run --help`. You pass it a Plume file, like `plume run plumefile.plm`, and your program will get run! This command uses the VM for Plume bytecode, so it won't be as fast as compiling to x86-64 and assembling, linking, then running the output.
 
 To compile a Plume program to x86-64, along with some other options, check out `plume compile --help`. There's a couple options there that are pretty self-explanatory.
 
