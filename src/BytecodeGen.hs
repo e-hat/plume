@@ -41,6 +41,9 @@ data Inst
   | JmpLeq String
   | JmpL String
   | JmpG String
+  | Push Value 
+  | Pop Value
+  | Call String
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -196,6 +199,15 @@ genDecl (IfDecl ic ie eifs me, _) =
         exit <- getNextLabel
         genCE exit ((ic, ie) : eifs)
         appendLabel exit
+genDecl (CallDecl i args, _) = do 
+  appendInst (Push (Register retReg))
+  let argRegs = [1..toInteger $ length args]
+  traverse_ (appendInst . Push . Register) argRegs
+  zipWithM_ moveExprInto argRegs args
+  appendInst (Call i)
+  traverse_ (appendInst . Pop . Register) (reverse argRegs)
+  appendInst (Pop (Register retReg))
+
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register

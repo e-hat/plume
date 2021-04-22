@@ -47,3 +47,6 @@ instance Show Inst where
   show (JmpLeq l) = printf "JmpLeq %s" l
   show (JmpG l) = printf "JmpG %s" l
   show (JmpGeq l) = printf "JmpGeq %s" l
+  show (Push v) = printf "Push %s" (show v)
+  show (Pop v) = printf "Pop %s" (show v)
+  show (Call l) = printf "Call %s" l
