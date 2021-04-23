@@ -2,6 +2,7 @@ module BytecodeGen
   ( Inst (..),
     Value (..),
     BytecodeProgram (..),
+    SyscallCode (..),
     genBytecode,
     retReg,
   )
@@ -21,6 +22,9 @@ data Value
   | VInt Integer
   | VFloat Double
   | VByte Char
+  | SyscallCode SyscallCode 
+
+data SyscallCode = Exit deriving Show
 
 data Inst
   = Ret
@@ -44,6 +48,7 @@ data Inst
   | Push Value 
   | Pop Value
   | Call String
+  | Syscall
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
@@ -142,6 +147,12 @@ genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
 genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
+genGlobalTree (DefFn "main" [] "Int" e, _) = do 
+  appendLabel "main"
+  -- equivalent to %rdi
+  moveExprInto 1 e
+  appendInst (Move (SyscallCode Exit) (Register retReg))
+  appendInst Syscall
 genGlobalTree (DefFn i ps "Void" e, _) = do
   appendLabel i
   setupParams ps

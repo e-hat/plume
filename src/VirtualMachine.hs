@@ -25,6 +25,7 @@ evaluateValue (VFloat f) = seq f ()
 evaluateValue (Register t) = seq t ()
 evaluateValue (VBool b) = seq b ()
 evaluateValue (VByte b) = seq b ()
+evaluateValue (SyscallCode c) = seq c ()
 
 setRegister :: Integer -> Value -> State VMState ()
 setRegister r v = do
@@ -199,12 +200,14 @@ runInst (JmpG lbl) = do
   case getLastComp s of
     RG -> runInst (Jmp lbl)
     _ -> return (pure ())
-runInst Ret = do
+runInst Syscall = do
   s <- get
-  put $ s {getRunning = False}
   case getRegisters s M.! retReg of
-    VInt 0 -> return exitSuccess
-    VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
+    SyscallCode Exit -> do 
+      put $ s {getRunning = False}
+      case getRegisters s M.! 1 of 
+        VInt 0 -> return exitSuccess
+        VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
 runInst i = do 
   return $ 
     putStrLn ("Sorry! I don't support `" ++ show i ++ "` yet!") 

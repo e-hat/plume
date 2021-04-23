@@ -27,6 +27,7 @@ instance Show Value where
   show (VBool b) = show b
   show (VByte b) = show b
   show (VFloat f) = show f
+  show (SyscallCode c) = show c
 
 instance Show Inst where
   show (Move v r) = printf "Mov %s -> %s" (show v) (show r)
@@ -50,3 +51,4 @@ instance Show Inst where
   show (Push v) = printf "Push %s" (show v)
   show (Pop v) = printf "Pop %s" (show v)
   show (Call l) = printf "Call %s" l
+  show Syscall = "Syscall"
