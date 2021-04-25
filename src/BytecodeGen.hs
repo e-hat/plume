@@ -29,14 +29,14 @@ data SyscallCode = Exit deriving Show
 data Inst
   = Ret
   | Move Value Value
-  | Add Value Value Value
-  | Sub Value Value Value
-  | Mul Value Value Value
-  | Div Value Value Value
-  | Neg Value Value
-  | IAnd Value Value Value
-  | IOr Value Value Value
-  | Inv Value Value
+  | Add Value Value
+  | Sub Value Value
+  | Mul Value Value
+  | Div Value Value
+  | Neg Value
+  | IAnd Value Value
+  | IOr Value Value
+  | Inv Value
   | Cmp Value Value
   | Jmp String
   | JmpNotEqual String
@@ -107,13 +107,16 @@ getNextRegister = do
   setOpenRegisters $ tail rs
   return result
 
+prettifyLabel :: Integer -> String
+prettifyLabel = printf "*%06d*"
+
 getNextLabel :: State GState String
 getNextLabel = do
   s <- get
   let ls = getOpenLabelNums s
   let result = head ls
   setOpenLabelNums $ tail ls
-  return (printf "*%06d*" result)
+  return (prettifyLabel result)
 
 -- equivalent of %eax in this bytecode is $0
 retReg :: Integer
@@ -235,13 +238,16 @@ moveExprInto t b@(BinOp NotEqual l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp _ l r, _) = do
   lval <- genExprValue l
   rval <- genExprValue r
-  appendInst (binOpMapping b lval rval (Register t))
+  appendInst (Move rval (Register t))
+  appendInst (binOpMapping b lval (Register t))
 moveExprInto t u@(UnaryOp Negate e, _) = do
   val <- genExprValue e
-  appendInst (Neg val (Register t))
+  appendInst (Move val (Register t))
+  appendInst (Neg (Register t))
 moveExprInto t u@(UnaryOp Not e, _) = do
   val <- genExprValue e
-  appendInst (Inv val (Register t))
+  appendInst (Move val (Register t))
+  appendInst (Inv (Register t))
 moveExprInto t i@(IfExpr {}, _) = genIfElseStructure (moveExprInto t) i
 moveExprInto t (CallExpr i args, _) = do 
   let usedRegs = filter (/= t) (retReg : [1..toInteger $ length args])
@@ -334,7 +340,7 @@ genVoidExpr i@(IfExpr {}, _) = genIfElseStructure genVoidExpr i
 
 -- these mappings allow for dynamic creation of some simple instructions
 -- to avoid annoying boilerplate
-binOpMapping :: ExprAug SymData -> (Value -> Value -> Value -> Inst)
+binOpMapping :: ExprAug SymData -> (Value -> Value -> Inst)
 binOpMapping (BinOp Plus _ _, _) = Add
 binOpMapping (BinOp Minus _ _, _) = Sub
 binOpMapping (BinOp Multiply _ _, _) = Mul
