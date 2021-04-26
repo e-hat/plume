@@ -132,14 +132,14 @@ runInst (Move v (Register r)) = do
     Register src -> setRegister r (lookupRegister src s)
     val -> setRegister r val
   return (pure ())
-runInst (Add l r dst) = runBinArithInst (+) l r dst
-runInst (Sub l r dst) = runBinArithInst (-) l r dst
-runInst (Mul l r dst) = runBinArithInst (*) l r dst
-runInst (Div l r (Register dst)) = do
+runInst (Add l dst) = runBinArithInst (+) l dst
+runInst (Sub l dst) = runBinArithInst (-) l dst
+runInst (Mul l dst) = runBinArithInst (*) l dst
+runInst (Div l r@(Register dst)) = do
   s <- get
   setRegister dst (divComb s l r)
   return (pure ())
-runInst (Neg v (Register dst)) = do
+runInst (Neg v@(Register dst)) = do
   s <- get
   setRegister dst (negateVal s v)
   return (pure ())
@@ -150,7 +150,7 @@ runInst (Neg v (Register dst)) = do
     negateVal s (Register t) =
       let v = lookupRegister t s
        in negateVal s v
-runInst (Inv v (Register dst)) = do
+runInst (Inv v@(Register dst)) = do
   s <- get
   setRegister dst (invertVal s v)
   return (pure ())
@@ -160,8 +160,8 @@ runInst (Inv v (Register dst)) = do
     invertVal s (Register t) =
       let v = lookupRegister t s
        in invertVal s v
-runInst (IAnd l r dst) = runBinBoolInst (&&) l r dst
-runInst (IOr l r dst) = runBinBoolInst (||) l r dst
+runInst (IAnd l dst) = runBinBoolInst (&&) l dst
+runInst (IOr l dst) = runBinBoolInst (||) l dst
 runInst (Cmp v1 v2) = do
   s <- get
   setLastComp (compareVal s v1 v2)
@@ -213,14 +213,14 @@ runInst i = do
     putStrLn ("Sorry! I don't support `" ++ show i ++ "` yet!") 
       >> exitWith (ExitFailure (-1))
 
-runBinArithInst :: BinArithOp -> Value -> Value -> Value -> State VMState (IO ())
-runBinArithInst op l r (Register dst) = do
+runBinArithInst :: BinArithOp -> Value -> Value -> State VMState (IO ())
+runBinArithInst op l r@(Register dst) = do
   s <- get
   setRegister dst (arithComb s op l r)
   return (pure ())
 
-runBinBoolInst :: BinBoolOp -> Value -> Value -> Value -> State VMState (IO ())
-runBinBoolInst op l r (Register dst) = do
+runBinBoolInst :: BinBoolOp -> Value -> Value -> State VMState (IO ())
+runBinBoolInst op l r@(Register dst) = do
   s <- get
   setRegister dst (boolComb s op l r)
   return (pure ())

@@ -32,14 +32,14 @@ instance Show Value where
 instance Show Inst where
   show (Move v r) = printf "Mov %s -> %s" (show v) (show r)
   show Ret = "Ret"
-  show (Add v1 v2 r) = printf "Add (%s, %s) -> %s" (show v1) (show v2) (show r)
-  show (Sub v1 v2 r) = printf "Sub (%s, %s) -> %s" (show v1) (show v2) (show r)
-  show (Mul v1 v2 r) = printf "Mul (%s, %s) -> %s" (show v1) (show v2) (show r)
-  show (Div v1 v2 r) = printf "Div (%s, %s) -> %s" (show v1) (show v2) (show r)
-  show (IAnd v1 v2 r) = printf "And (%s, %s) -> %s" (show v1) (show v2) (show r)
-  show (IOr v1 v2 r) = printf "Or (%s, %s) -> %s" (show v1) (show v2) (show r)
-  show (Neg v1 r) = printf "Neg %s -> %s" (show v1) (show r)
-  show (Inv v1 r) = printf "Inv %s -> %s" (show v1) (show r)
+  show (Add v1 r) = printf "Add (%s, %s)" (show v1) (show r)
+  show (Sub v1 r) = printf "Sub (%s, %s)" (show v1) (show r)
+  show (Mul v1 r) = printf "Mul (%s, %s)" (show v1) (show r)
+  show (Div v1 r) = printf "Div (%s, %s)" (show v1) (show r)
+  show (IAnd v1 r) = printf "And (%s, %s)" (show v1) (show r)
+  show (IOr v1 r) = printf "Or (%s, %s)" (show v1) (show r)
+  show (Neg r) = printf "Neg %s" (show r)
+  show (Inv r) = printf "Inv %s" (show r)
   show (Cmp v1 v2) = printf "Cmp %s, %s" (show v1) (show v2)
   show (Jmp l) = printf "Jmp %s" l
   show (JmpEqual l) = printf "JmpEqual %s" l

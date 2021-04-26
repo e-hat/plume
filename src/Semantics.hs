@@ -12,7 +12,7 @@ import Syntax
 -- this function performs scoping (symbol table building + catching scoping errors)
 -- & typechecking for a given AST
 validateSemantics :: Program -> Either String SymTreeList
-validateSemantics p =
+validateSemantics (p) =
   let checkGlobalLet :: DeclAug SpanRec -> Either String (DeclAug SpanRec)
       checkGlobalLet l@(Let _ _ e, sr) =
         if isLit e
