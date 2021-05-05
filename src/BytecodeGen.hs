@@ -69,14 +69,12 @@ setCurrentProgram b = modify $ \s -> s {getCurrentProgram = b}
 
 appendInst :: Inst -> State GState ()
 appendInst i = do
-  s <- get
-  let prog = getCurrentProgram s
+  prog <- gets getCurrentProgram
   setCurrentProgram $ prog {getInstructions = getInstructions prog ++ [i]}
 
 appendLabel :: String -> State GState ()
 appendLabel l = do
-  s <- get
-  let prog = getCurrentProgram s
+  prog <- gets getCurrentProgram
   let tbl = getLabelTable prog
   let loc = toInteger (1 + length (getInstructions prog))
   setCurrentProgram $ prog {getLabelTable = M.insert l loc tbl}
@@ -92,8 +90,7 @@ setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 
 setVarRegister :: String -> Integer -> State GState ()
 setVarRegister i r = do
-  s <- get
-  let vrs = getVarRegisters s
+  vrs <- gets getVarRegisters
   setVarRegisters (M.insert i r vrs)
 
 setGlobalVars :: M.Map String Value -> State GState ()
@@ -101,8 +98,7 @@ setGlobalVars gv = modify $ \s -> s {getGlobalVars = gv}
 
 getNextRegister :: State GState Integer
 getNextRegister = do
-  s <- get
-  let rs = getOpenRegisters s
+  rs <- gets getOpenRegisters
   let result = head rs
   setOpenRegisters $ tail rs
   return result
@@ -112,8 +108,7 @@ prettifyLabel = printf "*%06d*"
 
 getNextLabel :: State GState String
 getNextLabel = do
-  s <- get
-  let ls = getOpenLabelNums s
+  ls <- gets getOpenLabelNums
   let result = head ls
   setOpenLabelNums $ tail ls
   return (prettifyLabel result)
@@ -140,10 +135,7 @@ genBytecode trees =
 
 -- this will need to be rewritten using memory constructs instead
 addGlobalVar :: String -> Value -> State GState ()
-addGlobalVar i v = do
-  s <- get
-  let vars = getGlobalVars s
-  setGlobalVars $ M.insert i v vars
+addGlobalVar i v = gets getGlobalVars >>= setGlobalVars . M.insert i v
 
 genGlobalTree :: DeclAug SymData -> State GState ()
 genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
@@ -174,8 +166,7 @@ genGlobalTree (DefFn i ps _ e, _) = do
 setupParams :: [Param] -> State GState ()
 setupParams ps = do
   zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1 ..]
-  s <- get
-  let lowestOpenReg = head $ getOpenRegisters s
+  lowestOpenReg <- gets (head . getOpenRegisters)
   let maxParamRegBound = toInteger $ length ps + 1
   setOpenRegisters [max lowestOpenReg maxParamRegBound ..]
 
@@ -185,8 +176,7 @@ genDecl (Let _ i e, _) = do
   moveExprInto r e
   setVarRegister i r
 genDecl (Reassign i e, _) = do
-  s <- get
-  let rvs = getVarRegisters s
+  rvs <- gets getVarRegisters
   case M.lookup i rvs of
     Just r -> moveExprInto r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
@@ -316,12 +306,11 @@ genExprValue (LitBool v, _) = return (VBool v)
 genExprValue (LitChar v, _) = return (VByte v)
 genExprValue (LitFloat v, _) = return (VFloat v)
 genExprValue (Subs i, _) = do
-  s <- get
-  let rvs = getVarRegisters s
+  rvs <- gets getVarRegisters 
   case M.lookup i rvs of
     Just reg -> return (Register reg)
     Nothing -> do
-      let gvs = getGlobalVars s
+      gvs <- gets getGlobalVars
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
