@@ -89,9 +89,7 @@ setVarRegisters :: M.Map String Integer -> State GState ()
 setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
 
 setVarRegister :: String -> Integer -> State GState ()
-setVarRegister i r = do
-  vrs <- gets getVarRegisters
-  setVarRegisters (M.insert i r vrs)
+setVarRegister i r = gets getVarRegisters >>= setVarRegisters . M.insert i r
 
 setGlobalVars :: M.Map String Value -> State GState ()
 setGlobalVars gv = modify $ \s -> s {getGlobalVars = gv}
@@ -142,11 +140,13 @@ genGlobalTree (Let _ i (LitInt v, _), _) = addGlobalVar i (VInt v)
 genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
+-- current main function signature
 genGlobalTree (DefFn "main" [] "Int" e, _) = do 
   appendLabel "main"
   -- equivalent to %rdi
   moveExprInto 1 e
-  appendInst (Move (SyscallCode Exit) (Register retReg))
+  -- equivalent to %eax
+  appendInst (Move (SyscallCode Exit) (Register 0))
   appendInst Syscall
 genGlobalTree (DefFn i ps "Void" e, _) = do
   appendLabel i
@@ -165,6 +165,7 @@ genGlobalTree (DefFn i ps _ e, _) = do
 -- registers are occupied
 setupParams :: [Param] -> State GState ()
 setupParams ps = do
+  -- map each parameter name to a register, starting at $1
   zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1 ..]
   lowestOpenReg <- gets (head . getOpenRegisters)
   let maxParamRegBound = toInteger $ length ps + 1
@@ -215,10 +216,14 @@ genDecl (CallDecl i args, _) = do
 genDecl _ = error "haven't implemented this yet"
 
 -- puts the result of an expression into the specified register
+--
+-- in a way, this function is central to Plume, as the syntax allows 
+-- variables/functions to have entire if statement expressions assigned to them
 moveExprInto :: Integer -> ExprAug SymData -> State GState ()
 moveExprInto t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   moveExprInto t e
+-- I don't love how this works. Is it the most important problem I am facing? No.
 moveExprInto t b@(BinOp Leq l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp Less l r, _) = moveRelInto t b
 moveExprInto t b@(BinOp Geq l r, _) = moveRelInto t b
@@ -254,10 +259,13 @@ moveExprInto t e = do
 -- this function takes a condition, a body to execute if that condition is
 -- true, and a place to jump to if that condition is false. Equivalent to:
 -- if cond => body
+--
 -- IMPORTANT NOTE: it leaves the control flow of the bytecode INSIDE the body
 -- of the statement, after the last instruction. Therefore, It is UP TO THE CALLER to
--- control what the code does after it executes the body, and also the `fail`
--- label must be appended by the caller
+-- control what the code does after it executes the body
+--
+-- Along the same lines, it takes a `fail` label as input but it is UP TO THE CALLER 
+-- to decide where to append said `fail` label in the bytecode 
 genConditional :: ExprAug SymData -> State GState () -> String -> State GState ()
 genConditional cond body fail
   | isRel cond =
@@ -305,6 +313,7 @@ genExprValue (LitInt v, _) = return (VInt v)
 genExprValue (LitBool v, _) = return (VBool v)
 genExprValue (LitChar v, _) = return (VByte v)
 genExprValue (LitFloat v, _) = return (VFloat v)
+-- Subs will become far more complicated with memory
 genExprValue (Subs i, _) = do
   rvs <- gets getVarRegisters 
   case M.lookup i rvs of
