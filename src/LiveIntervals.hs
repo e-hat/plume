@@ -1,4 +1,4 @@
-module LiveAnalysis where
+module LiveIntervals (liveIntervals) where
 
 import BytecodeGen (Inst (..))
 
