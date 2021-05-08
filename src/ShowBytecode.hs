@@ -15,11 +15,15 @@ instance Show BytecodeProgram where
         zipNums ln i' =
           case map snd (filter ((== ln) . fst) ftbl) of
             l : ls ->
-              printf "%s:\n" l
-                ++ concatMap (printf "%s:\n") ls
+              printf "%s:\n" (show l)
+                ++ concatMap (printf "%s:\n" . show) ls
                 ++ fmtInst ln i'
             [] -> fmtInst ln i'
      in concat $ zipWith zipNums [1 ..] is'
+
+instance Show Label where 
+  show (JmpLabel l) = l 
+  show (FuncLabel l) = l
 
 instance Show Value where
   show (Register n) = "$" ++ show n

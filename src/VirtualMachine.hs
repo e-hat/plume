@@ -1,14 +1,19 @@
 module VirtualMachine where
 
-import BytecodeGen
+import BytecodeGen hiding (getInstructions, getLabelTable)
 import Control.Monad.State
 import qualified Data.Map.Strict as M
 import ShowBytecode
 import System.Exit
 
+data VMProgram = VMProgram 
+  { getInstructions :: [Inst]
+  , getLabelTable :: M.Map String Integer
+  }
+
 data VMState = VMState
   { getRegisters :: M.Map Integer Value,
-    getCurrentProgram :: BytecodeProgram,
+    getCurrentProgram :: VMProgram,
     getIPtr :: Integer,
     getRunning :: Bool,
     getLastComp :: CmpResult
@@ -105,9 +110,16 @@ compareVal s l (Register rr) =
    in compareVal s l r
 
 runBytecode :: BytecodeProgram -> IO ()
-runBytecode b@(BytecodeProgram is tbl) =
-  let start = tbl M.! "main"
-      (rslt, _) = runState (runFrom start) (VMState M.empty b start True REqual)
+runBytecode b =
+  let makeVMProgram :: BytecodeProgram -> VMProgram
+      makeVMProgram (BytecodeProgram is tbl) = VMProgram is (M.mapKeys getLblString tbl)
+        where 
+          getLblString :: Label -> String 
+          getLblString (JmpLabel l) = l 
+          getLblString (FuncLabel l) = l
+      vmp = makeVMProgram b
+      start = getLabelTable vmp M.! "main"
+      (rslt, _) = runState (runFrom start) (VMState M.empty vmp start True REqual)
    in rslt
 
 -- allows for program to dictate control flow, otherwise continues to next instruction
