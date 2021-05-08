@@ -1,6 +1,7 @@
 module BytecodeGen
   ( Inst (..),
     Value (..),
+    Label (..),
     BytecodeProgram (..),
     SyscallCode (..),
     genBytecode,
@@ -50,9 +51,11 @@ data Inst
   | Call String
   | Syscall
 
+data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
+
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst],
-    getLabelTable :: M.Map String Integer
+    getLabelTable :: M.Map Label Integer
   }
 
 data GState = GState
@@ -72,12 +75,18 @@ appendInst i = do
   prog <- gets getCurrentProgram
   setCurrentProgram $ prog {getInstructions = getInstructions prog ++ [i]}
 
-appendLabel :: String -> State GState ()
+appendLabel :: Label -> State GState ()
 appendLabel l = do
   prog <- gets getCurrentProgram
   let tbl = getLabelTable prog
   let loc = toInteger (1 + length (getInstructions prog))
   setCurrentProgram $ prog {getLabelTable = M.insert l loc tbl}
+
+appendFuncLabel :: String -> State GState ()
+appendFuncLabel = appendLabel . FuncLabel 
+
+appendJmpLabel :: String -> State GState ()
+appendJmpLabel = appendLabel . JmpLabel
 
 setOpenRegisters :: [Integer] -> State GState ()
 setOpenRegisters rs = modify $ \s -> s {getOpenRegisters = rs}
@@ -142,33 +151,41 @@ genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
 -- current main function signature
 genGlobalTree (DefFn "main" [] "Int" e, _) = do 
-  appendLabel "main"
+  appendFuncLabel "main"
   -- equivalent to %rdi
   moveExprInto 1 e
   -- equivalent to %eax
   appendInst (Move (SyscallCode Exit) (Register 0))
   appendInst Syscall
 genGlobalTree (DefFn i ps "Void" e, _) = do
-  appendLabel i
+  appendFuncLabel i
   setupParams ps
   genVoidExpr e
 genGlobalTree (DefFn i ps _ e, _) = do
-  appendLabel i
+  appendFuncLabel i
   setupParams ps
   moveExprInto retReg e
   appendInst Ret
 
--- the calling convention in this compiler's bytecode will be that
--- each function's parameters occupy the lowest registers (greater than $0)
--- this function sets the variable to register mapping to make this true,
--- and also makes sure that other variables in this function know the lowest
--- registers are occupied
+-----------------------------------------------------------------------------
+---------------------CALLING CONVENTION--------------------------------------
+-----------------------------------------------------------------------------
+-- This compiler's calling convention will be that each parameter to the callee
+-- is stored in the lowest registers, starting at $1. The calling function must 
+-- push each of the values stored in the params registers to save them until 
+-- after the function call. 
+--
+-- I thought this would work fine, but I think I will have to change some things 
+-- to implement effective register allocation. 
+-- Good metric: If this calling convention is good, I should be able to do register 
+-- allocation and be completely agnostic about these issues in my regalloc
 setupParams :: [Param] -> State GState ()
 setupParams ps = do
   -- map each parameter name to a register, starting at $1
   zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1 ..]
   lowestOpenReg <- gets (head . getOpenRegisters)
   let maxParamRegBound = toInteger $ length ps + 1
+  -- make sure the rest of the generated code is aware that this happened "unnaturally"
   setOpenRegisters [max lowestOpenReg maxParamRegBound ..]
 
 genDecl :: DeclAug SymData -> State GState ()
@@ -190,7 +207,7 @@ genDecl (IfDecl ic ie eifs me, _) =
             elseLbl <- getNextLabel
             genConditional cond (genDecl body) elseLbl
             appendInst (Jmp exit)
-            appendLabel elseLbl
+            appendJmpLabel elseLbl
             genDecl e
           Nothing -> do
             genConditional cond (genDecl body) exit
@@ -198,12 +215,12 @@ genDecl (IfDecl ic ie eifs me, _) =
         nextCond <- getNextLabel
         genConditional cond (genDecl body) nextCond
         appendInst (Jmp exit)
-        appendLabel nextCond
+        appendJmpLabel nextCond
         genCE exit rest
    in do
         exit <- getNextLabel
         genCE exit ((ic, ie) : eifs)
-        appendLabel exit
+        appendJmpLabel exit
 genDecl (CallDecl i args, _) = do 
   appendInst (Push (Register retReg))
   let argRegs = [1..toInteger $ length args]
@@ -288,7 +305,7 @@ genIfElseStructure bodyGen i@(IfExpr ic ie eifs ee, _) =
       genCE exit nextCond (cond, body) = do
         genConditional cond (bodyGen body) nextCond
         appendInst (Jmp exit)
-        appendLabel nextCond
+        appendJmpLabel nextCond
    in do
         elseLbl <- getNextLabel
         eifLbls <- replicateM (1 + length eifs) getNextLabel
@@ -296,7 +313,7 @@ genIfElseStructure bodyGen i@(IfExpr ic ie eifs ee, _) =
         zipWithM_ (genCE exit) (eifLbls ++ [elseLbl]) ((ic, ie) : eifs)
         -- now dealing with else case
         bodyGen ee
-        appendLabel exit
+        appendJmpLabel exit
 
 moveRelInto :: Integer -> ExprAug SymData -> State GState ()
 moveRelInto t rel = do
@@ -304,9 +321,9 @@ moveRelInto t rel = do
   exit <- getNextLabel
   genConditional rel (appendInst (Move (VBool True) (Register t))) false
   appendInst (Jmp exit)
-  appendLabel false
+  appendJmpLabel false
   appendInst (Move (VBool False) (Register t))
-  appendLabel exit
+  appendJmpLabel exit
 
 genExprValue :: ExprAug SymData -> State GState Value
 genExprValue (LitInt v, _) = return (VInt v)
