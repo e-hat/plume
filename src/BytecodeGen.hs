@@ -170,15 +170,19 @@ genGlobalTree (DefFn i ps _ e, _) = do
 -----------------------------------------------------------------------------
 ---------------------CALLING CONVENTION--------------------------------------
 -----------------------------------------------------------------------------
--- This compiler's calling convention will be that each parameter to the callee
--- is stored in the lowest registers, starting at $1. The calling function must 
--- push each of the values stored in the params registers to save them until 
--- after the function call. 
---
--- I thought this would work fine, but I think I will have to change some things 
--- to implement effective register allocation. 
--- Good metric: If this calling convention is good, I should be able to do register 
--- allocation and be completely agnostic about these issues in my regalloc
+-- This is how the calling convention works: Params are stored in 
+-- registers $1, $2, ...
+-- Caller pushes the values currently held in $1, $2, ... onto the stack
+-- Caller puts parameter values into registers $1, $2, ...
+-- Caller calls callee (that's a fun sentence)
+-- Callee now has its parameters in registers $1, $2, ...
+-- Callee pushes all of the registers it uses in its body onto the stack 
+-- Callee does it's thing! (By this, I mean it executes)
+-- Callee pops the values it saved at the beginning into their original registers
+-- Callee puts result, if applicable, into $0, and returns
+-- Caller moves result out of $0 into its dest 
+-- Caller pops all of the saved parameter registers back into $1, $2, ...
+-- Done!!
 setupParams :: [Param] -> State GState ()
 setupParams ps = do
   -- map each parameter name to a register, starting at $1
