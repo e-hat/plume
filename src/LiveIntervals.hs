@@ -8,8 +8,11 @@ type LiveInterval = (Integer, Integer)
 
 -- live intervals are local to the function
 -- this will return live intervals for each function in the program
-liveIntervals :: BytecodeProgram -> M.Map Label [LiveInterval]
-liveIntervals = undefined
+liveIntervals :: BytecodeProgram -> M.Map Label (M.Map Integer LiveInterval)
+liveIntervals b = M.map chunkLiveIntervals $ funcs b
+
+chunkLiveIntervals :: [Inst] -> M.Map Integer LiveInterval
+chunkLiveIntervals = undefined
 
 funcs :: BytecodeProgram -> M.Map Label [Inst]
 funcs b = M.fromList $ 
