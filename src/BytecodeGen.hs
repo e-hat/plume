@@ -79,7 +79,7 @@ appendLabel :: Label -> State GState ()
 appendLabel l = do
   prog <- gets getCurrentProgram
   let tbl = getLabelTable prog
-  let loc = toInteger (1 + length (getInstructions prog))
+  let loc = toInteger (length (getInstructions prog))
   setCurrentProgram $ prog {getLabelTable = M.insert l loc tbl}
 
 appendFuncLabel :: String -> State GState ()

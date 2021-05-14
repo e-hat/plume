@@ -128,7 +128,7 @@ runFrom start = do
   s <- get
   put $ s {getIPtr = start}
   result <-
-    runInst $ getInstructions (getCurrentProgram s) !! fromIntegral (start - 1)
+    runInst $ getInstructions (getCurrentProgram s) !! fromIntegral start
   s' <- get
   if getRunning s'
     then

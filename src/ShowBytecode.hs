@@ -19,7 +19,7 @@ instance Show BytecodeProgram where
                 ++ concatMap (printf "%s:\n" . show) ls
                 ++ fmtInst ln i'
             [] -> fmtInst ln i'
-     in concat $ zipWith zipNums [1 ..] is'
+     in concat $ zipWith zipNums [0 ..] is'
 
 instance Show Label where 
   show (JmpLabel l) = l 
