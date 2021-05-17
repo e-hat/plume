@@ -11,6 +11,7 @@ import Syntax
 import qualified Text.Parsec as P
 import Text.Show.Pretty
 import VirtualMachine
+import System.IO
 
 data Input = ASTInput String | ValInput String | RunInput String | PrintBytecodeInput String
 
@@ -97,6 +98,7 @@ run (PrintBytecodeInput f) = do
       Left err -> putStrLn err
       Right trees -> print $ genBytecode trees
 run (RunInput f) = do
+  hPutStrLn stderr "Warning: running Plume bytecode with the Plume VM is deprecated"
   nodes <- P.parse program f <$> readFile f
   case nodes of
     Left err -> print err
