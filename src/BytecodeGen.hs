@@ -64,7 +64,13 @@ data GState = GState
     getVarRegisters :: M.Map String Integer,
     getGlobalVars :: M.Map String Value,
     getOpenLabelNums :: [Integer]
-  }
+  } 
+
+-- list of registers that it uses, then SyscallCode
+data SyscallSchema = SyscallSchema [Integer] SyscallCode
+
+-- pre-defined schema section
+exitSchema = SyscallSchema [1] Exit
 
 -- helper functions for managing state
 setCurrentProgram :: BytecodeProgram -> State GState ()
@@ -124,11 +130,13 @@ getNextLabel = do
 retReg :: Integer
 retReg = 0
 
-retVal :: Value -> Inst
-retVal v = Move v (Register retReg)
-
 initState :: GState
 initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [1 ..]
+
+ensureMinRegister :: Integer -> State GState ()
+ensureMinRegister i = do 
+  i' <- gets (head . getOpenRegisters)
+  setOpenRegisters [max i i'..]
 
 -------------------------------------------------------------------------------
 ----------------------------- BYTECODE GENERATION -----------------------------
@@ -152,11 +160,7 @@ genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
 -- current main function signature
 genGlobalTree (DefFn "main" [] "Int" e, _) = do 
   appendFuncLabel "main"
-  -- equivalent to %rdi
-  moveExprInto 1 e
-  -- equivalent to %eax
-  appendInst (Move (SyscallCode Exit) (Register 0))
-  appendInst Syscall
+  genSyscall [e] exitSchema
 genGlobalTree (DefFn i ps "Void" e, _) = do
   appendFuncLabel i
   setupParams ps
@@ -166,6 +170,22 @@ genGlobalTree (DefFn i ps _ e, _) = do
   setupParams ps
   moveExprInto retReg e
   appendInst Ret
+
+genSyscall :: [ExprAug SymData] -> SyscallSchema -> State GState ()
+genSyscall es (SyscallSchema rs code) = do 
+  -- save hardcoded register values
+  mapM_ (appendInst . Push . Register) rs
+  -- make sure the rest of code generation is "aware" of the hardcoded register 
+  -- values being used
+  ensureMinRegister (foldl max (-1) rs + 1)
+  -- this is VERY similar to how a function call works, this is moving the params 
+  -- into the designated registers
+  zipWithM_ moveExprInto rs es   
+  appendInst $ Push (Register 0)
+  appendInst $ Move (SyscallCode code) (Register 0)
+  appendInst Syscall
+  appendInst $ Pop (Register 0)
+  mapM_ (appendInst . Pop . Register) (reverse rs)
 
 -----------------------------------------------------------------------------
 ---------------------CALLING CONVENTION--------------------------------------
