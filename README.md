@@ -119,7 +119,7 @@ Note that every plume program needs a `main` with that signature. I'll add some 
 
 Here's a brief overview of the available commands, but I would recommend looking at `plume --help` since I don't know if I want to keep updating this list. 
 
-To run Plume programs, check out `plume run --help`. You pass it a Plume file, like `plume run plumefile.plm`, and your program will get run! This command uses the VM for Plume bytecode, so it won't be as fast as compiling to x86-64 and assembling, linking, then running the output.
+~~To run Plume programs, check out `plume run --help`. You pass it a Plume file, like `plume run plumefile.plm`, and your program will get run! This command uses the VM for Plume bytecode, so it won't be as fast as compiling to x86-64 and assembling, linking, then running the output.~~ Using the plume virtual machine is deprecated for now. The bytecode itself is still under development so propogating each change there to the VM was a pain. I'll revisit this in a bit. You can still run `plume run [filename]` but you'll get a warning and probably either an error or unexpected behavior.
 
 To compile a Plume program to x86-64, along with some other options, check out `plume compile --help`. There's a couple options there that are pretty self-explanatory.
 
