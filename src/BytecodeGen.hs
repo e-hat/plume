@@ -168,19 +168,16 @@ genGlobalTree (DefFn i ps "Void" e, _) = do
 genGlobalTree (DefFn i ps _ e, _) = do
   appendFuncLabel i
   setupParams ps
-  moveExprInto retReg e
+  moveExprIntoSafe retReg e
   appendInst Ret
 
 genSyscall :: [ExprAug SymData] -> SyscallSchema -> State GState ()
 genSyscall es (SyscallSchema rs code) = do 
   -- save hardcoded register values
   mapM_ (appendInst . Push . Register) rs
-  -- make sure the rest of code generation is "aware" of the hardcoded register 
-  -- values being used
-  ensureMinRegister (foldl max (-1) rs + 1)
   -- this is VERY similar to how a function call works, this is moving the params 
   -- into the designated registers
-  zipWithM_ moveExprInto rs es   
+  zipWithM_ moveExprIntoSafe rs es   
   appendInst $ Push (Register 0)
   appendInst $ Move (SyscallCode code) (Register 0)
   appendInst Syscall
@@ -213,14 +210,11 @@ setupParams ps = do
   setOpenRegisters [max lowestOpenReg maxParamRegBound ..]
 
 genDecl :: DeclAug SymData -> State GState ()
-genDecl (Let _ i e, _) = do
-  r <- getNextRegister
-  moveExprInto r e
-  setVarRegister i r
+genDecl (Let _ i e, _) = moveExprIntoNewReg e >>= setVarRegister i
 genDecl (Reassign i e, _) = do
   rvs <- gets getVarRegisters
   case M.lookup i rvs of
-    Just r -> moveExprInto r e
+    Just r -> moveExprIntoSafe r e
     Nothing -> error "I need to implement memory to make reassignments of global variables work!"
 genDecl (BlockDecl ds, _) = traverse_ genDecl ds
 genDecl (IfDecl ic ie eifs me, _) =
@@ -249,51 +243,85 @@ genDecl (CallDecl i args, _) = do
   appendInst (Push (Register retReg))
   let argRegs = [1..toInteger $ length args]
   traverse_ (appendInst . Push . Register) argRegs
-  zipWithM_ moveExprInto argRegs args
+  zipWithM_ moveExprIntoSafe argRegs args
   appendInst (Call i)
   traverse_ (appendInst . Pop . Register) (reverse argRegs)
   appendInst (Pop (Register retReg))
 
 genDecl _ = error "haven't implemented this yet"
 
--- puts the result of an expression into the specified register
+-------------------------------------------------------------------------------
+---------------------- moveExprInto Variants ----------------------------------
+-------------------------------------------------------------------------------
+-- These functions are a central part of the Plume language. They generate 
+-- the code for an expression and move its result into a destination register. 
+-- There are 3 variants to prevent errors from occuring.
+-- In their current state, they generate some clearly inefficient and convoluted 
+-- bytecode. I will think of a way to fix this eventually. This arises from a bug 
+-- that I found when showing this to my friend -> using a register in a calculation 
+-- whose destination is the same register leads to errors in the bytecode. In the 
+-- current solution, this is solved quite conservatively by using `moveExprIntoSafe` 
+-- whenever this *could* be possible. 
 --
--- in a way, this function is central to Plume, as the syntax allows 
--- variables/functions to have entire if statement expressions assigned to them
-moveExprInto :: Integer -> ExprAug SymData -> State GState ()
-moveExprInto t (BlockExpr ds e, _) = do
+-- One thought to improve this is to do a search on the expression AST passed as 
+-- a param; if the destination register will be used in the expression's bytecode, 
+-- then we do it "safely." Otherwise, we can do it `unsafely` without worry.
+
+-- The "safe" version assumes that the register `t` contains a value that might 
+-- be used in the expression. It takes a conservative approach that does not 
+-- use `t` in intermediate calculations.
+moveExprIntoSafe :: Integer -> ExprAug SymData -> State GState ()
+moveExprIntoSafe t e = do 
+  ensureMinRegister (t + 1)
+  x <- moveExprIntoNewReg e
+  appendInst $ Move (Register x) (Register t)
+
+-- This version moves the expressions value into a previously unused register.
+-- Since this register is guaranteed to contain nothing, it can be used more 
+-- efficiently in intermediate calculations.
+moveExprIntoNewReg :: ExprAug SymData -> State GState Integer 
+moveExprIntoNewReg e = do 
+  t <- getNextRegister 
+  moveExprIntoUnsafe t e 
+  return t
+
+-- This function provides the core functionality for the `moveExprInto` family.
+-- It is marked `unsafe` because it will not work correctly if the register `t`
+-- is used in the bytecode generated for the expression AST.
+moveExprIntoUnsafe :: Integer -> ExprAug SymData -> State GState ()
+moveExprIntoUnsafe t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
-  moveExprInto t e
+  moveExprIntoUnsafe t e
 -- I don't love how this works. Is it the most important problem I am facing? No.
-moveExprInto t b@(BinOp Leq l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp Less l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp Geq l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp Greater l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp Equal l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp NotEqual l r, _) = moveRelInto t b
-moveExprInto t b@(BinOp _ l r, _) = do
+moveExprIntoUnsafe t b@(BinOp Leq l r, _) = moveRelInto t b
+moveExprIntoUnsafe t b@(BinOp Less l r, _) = moveRelInto t b
+moveExprIntoUnsafe t b@(BinOp Geq l r, _) = moveRelInto t b
+moveExprIntoUnsafe t b@(BinOp Greater l r, _) = moveRelInto t b
+moveExprIntoUnsafe t b@(BinOp Equal l r, _) = moveRelInto t b
+moveExprIntoUnsafe t b@(BinOp NotEqual l r, _) = moveRelInto t b
+moveExprIntoUnsafe t b@(BinOp _ l r, _) = do
   lval <- genExprValue l
   rval <- genExprValue r
-  appendInst (Move rval (Register t))
-  appendInst (binOpMapping b lval (Register t))
-moveExprInto t u@(UnaryOp Negate e, _) = do
+  appendInst (Move lval (Register t))
+  appendInst (binOpMapping b rval (Register t))
+moveExprIntoUnsafe t u@(UnaryOp Negate e, _) = do
   val <- genExprValue e
   appendInst (Move val (Register t))
   appendInst (Neg (Register t))
-moveExprInto t u@(UnaryOp Not e, _) = do
+moveExprIntoUnsafe t u@(UnaryOp Not e, _) = do
   val <- genExprValue e
   appendInst (Move val (Register t))
   appendInst (Inv (Register t))
-moveExprInto t i@(IfExpr {}, _) = genIfElseStructure (moveExprInto t) i
-moveExprInto t (CallExpr i args, _) = do 
+moveExprIntoUnsafe t i@(IfExpr {}, _) = genIfElseStructure (moveExprIntoUnsafe t) i
+moveExprIntoUnsafe t (CallExpr i args, _) = do 
   let usedRegs = filter (/= t) (retReg : [1..toInteger $ length args])
   let argRegs = [1..toInteger $ length args]
   traverse_ (appendInst . Push . Register) usedRegs
-  zipWithM_ moveExprInto argRegs args
+  zipWithM_ moveExprIntoSafe argRegs args
   appendInst (Call i)
   appendInst (Move (Register retReg) (Register t))
   traverse_ (appendInst . Pop . Register) (reverse usedRegs)
-moveExprInto t e = do
+moveExprIntoUnsafe t e = do
   v <- genExprValue e
   appendInst (Move v (Register t))
 
@@ -366,8 +394,7 @@ genExprValue (Subs i, _) = do
         Just v -> return v
 genExprValue (Return, _) = appendInst Ret >> return (VInt 0)
 genExprValue e = do
-  n <- getNextRegister
-  moveExprInto n e
+  n <- moveExprIntoNewReg e
   return (Register n)
 
 genVoidExpr :: ExprAug SymData -> State GState ()
