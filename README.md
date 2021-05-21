@@ -40,7 +40,7 @@ I have created a type-checking/scope resolution system (in `src/Semantics.hs`). 
 
 Plume supports running the following program in the virtual machine, where each feature is labelled:
 
-```
+```python
 # global variables
 Int global := 5
 # functions and block expressions
@@ -73,15 +73,11 @@ This project relies on [stack](https://docs.haskellstack.org/en/stable/install_a
 
 ### How to write Plume programs
 
-At some point I'll give an in depth discussion about the syntax rules of plume, but here's a simplified version. Statements in plume are either declarations or expressions.
-
-A declaration is a `let` declaration, a reassignment, a function definition, a call declaration (function call followed by semicolon), an If/ElseIf/Else declaration, and a Block declaration. Declarations don't have outputs. You can't assign anything to them.
-
-On the other hand, an expression is a variable substitution, a call expression (function call *not* followed by semicolon), a Block expression, an If/ElseIf/Else expression, or a math/boolean/relational expression. Also a `return` is a type of expression, mainly for ending control flow for functions that return `Void`. 
+I made a reference for this [here](https://eddiehatfield.com/blog/plume-syntax). I like this example though.
 
 This example should clarify some things and show some of the common syntax:
 
-```
+```python
 # here's a function definition. These are only allowed in global scope.
 # it is assigned to an expression, more specifically, a block expression
 def func1(Int a, Int b): String := {
