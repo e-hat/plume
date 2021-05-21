@@ -40,7 +40,7 @@ I have created a type-checking/scope resolution system (in `src/Semantics.hs`). 
 
 Plume supports running the following program in the virtual machine, where each feature is labelled:
 
-```
+```python
 # global variables
 Int global := 5
 # functions and block expressions
@@ -77,7 +77,7 @@ I made a reference for this [here](https://eddiehatfield.com/blog/plume-syntax).
 
 This example should clarify some things and show some of the common syntax:
 
-```
+```python
 # here's a function definition. These are only allowed in global scope.
 # it is assigned to an expression, more specifically, a block expression
 def func1(Int a, Int b): String := {
