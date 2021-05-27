@@ -1,5 +1,7 @@
 module VirtualMachine where
 
+-- THIS MODULE IS CURRENTLY DEPRECATED
+
 import BytecodeGen hiding (getInstructions, getLabelTable)
 import Control.Monad.State
 import qualified Data.Map.Strict as M
