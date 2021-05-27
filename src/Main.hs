@@ -8,12 +8,13 @@ import Parser
 import Semantics
 import ShowBytecode
 import Syntax
+import LiveIntervals
 import qualified Text.Parsec as P
 import Text.Show.Pretty
 import VirtualMachine
 import System.IO
 
-data Input = ASTInput String | ValInput String | RunInput String | PrintBytecodeInput String
+data Input = ASTInput String | ValInput String | RunInput String | PrintBytecodeInput String | LiveIntervalInput String
 
 astInput :: Parser Input
 astInput =
@@ -45,8 +46,18 @@ printBytecodeInput =
           <> help "Print the bytecode generated for the input file"
       )
 
+liveIntervalInput :: Parser Input 
+liveIntervalInput = 
+  LiveIntervalInput 
+    <$> strOption 
+      ( long "live-intervals"
+          <> short 'l'
+          <> metavar "FILENAME"
+          <> help "Display the virtual registers' live intervals for the bytecode generated from the input file"
+      )
+
 compileOptions :: Parser Input
-compileOptions = astInput <|> valInput <|> printBytecodeInput
+compileOptions = astInput <|> valInput <|> printBytecodeInput <|> liveIntervalInput
 
 runArg :: Parser Input
 runArg =
@@ -105,3 +116,10 @@ run (RunInput f) = do
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
       Right trees -> runBytecode $ genBytecode trees
+run (LiveIntervalInput f) = do 
+  nodes <- P.parse program f <$> readFile f
+  case nodes of 
+    Left err -> print err 
+    Right p -> case validateSemantics p of 
+      Left err -> putStrLn err 
+      Right trees -> print $ liveIntervals $ genBytecode trees
