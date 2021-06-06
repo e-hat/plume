@@ -12,51 +12,10 @@ where
 import Control.Monad.State
 import Data.Foldable
 import qualified Data.Map.Strict as M
-import SymbolTable
 import Syntax
+import SymbolTable
+import Bytecode
 import Text.Printf (errorShortFormat, printf)
-
--- types of values that can be moved around
-data Value
-  = Register Integer
-  | VBool Bool
-  | VInt Integer
-  | VFloat Double
-  | VByte Char
-  | SyscallCode SyscallCode 
-
-data SyscallCode = Exit deriving Show
-
-data Inst
-  = Ret
-  | Move Value Value
-  | Add Value Value
-  | Sub Value Value
-  | Mul Value Value
-  | Div Value Value
-  | Neg Value
-  | IAnd Value Value
-  | IOr Value Value
-  | Inv Value
-  | Cmp Value Value
-  | Jmp String
-  | JmpNotEqual String
-  | JmpEqual String
-  | JmpGeq String
-  | JmpLeq String
-  | JmpL String
-  | JmpG String
-  | Push Value 
-  | Pop Value
-  | Call String
-  | Syscall
-
-data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
-
-data BytecodeProgram = BytecodeProgram
-  { getInstructions :: [Inst],
-    getLabelTable :: M.Map Label Integer
-  }
 
 data GState = GState
   { getCurrentProgram :: BytecodeProgram,

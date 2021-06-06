@@ -1,5 +1,1 @@
-def factorial(Int n): Int := 
-    if n <= 1 => 1
-    else => n * factorial(n - 1)
-
-def main(): Int := factorial(6)
+def main(): Int := 4
