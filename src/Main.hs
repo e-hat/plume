@@ -1,20 +1,26 @@
 module Main where
 
 import BytecodeGen
-import Control.Monad
-import Data.Semigroup ((<>))
-import Options.Applicative
+import LiveIntervals
 import Parser
 import Semantics
 import ShowBytecode
 import Syntax
-import LiveIntervals
+import VirtualMachine
+
+import Control.Monad
+import Data.Semigroup ((<>))
+import Options.Applicative
+import System.IO
 import qualified Text.Parsec as P
 import Text.Show.Pretty
-import VirtualMachine
-import System.IO
 
-data Input = ASTInput String | ValInput String | RunInput String | PrintBytecodeInput String | LiveIntervalInput String
+data Input
+  = ASTInput String
+  | ValInput String
+  | RunInput String
+  | PrintBytecodeInput String
+  | LiveIntervalInput String
 
 astInput :: Parser Input
 astInput =
@@ -46,10 +52,10 @@ printBytecodeInput =
           <> help "Print the bytecode generated for the input file"
       )
 
-liveIntervalInput :: Parser Input 
-liveIntervalInput = 
-  LiveIntervalInput 
-    <$> strOption 
+liveIntervalInput :: Parser Input
+liveIntervalInput =
+  LiveIntervalInput
+    <$> strOption
       ( long "live-intervals"
           <> short 'l'
           <> metavar "FILENAME"
@@ -82,11 +88,11 @@ input =
 
 main :: IO ()
 main = run =<< execParser opts
-  where
-    opts =
-      info
-        (input <**> helper)
-        (progDesc "Plume - strongly, statically typed programming language")
+ where
+  opts =
+    info
+      (input <**> helper)
+      (progDesc "Plume - strongly, statically typed programming language")
 
 run :: Input -> IO ()
 run (ASTInput f) = do
@@ -116,10 +122,10 @@ run (RunInput f) = do
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
       Right trees -> runBytecode $ genBytecode trees
-run (LiveIntervalInput f) = do 
+run (LiveIntervalInput f) = do
   nodes <- P.parse program f <$> readFile f
-  case nodes of 
-    Left err -> print err 
-    Right p -> case validateSemantics p of 
-      Left err -> putStrLn err 
+  case nodes of
+    Left err -> print err
+    Right p -> case validateSemantics p of
+      Left err -> putStrLn err
       Right trees -> print $ liveIntervals $ genBytecode trees

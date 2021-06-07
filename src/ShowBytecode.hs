@@ -1,6 +1,7 @@
 module ShowBytecode where
 
 import BytecodeGen
+
 import qualified Data.Map.Strict as M
 import Data.Tuple
 import Text.Printf (errorShortFormat, printf)
@@ -21,8 +22,8 @@ instance Show BytecodeProgram where
             [] -> fmtInst ln i'
      in concat $ zipWith zipNums [0 ..] is'
 
-instance Show Label where 
-  show (JmpLabel l) = l 
+instance Show Label where
+  show (JmpLabel l) = l
   show (FuncLabel l) = l
 
 instance Show Value where

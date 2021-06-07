@@ -70,11 +70,11 @@ data Op
   deriving (Show, Eq)
 
 data SpanRec = SpanRec
-  { getFileName :: String,
-    getMinLine :: Int,
-    getMaxLine :: Int,
-    getMinCol :: Int,
-    getMaxCol :: Int
+  { getFileName :: String
+  , getMinLine :: Int
+  , getMaxLine :: Int
+  , getMinCol :: Int
+  , getMaxCol :: Int
   }
   deriving (Eq)
 
@@ -120,8 +120,8 @@ instance PrettyVal ASTDeclAug where
   prettyVal (ASTDeclAug (CallDecl i es, _)) = Con "CallDecl" [String i, Con "Params passed" [prettyVal $ map ASTExprAug es]]
   prettyVal (ASTDeclAug (IfDecl e d eds md, _)) =
     Con "IfDecl" [Con "Condition" [prettyVal $ ASTExprAug e], Con "IfResult" [prettyVal $ ASTDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (ASTDeclAug <$> md)]]
-    where
-      augEFPair (e, d) = (ASTExprAug e, ASTDeclAug d)
+   where
+    augEFPair (e, d) = (ASTExprAug e, ASTDeclAug d)
   prettyVal (ASTDeclAug (BlockDecl ds, _)) = Con "BlockDecl" [prettyVal (map ASTDeclAug ds)]
 
 instance PrettyVal ASTExprAug where
@@ -129,8 +129,8 @@ instance PrettyVal ASTExprAug where
   prettyVal (ASTExprAug (CallExpr i es, _)) = Con "CallExpr" [String i, Con "Params passed" [prettyVal (map ASTExprAug es)]]
   prettyVal (ASTExprAug (IfExpr c e ees me, _)) =
     Con "IfExpr" [Con "Condition" [prettyVal $ ASTExprAug c], Con "IfResult" [prettyVal $ ASTExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (ASTExprAug me)]]
-    where
-      augEFPair (e1, e2) = (ASTExprAug e1, ASTExprAug e2)
+   where
+    augEFPair (e1, e2) = (ASTExprAug e1, ASTExprAug e2)
   prettyVal (ASTExprAug (BlockExpr ds e, _)) = Con "BlockExpr" [prettyVal (map ASTDeclAug ds), prettyVal $ ASTExprAug e]
   prettyVal (ASTExprAug (BinOp o a b, _)) = Con "BinOp" [String $ show o, prettyVal $ ASTExprAug a, prettyVal $ ASTExprAug b]
   prettyVal (ASTExprAug (UnaryOp o a, _)) = Con "UnaryOp" [String $ show o, prettyVal $ ASTExprAug a]

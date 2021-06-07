@@ -1,29 +1,29 @@
-module BytecodeGen
-  ( Inst (..),
-    Value (..),
-    Label (..),
-    BytecodeProgram (..),
-    SyscallCode (..),
-    genBytecode,
-    retReg,
-  )
-where
+module BytecodeGen (
+  Inst (..),
+  Value (..),
+  Label (..),
+  BytecodeProgram (..),
+  SyscallCode (..),
+  genBytecode,
+  retReg,
+) where
+
+import Bytecode
+import SymbolTable
+import Syntax
 
 import Control.Monad.State
 import Data.Foldable
 import qualified Data.Map.Strict as M
-import Syntax
-import SymbolTable
-import Bytecode
 import Text.Printf (errorShortFormat, printf)
 
 data GState = GState
-  { getCurrentProgram :: BytecodeProgram,
-    getOpenRegisters :: [Integer],
-    getVarRegisters :: M.Map String Integer,
-    getGlobalVars :: M.Map String Value,
-    getOpenLabelNums :: [Integer]
-  } 
+  { getCurrentProgram :: BytecodeProgram
+  , getOpenRegisters :: [Integer]
+  , getVarRegisters :: M.Map String Integer
+  , getGlobalVars :: M.Map String Value
+  , getOpenLabelNums :: [Integer]
+  }
 
 -- list of registers that it uses, then SyscallCode
 data SyscallSchema = SyscallSchema [Integer] SyscallCode
@@ -33,40 +33,40 @@ exitSchema = SyscallSchema [1] Exit
 
 -- helper functions for managing state
 setCurrentProgram :: BytecodeProgram -> State GState ()
-setCurrentProgram b = modify $ \s -> s {getCurrentProgram = b}
+setCurrentProgram b = modify $ \s -> s{getCurrentProgram = b}
 
 appendInst :: Inst -> State GState ()
 appendInst i = do
   prog <- gets getCurrentProgram
-  setCurrentProgram $ prog {getInstructions = getInstructions prog ++ [i]}
+  setCurrentProgram $ prog{getInstructions = getInstructions prog ++ [i]}
 
 appendLabel :: Label -> State GState ()
 appendLabel l = do
   prog <- gets getCurrentProgram
   let tbl = getLabelTable prog
   let loc = toInteger (length (getInstructions prog))
-  setCurrentProgram $ prog {getLabelTable = M.insert l loc tbl}
+  setCurrentProgram $ prog{getLabelTable = M.insert l loc tbl}
 
 appendFuncLabel :: String -> State GState ()
-appendFuncLabel = appendLabel . FuncLabel 
+appendFuncLabel = appendLabel . FuncLabel
 
 appendJmpLabel :: String -> State GState ()
 appendJmpLabel = appendLabel . JmpLabel
 
 setOpenRegisters :: [Integer] -> State GState ()
-setOpenRegisters rs = modify $ \s -> s {getOpenRegisters = rs}
+setOpenRegisters rs = modify $ \s -> s{getOpenRegisters = rs}
 
 setOpenLabelNums :: [Integer] -> State GState ()
-setOpenLabelNums ls = modify $ \s -> s {getOpenLabelNums = ls}
+setOpenLabelNums ls = modify $ \s -> s{getOpenLabelNums = ls}
 
 setVarRegisters :: M.Map String Integer -> State GState ()
-setVarRegisters vr = modify $ \s -> s {getVarRegisters = vr}
+setVarRegisters vr = modify $ \s -> s{getVarRegisters = vr}
 
 setVarRegister :: String -> Integer -> State GState ()
 setVarRegister i r = gets getVarRegisters >>= setVarRegisters . M.insert i r
 
 setGlobalVars :: M.Map String Value -> State GState ()
-setGlobalVars gv = modify $ \s -> s {getGlobalVars = gv}
+setGlobalVars gv = modify $ \s -> s{getGlobalVars = gv}
 
 getNextRegister :: State GState Integer
 getNextRegister = do
@@ -93,9 +93,9 @@ initState :: GState
 initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [1 ..]
 
 ensureMinRegister :: Integer -> State GState ()
-ensureMinRegister i = do 
+ensureMinRegister i = do
   i' <- gets (head . getOpenRegisters)
-  setOpenRegisters [max i i'..]
+  setOpenRegisters [max i i' ..]
 
 -------------------------------------------------------------------------------
 ----------------------------- BYTECODE GENERATION -----------------------------
@@ -117,7 +117,7 @@ genGlobalTree (Let _ i (LitBool v, _), _) = addGlobalVar i (VBool v)
 genGlobalTree (Let _ i (LitChar v, _), _) = addGlobalVar i (VByte v)
 genGlobalTree (Let _ i (LitFloat v, _), _) = addGlobalVar i (VFloat v)
 -- current main function signature
-genGlobalTree (DefFn "main" [] "Int" e, _) = do 
+genGlobalTree (DefFn "main" [] "Int" e, _) = do
   appendFuncLabel "main"
   genSyscall [e] exitSchema
 genGlobalTree (DefFn i ps "Void" e, _) = do
@@ -131,12 +131,12 @@ genGlobalTree (DefFn i ps _ e, _) = do
   appendInst Ret
 
 genSyscall :: [ExprAug SymData] -> SyscallSchema -> State GState ()
-genSyscall es (SyscallSchema rs code) = do 
+genSyscall es (SyscallSchema rs code) = do
   -- save hardcoded register values
   mapM_ (appendInst . Push . Register) rs
-  -- this is VERY similar to how a function call works, this is moving the params 
+  -- this is VERY similar to how a function call works, this is moving the params
   -- into the designated registers
-  zipWithM_ moveExprIntoSafe rs es   
+  zipWithM_ moveExprIntoSafe rs es
   appendInst $ Push (Register 0)
   appendInst $ Move (SyscallCode code) (Register 0)
   appendInst Syscall
@@ -146,17 +146,17 @@ genSyscall es (SyscallSchema rs code) = do
 -----------------------------------------------------------------------------
 ---------------------CALLING CONVENTION--------------------------------------
 -----------------------------------------------------------------------------
--- This is how the calling convention works: Params are stored in 
+-- This is how the calling convention works: Params are stored in
 -- registers $1, $2, ...
 -- Caller pushes the values currently held in $1, $2, ... onto the stack
 -- Caller puts parameter values into registers $1, $2, ...
 -- Caller calls callee (that's a fun sentence)
 -- Callee now has its parameters in registers $1, $2, ...
--- Callee pushes all of the registers it uses in its body onto the stack 
+-- Callee pushes all of the registers it uses in its body onto the stack
 -- Callee does it's thing! (By this, I mean it executes)
 -- Callee pops the values it saved at the beginning into their original registers
 -- Callee puts result, if applicable, into $0, and returns
--- Caller moves result out of $0 into its dest 
+-- Caller moves result out of $0 into its dest
 -- Caller pops all of the saved parameter registers back into $1, $2, ...
 -- Done!!
 setupParams :: [Param] -> State GState ()
@@ -198,50 +198,49 @@ genDecl (IfDecl ic ie eifs me, _) =
         exit <- getNextLabel
         genCE exit ((ic, ie) : eifs)
         appendJmpLabel exit
-genDecl (CallDecl i args, _) = do 
+genDecl (CallDecl i args, _) = do
   appendInst (Push (Register retReg))
-  let argRegs = [1..toInteger $ length args]
+  let argRegs = [1 .. toInteger $ length args]
   traverse_ (appendInst . Push . Register) argRegs
   zipWithM_ moveExprIntoSafe argRegs args
   appendInst (Call i)
   traverse_ (appendInst . Pop . Register) (reverse argRegs)
   appendInst (Pop (Register retReg))
-
 genDecl _ = error "haven't implemented this yet"
 
 -------------------------------------------------------------------------------
 ---------------------- moveExprInto Variants ----------------------------------
 -------------------------------------------------------------------------------
--- These functions are a central part of the Plume language. They generate 
--- the code for an expression and move its result into a destination register. 
+-- These functions are a central part of the Plume language. They generate
+-- the code for an expression and move its result into a destination register.
 -- There are 3 variants to prevent errors from occuring.
--- In their current state, they generate some clearly inefficient and convoluted 
--- bytecode. I will think of a way to fix this eventually. This arises from a bug 
--- that I found when showing this to my friend -> using a register in a calculation 
--- whose destination is the same register leads to errors in the bytecode. In the 
--- current solution, this is solved quite conservatively by using `moveExprIntoSafe` 
--- whenever this *could* be possible. 
+-- In their current state, they generate some clearly inefficient and convoluted
+-- bytecode. I will think of a way to fix this eventually. This arises from a bug
+-- that I found when showing this to my friend -> using a register in a calculation
+-- whose destination is the same register leads to errors in the bytecode. In the
+-- current solution, this is solved quite conservatively by using `moveExprIntoSafe`
+-- whenever this *could* be possible.
 --
--- One thought to improve this is to do a search on the expression AST passed as 
--- a param; if the destination register will be used in the expression's bytecode, 
+-- One thought to improve this is to do a search on the expression AST passed as
+-- a param; if the destination register will be used in the expression's bytecode,
 -- then we do it "safely." Otherwise, we can do it `unsafely` without worry.
 
--- The "safe" version assumes that the register `t` contains a value that might 
--- be used in the expression. It takes a conservative approach that does not 
+-- The "safe" version assumes that the register `t` contains a value that might
+-- be used in the expression. It takes a conservative approach that does not
 -- use `t` in intermediate calculations.
 moveExprIntoSafe :: Integer -> ExprAug SymData -> State GState ()
-moveExprIntoSafe t e = do 
+moveExprIntoSafe t e = do
   ensureMinRegister (t + 1)
   x <- moveExprIntoNewReg e
   appendInst $ Move (Register x) (Register t)
 
 -- This version moves the expressions value into a previously unused register.
--- Since this register is guaranteed to contain nothing, it can be used more 
+-- Since this register is guaranteed to contain nothing, it can be used more
 -- efficiently in intermediate calculations.
-moveExprIntoNewReg :: ExprAug SymData -> State GState Integer 
-moveExprIntoNewReg e = do 
-  t <- getNextRegister 
-  moveExprIntoUnsafe t e 
+moveExprIntoNewReg :: ExprAug SymData -> State GState Integer
+moveExprIntoNewReg e = do
+  t <- getNextRegister
+  moveExprIntoUnsafe t e
   return t
 
 -- This function provides the core functionality for the `moveExprInto` family.
@@ -271,10 +270,10 @@ moveExprIntoUnsafe t u@(UnaryOp Not e, _) = do
   val <- genExprValue e
   appendInst (Move val (Register t))
   appendInst (Inv (Register t))
-moveExprIntoUnsafe t i@(IfExpr {}, _) = genIfElseStructure (moveExprIntoUnsafe t) i
-moveExprIntoUnsafe t (CallExpr i args, _) = do 
-  let usedRegs = filter (/= t) (retReg : [1..toInteger $ length args])
-  let argRegs = [1..toInteger $ length args]
+moveExprIntoUnsafe t i@(IfExpr{}, _) = genIfElseStructure (moveExprIntoUnsafe t) i
+moveExprIntoUnsafe t (CallExpr i args, _) = do
+  let usedRegs = filter (/= t) (retReg : [1 .. toInteger $ length args])
+  let argRegs = [1 .. toInteger $ length args]
   traverse_ (appendInst . Push . Register) usedRegs
   zipWithM_ moveExprIntoSafe argRegs args
   appendInst (Call i)
@@ -292,8 +291,8 @@ moveExprIntoUnsafe t e = do
 -- of the statement, after the last instruction. Therefore, It is UP TO THE CALLER to
 -- control what the code does after it executes the body
 --
--- Along the same lines, it takes a `fail` label as input but it is UP TO THE CALLER 
--- to decide where to append said `fail` label in the bytecode 
+-- Along the same lines, it takes a `fail` label as input but it is UP TO THE CALLER
+-- to decide where to append said `fail` label in the bytecode
 genConditional :: ExprAug SymData -> State GState () -> String -> State GState ()
 genConditional cond body fail
   | isRel cond =
@@ -343,7 +342,7 @@ genExprValue (LitChar v, _) = return (VByte v)
 genExprValue (LitFloat v, _) = return (VFloat v)
 -- Subs will become far more complicated with memory
 genExprValue (Subs i, _) = do
-  rvs <- gets getVarRegisters 
+  rvs <- gets getVarRegisters
   case M.lookup i rvs of
     Just reg -> return (Register reg)
     Nothing -> do
@@ -361,7 +360,7 @@ genVoidExpr (Return, _) = appendInst Ret
 genVoidExpr (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   genVoidExpr e
-genVoidExpr i@(IfExpr {}, _) = genIfElseStructure genVoidExpr i
+genVoidExpr i@(IfExpr{}, _) = genIfElseStructure genVoidExpr i
 
 -- these mappings allow for dynamic creation of some simple instructions
 -- to avoid annoying boilerplate

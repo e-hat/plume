@@ -6,43 +6,43 @@ import qualified Text.Parsec.Token as Tok
 
 languageDef =
   emptyDef
-    { Tok.commentStart = "/*",
-      Tok.commentEnd = "*/",
-      Tok.commentLine = "#",
-      Tok.identStart = P.lower,
-      Tok.identLetter = P.alphaNum,
-      Tok.reservedNames =
-        [ "if",
-          "for",
-          "while",
-          "def",
-          "true",
-          "false",
-          "else",
-          "not",
-          "and",
-          "or",
-          "return",
-          "main",
-          "yield"
-        ],
-      Tok.reservedOpNames =
-        [ "+",
-          "-",
-          "/",
-          ":=",
-          "<",
-          "<=",
-          "=",
-          "!=",
-          ">",
-          "and",
-          "or",
-          "not",
-          "<-",
-          ":",
-          ",",
-          "=>"
+    { Tok.commentStart = "/*"
+    , Tok.commentEnd = "*/"
+    , Tok.commentLine = "#"
+    , Tok.identStart = P.lower
+    , Tok.identLetter = P.alphaNum
+    , Tok.reservedNames =
+        [ "if"
+        , "for"
+        , "while"
+        , "def"
+        , "true"
+        , "false"
+        , "else"
+        , "not"
+        , "and"
+        , "or"
+        , "return"
+        , "main"
+        , "yield"
+        ]
+    , Tok.reservedOpNames =
+        [ "+"
+        , "-"
+        , "/"
+        , ":="
+        , "<"
+        , "<="
+        , "="
+        , "!="
+        , ">"
+        , "and"
+        , "or"
+        , "not"
+        , "<-"
+        , ":"
+        , ","
+        , "=>"
         ]
     }
 

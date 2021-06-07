@@ -1,8 +1,9 @@
 module Parser where
 
-import Control.Monad
 import qualified Lexer as L
 import Syntax
+
+import Control.Monad
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as Ex
 
@@ -46,15 +47,23 @@ unary s f =
     return (asExprAug . UnaryOp f)
 
 opTable =
-  [ [unary "-" Negate],
-    [ binary "*" Multiply Ex.AssocLeft,
-      binary "/" Divide Ex.AssocLeft
-    ],
-    [binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft],
-    [binary "<" Less Ex.AssocLeft, binary ">" Greater Ex.AssocLeft, binary "<=" Leq Ex.AssocLeft, binary ">=" Geq Ex.AssocLeft, binary "=" Equal Ex.AssocLeft, binary "!=" NotEqual Ex.AssocLeft],
-    [unary "not" Not],
-    [binary "and" And Ex.AssocLeft],
-    [binary "or" Or Ex.AssocLeft]
+  [ [unary "-" Negate]
+  ,
+    [ binary "*" Multiply Ex.AssocLeft
+    , binary "/" Divide Ex.AssocLeft
+    ]
+  , [binary "+" Plus Ex.AssocLeft, binary "-" Minus Ex.AssocLeft]
+  ,
+    [ binary "<" Less Ex.AssocLeft
+    , binary ">" Greater Ex.AssocLeft
+    , binary "<=" Leq Ex.AssocLeft
+    , binary ">=" Geq Ex.AssocLeft
+    , binary "=" Equal Ex.AssocLeft
+    , binary "!=" NotEqual Ex.AssocLeft
+    ]
+  , [unary "not" Not]
+  , [binary "and" And Ex.AssocLeft]
+  , [binary "or" Or Ex.AssocLeft]
   ]
 
 opExpression :: P.Parsec String () (ExprAug SpanRec)
@@ -179,9 +188,9 @@ callexpr =
 
 declFromExpr :: ExprAug SpanRec -> Decl SpanRec
 declFromExpr (e, _) = makeCall e
-  where
-    makeCall :: Expr SpanRec -> Decl SpanRec
-    makeCall (CallExpr i exs) = CallDecl i exs
+ where
+  makeCall :: Expr SpanRec -> Decl SpanRec
+  makeCall (CallExpr i exs) = CallDecl i exs
 
 calldecl :: P.Parsec String () (DeclAug SpanRec)
 calldecl =

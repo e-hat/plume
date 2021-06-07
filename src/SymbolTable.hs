@@ -1,4 +1,4 @@
-module SymbolTable where 
+module SymbolTable where
 
 import Syntax
 
@@ -16,13 +16,13 @@ type SymTable = Map.Map Identifier TEntry
 getDeclSymbol :: DeclAug t -> Identifier
 getDeclSymbol (Let _ i _, _) = i
 getDeclSymbol (DefFn i _ _ _, _) = i
-getDeclSymbol _ = error "getDeclSymbol used on non-let or non-deffn" 
+getDeclSymbol _ = error "getDeclSymbol used on non-let or non-deffn"
 
 -- gets the type for a let or function definition declaration
 getDeclEntry :: DeclAug t -> TEntry
 getDeclEntry (Let t _ _, _) = Single t
 getDeclEntry (DefFn _ ps r _, _) = Many (map (fst . getParam) ps) r
-getDeclEntry _ = error "getDeclEntry used on non-let or non-deffn" 
+getDeclEntry _ = error "getDeclEntry used on non-let or non-deffn"
 
 getEntryType :: TEntry -> Type
 getEntryType (Single t) = t
@@ -49,14 +49,15 @@ insertDecl :: DeclAug t -> SymTable -> SymTable
 insertDecl d = uncurry Map.insert (getSymKV d)
 
 data SymData = SymData
-  { getScope :: SymTable,
-    getSymSpan :: SpanRec 
-  } deriving Show
+  { getScope :: SymTable
+  , getSymSpan :: SpanRec
+  }
+  deriving (Show)
 
-newtype SymDeclAug = SymDeclAug { getSymDeclAug :: DeclAug SymData } 
-newtype SymExprAug = SymExprAug { getSymExprAug :: ExprAug SymData }
+newtype SymDeclAug = SymDeclAug {getSymDeclAug :: DeclAug SymData}
+newtype SymExprAug = SymExprAug {getSymExprAug :: ExprAug SymData}
 
-newtype SymTreeList = SymTreeList { getSymTreeList :: [SymDeclAug] }
+newtype SymTreeList = SymTreeList {getSymTreeList :: [SymDeclAug]}
 
 instance PrettyVal SymTreeList where
   prettyVal (SymTreeList ts) = prettyVal ts
@@ -69,8 +70,8 @@ instance PrettyVal SymDeclAug where
   prettyVal (SymDeclAug (CallDecl i es, SymData scp _)) = Con "CallDecl" [String $ show scp, String i, Con "Params passed" [prettyVal $ map SymExprAug es]]
   prettyVal (SymDeclAug (IfDecl e d eds md, SymData scp _)) =
     Con "IfDecl" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug e], Con "IfResult" [prettyVal $ SymDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (SymDeclAug <$> md)]]
-    where
-      augEFPair (e, d) = (SymExprAug e, SymDeclAug d)
+   where
+    augEFPair (e, d) = (SymExprAug e, SymDeclAug d)
   prettyVal (SymDeclAug (BlockDecl ds, SymData scp _)) = Con "BlockDecl" [String $ show scp, prettyVal (map SymDeclAug ds)]
 
 instance PrettyVal SymExprAug where
@@ -78,13 +79,14 @@ instance PrettyVal SymExprAug where
   prettyVal (SymExprAug (CallExpr i es, SymData scp _)) = Con "CallExpr" [String $ show scp, String i, Con "Params passed" [prettyVal (map SymExprAug es)]]
   prettyVal (SymExprAug (IfExpr c e ees me, SymData scp _)) =
     Con "IfExpr" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug c], Con "IfResult" [prettyVal $ SymExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (SymExprAug me)]]
-      where augEFPair (e1, e2) = (SymExprAug e1, SymExprAug e2)
+   where
+    augEFPair (e1, e2) = (SymExprAug e1, SymExprAug e2)
   prettyVal (SymExprAug (BlockExpr ds e, SymData scp _)) = Con "BlockExpr" [String $ show scp, prettyVal (map SymDeclAug ds), prettyVal $ SymExprAug e]
   prettyVal (SymExprAug (BinOp o a b, SymData scp _)) = Con "BinOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a, prettyVal $ SymExprAug b]
   prettyVal (SymExprAug (UnaryOp o a, SymData scp _)) = Con "UnaryOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a]
-  prettyVal (SymExprAug (LitInt i, SymData {})) = Integer (show i)
-  prettyVal (SymExprAug (LitBool b, SymData {})) = String (show b)
-  prettyVal (SymExprAug (LitFloat f, SymData {})) = Float (show f)
-  prettyVal (SymExprAug (LitString s, SymData {})) = String s
-  prettyVal (SymExprAug (LitChar c, SymData {})) = Char (show c)
-  prettyVal (SymExprAug (Return, SymData {})) = String "return"
+  prettyVal (SymExprAug (LitInt i, SymData{})) = Integer (show i)
+  prettyVal (SymExprAug (LitBool b, SymData{})) = String (show b)
+  prettyVal (SymExprAug (LitFloat f, SymData{})) = Float (show f)
+  prettyVal (SymExprAug (LitString s, SymData{})) = String s
+  prettyVal (SymExprAug (LitChar c, SymData{})) = Char (show c)
+  prettyVal (SymExprAug (Return, SymData{})) = String "return"

@@ -2,29 +2,30 @@ module VirtualMachine where
 
 -- THIS MODULE IS CURRENTLY DEPRECATED
 
+import ShowBytecode
+
 import BytecodeGen hiding (getInstructions, getLabelTable)
 import Control.Monad.State
 import qualified Data.Map.Strict as M
-import ShowBytecode
 import System.Exit
 
-data VMProgram = VMProgram 
+data VMProgram = VMProgram
   { getInstructions :: [Inst]
   , getLabelTable :: M.Map String Integer
   }
 
 data VMState = VMState
-  { getRegisters :: M.Map Integer Value,
-    getCurrentProgram :: VMProgram,
-    getIPtr :: Integer,
-    getRunning :: Bool,
-    getLastComp :: CmpResult
+  { getRegisters :: M.Map Integer Value
+  , getCurrentProgram :: VMProgram
+  , getIPtr :: Integer
+  , getRunning :: Bool
+  , getLastComp :: CmpResult
   }
 
 data CmpResult = RL | RG | REqual
 
 setRegisters :: M.Map Integer Value -> State VMState ()
-setRegisters new = modify $ \s -> s {getRegisters = new}
+setRegisters new = modify $ \s -> s{getRegisters = new}
 
 evaluateValue :: Value -> ()
 evaluateValue (VInt i) = seq i ()
@@ -42,14 +43,14 @@ setRegister r v = do
 
 setLastComp :: CmpResult -> State VMState ()
 setLastComp b =
-  modify $ \s -> s {getLastComp = seq b () `seq` b}
+  modify $ \s -> s{getLastComp = seq b () `seq` b}
 
 lookupRegister :: Integer -> VMState -> Value
 lookupRegister r s = getRegisters s M.! r
 
 setIPtr :: Integer -> State VMState ()
 setIPtr i =
-  modify $ \s -> s {getIPtr = seq i () `seq` i}
+  modify $ \s -> s{getIPtr = seq i () `seq` i}
 
 type BinArithOp = forall a. Num a => a -> a -> a
 
@@ -115,10 +116,10 @@ runBytecode :: BytecodeProgram -> IO ()
 runBytecode b =
   let makeVMProgram :: BytecodeProgram -> VMProgram
       makeVMProgram (BytecodeProgram is tbl) = VMProgram is (M.mapKeys getLblString tbl)
-        where 
-          getLblString :: Label -> String 
-          getLblString (JmpLabel l) = l 
-          getLblString (FuncLabel l) = l
+       where
+        getLblString :: Label -> String
+        getLblString (JmpLabel l) = l
+        getLblString (FuncLabel l) = l
       vmp = makeVMProgram b
       start = getLabelTable vmp M.! "main"
       (rslt, _) = runState (runFrom start) (VMState M.empty vmp start True REqual)
@@ -128,7 +129,7 @@ runBytecode b =
 runFrom :: Integer -> State VMState (IO ())
 runFrom start = do
   s <- get
-  put $ s {getIPtr = start}
+  put $ s{getIPtr = start}
   result <-
     runInst $ getInstructions (getCurrentProgram s) !! fromIntegral start
   s' <- get
@@ -157,23 +158,23 @@ runInst (Neg v@(Register dst)) = do
   s <- get
   setRegister dst (negateVal s v)
   return (pure ())
-  where
-    negateVal :: VMState -> Value -> Value
-    negateVal _ (VFloat v) = VFloat (negate v)
-    negateVal _ (VInt v) = VInt (negate v)
-    negateVal s (Register t) =
-      let v = lookupRegister t s
-       in negateVal s v
+ where
+  negateVal :: VMState -> Value -> Value
+  negateVal _ (VFloat v) = VFloat (negate v)
+  negateVal _ (VInt v) = VInt (negate v)
+  negateVal s (Register t) =
+    let v = lookupRegister t s
+     in negateVal s v
 runInst (Inv v@(Register dst)) = do
   s <- get
   setRegister dst (invertVal s v)
   return (pure ())
-  where
-    invertVal :: VMState -> Value -> Value
-    invertVal _ (VBool v) = VBool (not v)
-    invertVal s (Register t) =
-      let v = lookupRegister t s
-       in invertVal s v
+ where
+  invertVal :: VMState -> Value -> Value
+  invertVal _ (VBool v) = VBool (not v)
+  invertVal s (Register t) =
+    let v = lookupRegister t s
+     in invertVal s v
 runInst (IAnd l dst) = runBinBoolInst (&&) l dst
 runInst (IOr l dst) = runBinBoolInst (||) l dst
 runInst (Cmp v1 v2) = do
@@ -217,14 +218,14 @@ runInst (JmpG lbl) = do
 runInst Syscall = do
   s <- get
   case getRegisters s M.! retReg of
-    SyscallCode Exit -> do 
-      put $ s {getRunning = False}
-      case getRegisters s M.! 1 of 
+    SyscallCode Exit -> do
+      put $ s{getRunning = False}
+      case getRegisters s M.! 1 of
         VInt 0 -> return exitSuccess
         VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
-runInst i = do 
-  return $ 
-    putStrLn ("Sorry! I don't support `" ++ show i ++ "` yet!") 
+runInst i = do
+  return $
+    putStrLn ("Sorry! I don't support `" ++ show i ++ "` yet!")
       >> exitWith (ExitFailure (-1))
 
 runBinArithInst :: BinArithOp -> Value -> Value -> State VMState (IO ())

@@ -1,13 +1,14 @@
 module Semantics (validateSemantics) where
 
+import SemanticError
+import SymbolTable
+import Syntax
+
 import Control.Monad
 import Data.Bifunctor
 import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Maybe
-import SemanticError
-import SymbolTable
-import Syntax
 
 -- this function performs scoping (symbol table building + catching scoping errors)
 -- & typechecking for a given AST
@@ -84,7 +85,7 @@ buildGlobalScope ds =
 
 -- shared btwn BlockDecl and BlockExpr for accumulating symbol tables
 buildBlockTbls :: [SymTable] -> DeclAug t -> [SymTable]
-buildBlockTbls tbls l@(Let {}, _) =
+buildBlockTbls tbls l@(Let{}, _) =
   let t = last tbls
    in tbls ++ [insertDecl l t]
 buildBlockTbls tbls _ = tbls ++ [last tbls]
@@ -108,7 +109,7 @@ buildSymTreeD tbl r@(Reassign i e, sr) =
     Just _ -> do
       symr <- Reassign i <$> buildSymTreeE tbl e
       return (symr, SymData tbl sr)
-buildSymTreeD tbl c@(CallDecl {}, _) = buildSymTreeCall tbl c
+buildSymTreeD tbl c@(CallDecl{}, _) = buildSymTreeCall tbl c
 buildSymTreeD tbl b@(BlockDecl ds, sr) = do
   let dtbls = foldl buildBlockTbls [tbl] ds
   symds <- zipWithM buildSymTreeD dtbls ds
@@ -145,7 +146,7 @@ buildSymTreeE tbl s@(Subs i, sr) =
     Just _ -> Right (Subs i, SymData tbl sr)
     Nothing -> Left $ astSemanticErr s ("undeclared symbol " ++ i)
 -- practically identical to CallDecl
-buildSymTreeE tbl c@(CallExpr {}, _) = buildSymTreeCall tbl c
+buildSymTreeE tbl c@(CallExpr{}, _) = buildSymTreeCall tbl c
 buildSymTreeE tbl i@(IfExpr b fe eis e, sr) =
   let buildSymTreeEF symtbl (eib, eie) =
         (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeE symtbl eie
@@ -197,7 +198,7 @@ typecheckD r@(Reassign i e, s@(SymData tbl _)) =
           tr <- Reassign i <$> typecheckE e
           return (tr, s)
         else Left $ typeError r t1 e t2
-typecheckD c@(CallDecl {}, _) = typecheckCall c
+typecheckD c@(CallDecl{}, _) = typecheckCall c
 typecheckD b@(BlockDecl ds, s) = do
   tds <- traverse typecheckD ds
   return (BlockDecl tds, s)
@@ -248,7 +249,7 @@ typecheckE (BlockExpr ds rexpr, s) = do
   trexpr <- typecheckE rexpr
   return (BlockExpr tds trexpr, s)
 typecheckE s@(Subs _, _) = Right s
-typecheckE c@(CallExpr {}, _) = typecheckCall c
+typecheckE c@(CallExpr{}, _) = typecheckCall c
 typecheckE i@(IfExpr b fe eis e, s) =
   let -- need to unify all types of branch expressions
       unifyBranches :: [ExprAug SymData] -> Either String [ExprAug SymData]
