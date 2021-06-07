@@ -3,6 +3,8 @@ module Bytecode where
 import Data.List
 import qualified Data.Map.Strict as M
 
+import Text.Printf (errorShortFormat, printf)
+
 -- types of values that can be moved around
 data Value
   = Register Integer
@@ -40,6 +42,9 @@ data Inst
 
 data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
 
+-- list of registers that it uses, then SyscallCode
+data SyscallSchema = SyscallSchema [Integer] SyscallCode
+
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst]
   , getLabelTable :: M.Map Label Integer
@@ -66,3 +71,13 @@ sliceLocs :: [Int] -> [b] -> [[b]]
 sliceLocs [i] bs = [drop i bs]
 sliceLocs (beg : end : as) bs =
   take (end - beg) (drop beg bs) : sliceLocs (end : as) bs
+
+-- pre-defined schema section
+exitSchema = SyscallSchema [1] Exit
+
+-- equivalent of %eax in this bytecode is $0
+retReg :: Integer
+retReg = 0
+
+prettifyLabel :: Integer -> String
+prettifyLabel = printf "*%06d*"

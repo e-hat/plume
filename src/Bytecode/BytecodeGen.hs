@@ -15,7 +15,6 @@ import Syntax
 import Control.Monad.State
 import Data.Foldable
 import qualified Data.Map.Strict as M
-import Text.Printf (errorShortFormat, printf)
 
 data GState = GState
   { getCurrentProgram :: BytecodeProgram
@@ -24,12 +23,6 @@ data GState = GState
   , getGlobalVars :: M.Map String Value
   , getOpenLabelNums :: [Integer]
   }
-
--- list of registers that it uses, then SyscallCode
-data SyscallSchema = SyscallSchema [Integer] SyscallCode
-
--- pre-defined schema section
-exitSchema = SyscallSchema [1] Exit
 
 -- helper functions for managing state
 setCurrentProgram :: BytecodeProgram -> State GState ()
@@ -75,19 +68,12 @@ getNextRegister = do
   setOpenRegisters $ tail rs
   return result
 
-prettifyLabel :: Integer -> String
-prettifyLabel = printf "*%06d*"
-
 getNextLabel :: State GState String
 getNextLabel = do
   ls <- gets getOpenLabelNums
   let result = head ls
   setOpenLabelNums $ tail ls
   return (prettifyLabel result)
-
--- equivalent of %eax in this bytecode is $0
-retReg :: Integer
-retReg = 0
 
 initState :: GState
 initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [1 ..]
