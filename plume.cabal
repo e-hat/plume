@@ -14,7 +14,7 @@ cabal-version:       >=1.10
 extra-source-files:  README.md
 
 executable plume
-  hs-source-dirs:      src
+  hs-source-dirs:      src, src/Parsing, src/Semantics, src/Bytecode, src/VirtualMachine, src/RegAlloc
   default-extensions:  DeriveTraversable, DeriveFunctor, DeriveFoldable, RankNTypes
   other-modules:       Syntax Parser Lexer Semantics SemanticError SymbolTable BytecodeGen VirtualMachine ShowBytecode LiveIntervals Bytecode
   main-is:             Main.hs
