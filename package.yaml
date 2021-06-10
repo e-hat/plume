@@ -6,6 +6,9 @@ license: MIT
 github: e-hat/plume 
 category: Programming Language
 
+default-extensions: 
+  - DeriveTraversable, DeriveFunctor, DeriveFoldable, RankNTypes
+
 dependencies: 
     - base >= 4.7 && < 5
     - parsec 
