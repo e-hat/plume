@@ -1,0 +1,26 @@
+name: plume
+version: 0.0.1
+synopsis: The compiler for the Plume programming language
+maintainer: Eddie Hatfield <edward.hatfield@tufts.edu>
+license: MIT
+github: e-hat/plume 
+category: Programming Language
+
+dependencies: 
+    - base >= 4.7 && < 5
+    - parsec 
+    - pretty-show 
+    - optparse-applicative 
+    - containers 
+    - mtl 
+
+ghc-options: -Wall
+
+source-dirs:
+    - src 
+
+executables:
+    plume:
+        source-dirs: src 
+        main: Main.hs
+
