@@ -27,3 +27,6 @@ cabal.project.local~
 
 # vim ignorance
 *.swp
+
+# ignoring hpack output 
+plume.cabal
