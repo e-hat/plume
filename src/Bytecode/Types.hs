@@ -57,7 +57,7 @@ funcs b =
  where
   is = getInstructions b
   flbls = funcLbls b
-  flocs = sortBy (\(_, a) (_, b) -> compare a b) (M.assocs flbls)
+  flocs = sortBy (\(_, x) (_, y) -> compare x y) (M.assocs flbls)
 
 funcLbls :: BytecodeProgram -> M.Map Label Integer
 funcLbls b = M.filterWithKey isFuncLbl lt
@@ -68,11 +68,13 @@ funcLbls b = M.filterWithKey isFuncLbl lt
   isFuncLbl _ _ = False
 
 sliceLocs :: [Int] -> [b] -> [[b]]
+sliceLocs [] _ = undefined -- if this happens, the function has been used wrong
 sliceLocs [i] bs = [drop i bs]
 sliceLocs (beg : end : as) bs =
   take (end - beg) (drop beg bs) : sliceLocs (end : as) bs
 
 -- pre-defined schema section
+exitSchema :: SyscallSchema
 exitSchema = SyscallSchema [1] Exit
 
 -- equivalent of %eax in this bytecode is $0
