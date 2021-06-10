@@ -1,21 +1,18 @@
-module Semantics (validateSemantics) where
+module Semantics.Validation (validateSemantics) where
 
-import SemanticError
-import SymbolTable
-import Syntax
+import Semantics.Error
+import Semantics.SymbolTable
+import Parsing.Syntax
 
 import Control.Monad
-import Data.Bifunctor
-import Data.List
 import qualified Data.Map.Strict as Map
-import Data.Maybe
 
 -- this function performs scoping (symbol table building + catching scoping errors)
 -- & typechecking for a given AST
 validateSemantics :: Program -> Either String SymTreeList
 validateSemantics (p) =
   let checkGlobalLet :: DeclAug SpanRec -> Either String (DeclAug SpanRec)
-      checkGlobalLet l@(Let _ _ e, sr) =
+      checkGlobalLet l@(Let _ _ e, _) =
         if isLit e
           then Right l
           else Left $ astSemanticErr l "a global let MUST be a literal value"

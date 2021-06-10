@@ -1,16 +1,8 @@
-module BytecodeGen (
-  Inst (..),
-  Value (..),
-  Label (..),
-  BytecodeProgram (..),
-  SyscallCode (..),
-  genBytecode,
-  retReg,
-) where
+module Bytecode.Generation (genBytecode) where
 
-import Bytecode
-import SymbolTable
-import Syntax
+import Bytecode.Types
+import Parsing.Syntax
+import Semantics.SymbolTable
 
 import Control.Monad.State
 import Data.Foldable

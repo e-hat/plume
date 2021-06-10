@@ -1,9 +1,9 @@
-module Bytecode where
+module Bytecode.Types where
 
 import Data.List
 import qualified Data.Map.Strict as M
 
-import Text.Printf (errorShortFormat, printf)
+import Text.Printf (printf)
 
 -- types of values that can be moved around
 data Value

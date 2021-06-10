@@ -1,4 +1,4 @@
-module Syntax where
+module Parsing.Syntax where
 
 import qualified Text.Parsec as P
 import Text.Printf (errorShortFormat, printf)

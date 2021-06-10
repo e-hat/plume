@@ -1,10 +1,10 @@
-module VirtualMachine where
+module VirtualMachine.VirtualMachine where
 
 -- THIS MODULE IS CURRENTLY DEPRECATED
 
-import ShowBytecode
+import Bytecode.Show()
+import Bytecode.Types hiding (getInstructions, getLabelTable)
 
-import BytecodeGen hiding (getInstructions, getLabelTable)
 import Control.Monad.State
 import qualified Data.Map.Strict as M
 import System.Exit

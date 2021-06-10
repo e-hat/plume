@@ -1,6 +1,6 @@
-module LiveIntervals (liveIntervals) where
+module RegAlloc.LiveIntervals (liveIntervals) where
 
-import Bytecode
+import Bytecode.Types
 
 import qualified Data.Map.Strict as M
 

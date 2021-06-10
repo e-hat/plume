@@ -1,4 +1,4 @@
-module Lexer where
+module Parsing.Lexer where
 
 import Text.Parsec as P
 import Text.Parsec.Language

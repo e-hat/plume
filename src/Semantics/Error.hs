@@ -1,7 +1,7 @@
-module SemanticError (astSemanticErr, typeError, ErrRep) where
+module Semantics.Error (astSemanticErr, typeError, ErrRep) where
 
-import SymbolTable
-import Syntax
+import Semantics.SymbolTable
+import Parsing.Syntax
 
 import Text.Printf (errorShortFormat, printf)
 

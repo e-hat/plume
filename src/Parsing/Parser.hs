@@ -1,7 +1,7 @@
-module Parser where
+module Parsing.Parser where
 
-import qualified Lexer as L
-import Syntax
+import qualified Parsing.Lexer as L
+import Parsing.Syntax
 
 import Control.Monad
 import qualified Text.Parsec as P

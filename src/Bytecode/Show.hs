@@ -1,10 +1,10 @@
-module ShowBytecode where
+module Bytecode.Show where
 
-import BytecodeGen
+import Bytecode.Types
 
 import qualified Data.Map.Strict as M
 import Data.Tuple
-import Text.Printf (errorShortFormat, printf)
+import Text.Printf (printf)
 
 instance Show BytecodeProgram where
   show (BytecodeProgram is tbl) =

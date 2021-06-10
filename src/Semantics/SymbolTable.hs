@@ -1,9 +1,8 @@
-module SymbolTable where
+module Semantics.SymbolTable where
 
-import Syntax
+import Parsing.Syntax
 
 import qualified Data.Map.Strict as Map
-import Data.Maybe
 
 import Text.Show.Pretty
 
