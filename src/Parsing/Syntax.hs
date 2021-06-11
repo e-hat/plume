@@ -1,7 +1,7 @@
 module Parsing.Syntax where
 
 import qualified Text.Parsec as P
-import Text.Printf (errorShortFormat, printf)
+import Text.Printf (printf)
 import Text.Show.Pretty
 
 newtype Program = Program {getProgram :: [ASTDeclAug]}
@@ -94,7 +94,7 @@ spanBtwnSP s1 s2 =
     (P.sourceColumn s2)
 
 instance Semigroup SpanRec where
-  (<>) (SpanRec aFname aMinLine aMaxLine aMinCol aMaxCol) (SpanRec bFname bMinLine bMaxLine bMinCol bMaxCol) =
+  (<>) (SpanRec aFname aMinLine aMaxLine aMinCol aMaxCol) (SpanRec _ bMinLine bMaxLine bMinCol bMaxCol) =
     SpanRec
       aFname
       (min aMinLine bMinLine)
@@ -121,7 +121,7 @@ instance PrettyVal ASTDeclAug where
   prettyVal (ASTDeclAug (IfDecl e d eds md, _)) =
     Con "IfDecl" [Con "Condition" [prettyVal $ ASTExprAug e], Con "IfResult" [prettyVal $ ASTDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (ASTDeclAug <$> md)]]
    where
-    augEFPair (e, d) = (ASTExprAug e, ASTDeclAug d)
+    augEFPair (e', d') = (ASTExprAug e', ASTDeclAug d')
   prettyVal (ASTDeclAug (BlockDecl ds, _)) = Con "BlockDecl" [prettyVal (map ASTDeclAug ds)]
 
 instance PrettyVal ASTExprAug where
