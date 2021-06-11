@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Parsing.Lexer where
 
 import Text.Parsec as P
