@@ -3,7 +3,7 @@ module Semantics.Error (astSemanticErr, typeError, ErrRep) where
 import Semantics.SymbolTable
 import Parsing.Syntax
 
-import Text.Printf (errorShortFormat, printf)
+import Text.Printf (printf)
 
 -- general error handling
 astSemanticErr :: (ErrRep t) => (t, SpanRec) -> String -> String
@@ -22,6 +22,7 @@ typeError (n1, SymData _ s1) t1 (n2, SymData _ s2) =
   wrapStmtName sym1 sr1 ty1 sym2 sr2 ty2 =
     printf "%s\nError: could not unify type `%s` with type `%s`\nfor symbols `%s` at %s and `%s` at %s respectively\n%s" starBlock ty1 ty2 sym1 (show sr1) sym2 (show sr2) starBlock
 
+starBlock :: String
 starBlock = "*******************************************"
 
 class ErrRep a where
@@ -46,4 +47,5 @@ instance ErrRep (Expr t) where
   errRep LitString{} = "String Literal Expression"
   errRep LitBool{} = "Boolean Literal Expression"
   errRep LitChar{} = "Character Literal Expression"
+  errRep LitFloat{} = "Float Literal Expression"
   errRep Return = "Return Expression"
