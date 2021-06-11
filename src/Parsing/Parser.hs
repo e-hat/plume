@@ -1,3 +1,4 @@
+{-#  OPTIONS_GHC -Wno-missing-signatures #-}
 module Parsing.Parser where
 
 import qualified Parsing.Lexer as L
@@ -34,6 +35,7 @@ exprWrapper exprP = do
 asExprAug :: Expr SpanRec -> ExprAug SpanRec
 asExprAug b@(BinOp _ n1 n2) = (b, snd n1 <> snd n2)
 asExprAug u@(UnaryOp _ n) = (u, snd n)
+asExprAug _ = undefined
 
 binary s f =
   Ex.Infix $ do
@@ -42,7 +44,6 @@ binary s f =
 
 unary s f =
   Ex.Prefix $ do
-    pos <- P.getPosition
     L.reservedOp s
     return (asExprAug . UnaryOp f)
 
@@ -69,6 +70,7 @@ opTable =
 opExpression :: P.Parsec String () (ExprAug SpanRec)
 opExpression = Ex.buildExpressionParser opTable term
 
+term :: P.Parsec String () (ExprAug SpanRec)
 term =
   L.parens opExpression P.<|> P.try callexpr P.<|> P.try subs P.<|> natOrFloat P.<|> bool
 
@@ -191,6 +193,7 @@ declFromExpr (e, _) = makeCall e
  where
   makeCall :: Expr SpanRec -> Decl SpanRec
   makeCall (CallExpr i exs) = CallDecl i exs
+  makeCall _ = undefined
 
 calldecl :: P.Parsec String () (DeclAug SpanRec)
 calldecl =
