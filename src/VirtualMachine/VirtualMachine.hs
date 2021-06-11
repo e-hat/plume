@@ -2,7 +2,6 @@ module VirtualMachine.VirtualMachine where
 
 -- THIS MODULE IS CURRENTLY DEPRECATED
 
-import Bytecode.Show()
 import Bytecode.Types hiding (getInstructions, getLabelTable)
 
 import Control.Monad.State

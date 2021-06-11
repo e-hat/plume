@@ -1,15 +1,15 @@
 module Main where
 
 import Bytecode.Generation
-import Bytecode.Show
+import Bytecode.Types()
 import Parsing.Parser
-import Parsing.Syntax
+import Parsing.Syntax()
 import RegAlloc.LiveIntervals
 import Semantics.Validation
 import VirtualMachine.VirtualMachine
 
-import Control.Monad
-import Data.Semigroup ((<>))
+import Control.Monad()
+import Data.Semigroup()
 import Options.Applicative
 import System.IO
 import qualified Text.Parsec as P
