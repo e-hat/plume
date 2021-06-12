@@ -10,7 +10,7 @@ import qualified Data.Map.Strict as Map
 -- this function performs scoping (symbol table building + catching scoping errors)
 -- & typechecking for a given AST
 validateSemantics :: Program -> Either String SymTreeList
-validateSemantics (p) =
+validateSemantics p =
   let checkGlobalLet :: DeclAug SpanRec -> Either String (DeclAug SpanRec)
       checkGlobalLet l@(Let _ _ e, _) =
         if isLit e
@@ -95,7 +95,7 @@ buildSymTreeD tbl l@(Let t i e, sr) =
     Nothing -> do
       syml <- Let t i <$> buildSymTreeE tbl e
       return (syml, SymData tbl sr)
-buildSymTreeD tbl f@(DefFn i ps t e, sr) =
+buildSymTreeD tbl (DefFn i ps t e, sr) =
   let childTbl = foldr insertParam tbl ps
    in do
         symf <- DefFn i ps t <$> buildSymTreeE childTbl e
@@ -107,11 +107,11 @@ buildSymTreeD tbl r@(Reassign i e, sr) =
       symr <- Reassign i <$> buildSymTreeE tbl e
       return (symr, SymData tbl sr)
 buildSymTreeD tbl c@(CallDecl{}, _) = buildSymTreeCall tbl c
-buildSymTreeD tbl b@(BlockDecl ds, sr) = do
+buildSymTreeD tbl (BlockDecl ds, sr) = do
   let dtbls = foldl buildBlockTbls [tbl] ds
   symds <- zipWithM buildSymTreeD dtbls ds
   return (BlockDecl symds, SymData tbl sr)
-buildSymTreeD tbl i@(IfDecl b fd eis med, sr) =
+buildSymTreeD tbl (IfDecl b fd eis med, sr) =
   let buildSymTreeEF symtbl (eib, eid) =
         (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeD symtbl eid
    in do
@@ -144,7 +144,7 @@ buildSymTreeE tbl s@(Subs i, sr) =
     Nothing -> Left $ astSemanticErr s ("undeclared symbol " ++ i)
 -- practically identical to CallDecl
 buildSymTreeE tbl c@(CallExpr{}, _) = buildSymTreeCall tbl c
-buildSymTreeE tbl i@(IfExpr b fe eis e, sr) =
+buildSymTreeE tbl (IfExpr b fe eis e, sr) =
   let buildSymTreeEF symtbl (eib, eie) =
         (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeE symtbl eie
    in do
@@ -155,10 +155,10 @@ buildSymTreeE tbl i@(IfExpr b fe eis e, sr) =
             <*> buildSymTreeE tbl e
         return (symi, SymData tbl sr)
 ---------------------------SCOPING OPERATOR EXPRS-------------------------------
-buildSymTreeE tbl b@(BinOp op l r, sr) = do
+buildSymTreeE tbl (BinOp op l r, sr) = do
   bb <- BinOp op <$> buildSymTreeE tbl l <*> buildSymTreeE tbl r
   return (bb, SymData tbl sr)
-buildSymTreeE tbl u@(UnaryOp op t, sr) = do
+buildSymTreeE tbl (UnaryOp op t, sr) = do
   bu <- UnaryOp op <$> buildSymTreeE tbl t
   return (bu, SymData tbl sr)
 
@@ -196,7 +196,7 @@ typecheckD r@(Reassign i e, s@(SymData tbl _)) =
           return (tr, s)
         else Left $ typeError r t1 e t2
 typecheckD c@(CallDecl{}, _) = typecheckCall c
-typecheckD b@(BlockDecl ds, s) = do
+typecheckD (BlockDecl ds, s) = do
   tds <- traverse typecheckD ds
   return (BlockDecl tds, s)
 typecheckD i@(IfDecl b fd eis med, s) =
@@ -210,6 +210,7 @@ typecheckD i@(IfDecl b fd eis med, s) =
         return (IfDecl tb tfd teisf tmed, s)
 
 -- helper functions for typechecking expressions
+numericalTypes :: [String]
 numericalTypes = ["Int", "Float"] -- for arithmetic/relational exprs
 
 -- ensures that the term t is a Bool
@@ -282,7 +283,7 @@ typecheckE b@(UnaryOp Not t, s) = do
   return (UnaryOp Not tt, s)
 
 ------------------------SPECIAL REL. EXPRS--------------------------------------
-typecheckE eq@(BinOp Equal l r, s) =
+typecheckE (BinOp Equal l r, s) =
   let lt = getType l
       rt = getType r
    in if lt /= rt
@@ -290,7 +291,7 @@ typecheckE eq@(BinOp Equal l r, s) =
         else do
           teq <- BinOp Equal <$> typecheckE l <*> typecheckE r
           return (teq, s)
-typecheckE eq@(BinOp NotEqual l r, s) =
+typecheckE (BinOp NotEqual l r, s) =
   let lt = getType l
       rt = getType r
    in if lt /= rt
@@ -339,11 +340,13 @@ getType (BinOp NotEqual _ _, _) = "Bool"
 -- by the typechecking step, so getting the type of the first term is enough
 getType (UnaryOp Negate e, _) = getType e
 getType (BinOp _ l r, _) = promoteType (getType l) (getType r)
+getType _ = undefined
 
 promoteType :: Type -> Type -> Type
 promoteType "Float" _ = "Float"
 promoteType _ "Float" = "Float"
 promoteType "Int" "Int" = "Int"
+promoteType _ _ = undefined
 
 -- sharing functionality between CallExpr and CallDecl because their semantics
 -- are identical
@@ -395,7 +398,8 @@ typecheckCall c@(cinst, SymData tbl sr) =
   let i = getId cinst
       pexprs = getPExprs cinst
       callEntry = tbl Map.! i
-      getParamTypes (Many ts t) = ts
+      getParamTypes (Many ts _) = ts
+      getParamTypes _ = undefined -- not needed for single
       pTypes = getParamTypes callEntry
       matchParamType :: ExprAug SymData -> Type -> Either String (ExprAug SymData)
       matchParamType expr t =
