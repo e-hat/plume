@@ -64,12 +64,13 @@ arithComb s op (Register lr) r =
 arithComb s op l (Register rr) =
   let r = lookupRegister rr s
    in arithComb s op l r
+arithComb _ _ _ _ = undefined
 
 divComb :: VMState -> Value -> Value -> Value
 divComb _ (VInt l) (VInt r) = VInt (l `quot` r)
-divComb _ (VFloat l) (VInt 0) = error "Divide by zero"
+divComb _ (VFloat _) (VInt 0) = error "Divide by zero"
 divComb _ (VFloat l) (VInt r) = VFloat (l / fromIntegral r)
-divComb _ (VInt l) (VFloat 0.0) = error "Divide by zero"
+divComb _ (VInt _) (VFloat 0.0) = error "Divide by zero"
 divComb _ (VInt l) (VFloat r) = VFloat (fromIntegral l / r)
 divComb _ (VFloat l) (VFloat r) = VFloat (l / r)
 divComb s (Register lr) r =
@@ -78,6 +79,7 @@ divComb s (Register lr) r =
 divComb s l (Register rr) =
   let r = lookupRegister rr s
    in divComb s l r
+divComb _ _ _ = undefined
 
 type BinBoolOp = Bool -> Bool -> Bool
 
@@ -89,14 +91,15 @@ boolComb s op (Register lr) r =
 boolComb s op l (Register rr) =
   let r = lookupRegister rr s
    in boolComb s op l r
+boolComb _ _ _ _ = undefined
 
 compareVal :: VMState -> Value -> Value -> CmpResult
 compareVal _ (VInt l) (VInt r)
   | l > r = RG
   | l < r = RL
   | otherwise = REqual
-compareVal s f@(VFloat l) (VInt r) = compareVal s f (VFloat $ fromIntegral r)
-compareVal s (VInt l) f@(VFloat r) = compareVal s (VFloat $ fromIntegral l) f
+compareVal s f@(VFloat _) (VInt r) = compareVal s f (VFloat $ fromIntegral r)
+compareVal s (VInt l) f@(VFloat _) = compareVal s (VFloat $ fromIntegral l) f
 compareVal _ (VFloat l) (VFloat r)
   | l > r = RG
   | l < r = RL
@@ -110,6 +113,7 @@ compareVal s (Register lr) r =
 compareVal s l (Register rr) =
   let r = lookupRegister rr s
    in compareVal s l r
+compareVal _ _ _ = undefined
 
 runBytecode :: BytecodeProgram -> IO ()
 runBytecode b =
@@ -159,21 +163,23 @@ runInst (Neg v@(Register dst)) = do
   return (pure ())
  where
   negateVal :: VMState -> Value -> Value
-  negateVal _ (VFloat v) = VFloat (negate v)
-  negateVal _ (VInt v) = VInt (negate v)
+  negateVal _ (VFloat v') = VFloat (negate v')
+  negateVal _ (VInt v') = VInt (negate v')
   negateVal s (Register t) =
-    let v = lookupRegister t s
-     in negateVal s v
+    let v' = lookupRegister t s
+     in negateVal s v'
+  negateVal _ _ = undefined
 runInst (Inv v@(Register dst)) = do
   s <- get
   setRegister dst (invertVal s v)
   return (pure ())
  where
   invertVal :: VMState -> Value -> Value
-  invertVal _ (VBool v) = VBool (not v)
+  invertVal _ (VBool v') = VBool (not v')
   invertVal s (Register t) =
-    let v = lookupRegister t s
-     in invertVal s v
+    let v' = lookupRegister t s
+     in invertVal s v'
+  invertVal _ _ = undefined
 runInst (IAnd l dst) = runBinBoolInst (&&) l dst
 runInst (IOr l dst) = runBinBoolInst (||) l dst
 runInst (Cmp v1 v2) = do
@@ -222,6 +228,8 @@ runInst Syscall = do
       case getRegisters s M.! 1 of
         VInt 0 -> return exitSuccess
         VInt v -> return $ exitWith $ ExitFailure (fromIntegral v)
+        _ -> undefined
+    _ -> undefined
 runInst i = do
   return $
     putStrLn ("Sorry! I don't support `" ++ show i ++ "` yet!")
@@ -232,9 +240,11 @@ runBinArithInst op l r@(Register dst) = do
   s <- get
   setRegister dst (arithComb s op l r)
   return (pure ())
+runBinArithInst _ _ _ = undefined
 
 runBinBoolInst :: BinBoolOp -> Value -> Value -> State VMState (IO ())
 runBinBoolInst op l r@(Register dst) = do
   s <- get
   setRegister dst (boolComb s op l r)
   return (pure ())
+runBinBoolInst _ _ _ = undefined
