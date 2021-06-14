@@ -6,7 +6,6 @@ import Parsing.Parser
 import Parsing.Syntax()
 import RegAlloc.LiveIntervals
 import Semantics.Validation
-import VirtualMachine.VirtualMachine
 
 import Control.Monad()
 import Data.Semigroup()
@@ -114,14 +113,8 @@ run (PrintBytecodeInput f) = do
         Right p -> case validateSemantics p of
             Left err -> putStrLn err
             Right trees -> print $ genBytecode trees
-run (RunInput f) = do
-    hPutStrLn stderr "Warning: running Plume bytecode with the Plume VM is deprecated"
-    nodes <- P.parse program f <$> readFile f
-    case nodes of
-        Left err -> print err
-        Right p -> case validateSemantics p of
-            Left err -> putStrLn err
-            Right trees -> runBytecode $ genBytecode trees
+run RunInput{} = do
+    hPutStrLn stderr "The Plume VM has been deprecated and is no longer available for use."
 run (LiveIntervalInput f) = do
     nodes <- P.parse program f <$> readFile f
     case nodes of
