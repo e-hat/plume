@@ -8,7 +8,9 @@ import Text.Printf (printf)
 
 -- types of values that can be moved around
 data Value
-  = Register Integer
+  -- distinction between physical and virtual registers is important for regalloc
+  = PRegister Integer
+  | VRegister Integer 
   | VBool Bool
   | VInt Integer
   | VFloat Double
