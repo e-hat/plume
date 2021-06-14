@@ -41,7 +41,7 @@ funcLiveIntervals is = foldl updateIntervalsInst M.empty (zip [0 .. toInteger $ 
   updateIntervalsInst m _ = m
   -- updates the intervals according to the value
   updateIntervalsVal :: Integer -> M.Map Integer LiveInterval -> Value -> M.Map Integer LiveInterval
-  updateIntervalsVal loc m (Register r) = updated
+  updateIntervalsVal loc m (VRegister r) = updated
    where
     updateLiveInterval :: Integer -> LiveInterval -> LiveInterval
     updateLiveInterval l (pMin, pMax) = (min pMin l, max pMax l)

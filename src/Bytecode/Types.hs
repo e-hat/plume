@@ -16,8 +16,9 @@ data Value
   | VFloat Double
   | VByte Char
   | SyscallCode SyscallCode
+  deriving (Eq)
 
-data SyscallCode = Exit deriving (Show)
+data SyscallCode = Exit deriving (Show, Eq)
 
 data Inst
   = Ret
@@ -46,7 +47,10 @@ data Inst
 data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
 
 -- list of registers that it uses, then SyscallCode
-data SyscallSchema = SyscallSchema [Integer] SyscallCode
+data SyscallSchema = SyscallSchema [Value] SyscallCode
+
+newSyscallSchema :: [Integer] -> SyscallCode -> SyscallSchema
+newSyscallSchema prs = SyscallSchema (map PRegister prs)
 
 data BytecodeProgram = BytecodeProgram
   { getInstructions :: [Inst]
@@ -78,11 +82,11 @@ sliceLocs (beg : end : as) bs =
 
 -- pre-defined schema section
 exitSchema :: SyscallSchema
-exitSchema = SyscallSchema [1] Exit
+exitSchema = newSyscallSchema [1] Exit
 
 -- equivalent of %eax in this bytecode is $0
-retReg :: Integer
-retReg = 0
+retReg :: Value
+retReg = PRegister 0
 
 prettifyLabel :: Integer -> String
 prettifyLabel = printf "*%06d*"
@@ -109,7 +113,8 @@ instance Show Label where
   show (FuncLabel l) = l
 
 instance Show Value where
-  show (Register n) = "$" ++ show n
+  show (VRegister n) = "v" ++ show n
+  show (PRegister n) = "p" ++ show n
   show (VInt v) = show v
   show (VBool b) = show b
   show (VByte b) = show b
