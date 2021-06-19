@@ -1,4 +1,4 @@
-module RegAlloc.LiveIntervals (liveIntervals) where
+module RegAlloc.LiveIntervals  where
 
 import Bytecode.Types
 

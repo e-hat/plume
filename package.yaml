@@ -16,6 +16,7 @@ dependencies:
     - optparse-applicative 
     - containers 
     - mtl 
+    - sorted-list
 
 ghc-options: -Wall
 
