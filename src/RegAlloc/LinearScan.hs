@@ -102,7 +102,7 @@ setActive :: SL.SortedList (ActiveLI, Int) -> State RAState ()
 setActive sl = modify $ \s -> s{getActive = sl}
 
 setStackTop :: Int -> State RAState ()
-setStackTop s = modify $ \s -> s{getStackTop = s}
+setStackTop l = modify $ \s -> s{getStackTop = l}
 
 getNextAvailable :: State RAState Integer
 getNextAvailable = do
