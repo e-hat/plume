@@ -84,6 +84,7 @@ data RAState = RAState
   { getAvailable :: [Int]
   , getActive :: SL.SortedList (ActiveLI, Int)
   , getMapping :: VRegMapping
+  , getStackTop :: Int
   }
 
 newtype ActiveLI = ActiveLI {getLI :: LiveInterval} deriving (Eq)
@@ -99,6 +100,9 @@ setAvailable a = modify $ \s -> s{getAvailable = a}
 
 setActive :: SL.SortedList (ActiveLI, Int) -> State RAState ()
 setActive sl = modify $ \s -> s{getActive = sl}
+
+setStackTop :: Int -> State RAState ()
+setStackTop s = modify $ \s -> s{getStackTop = s}
 
 getNextAvailable :: State RAState Integer
 getNextAvailable = do
@@ -125,7 +129,7 @@ regMappings :: VRegIntervals -> [Int] -> VRegMapping
 regMappings lis regPool =
   let sortedIntervals =
         sortBy (\a b -> compare (fst (snd a)) (fst (snd b))) (M.assocs lis)
-      initState = RAState regPool (SL.toSortedList []) M.empty
+      initState = RAState regPool (SL.toSortedList []) M.empty 0
       statefulProgram :: State RAState ()
       statefulProgram = mapM_ regallocIteration sortedIntervals
    in getMapping $ execState statefulProgram initState
