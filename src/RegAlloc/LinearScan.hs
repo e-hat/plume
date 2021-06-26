@@ -10,7 +10,8 @@ import Data.List
 import qualified Data.Set as S
 import qualified Data.SortedList as SL
 
-type VRegMapping = M.Map Integer Integer
+data VRegAssignment = Register Int | Spill Int
+type VRegMapping = M.Map Integer VRegAssignment
 
 regalloc :: BytecodeProgram -> BytecodeProgram
 regalloc p@(BytecodeProgram _ ltbl) =
@@ -59,7 +60,10 @@ convertToPhysical :: VRegMapping -> [Inst] -> [Inst]
 convertToPhysical rm = map updateRs
  where
   u :: Value -> Value
-  u (VRegister r) = PRegister $ rm M.! r
+  u (VRegister v) = 
+    case rm M.! v of 
+      Register p -> PRegister $ toInteger p
+      Spill l -> StackLoc l
   u v = v
   updateRs :: Inst -> Inst
   updateRs (Move v1 v2) = Move (u v1) (u v2)
@@ -105,9 +109,9 @@ getNextAvailable = do
 addAvailable :: Integer -> State RAState ()
 addAvailable i = gets getAvailable >>= setAvailable . (fromIntegral i :)
 
-addMapping :: Integer -> Integer -> State RAState ()
-addMapping virtual physical =
-  gets getMapping >>= setMapping . M.insert virtual physical
+addMapping :: Integer -> VRegAssignment -> State RAState ()
+addMapping virtual assignment =
+  gets getMapping >>= setMapping . M.insert virtual assignment
 
 addActive :: LiveInterval -> Int -> State RAState ()
 addActive li i =
@@ -131,7 +135,7 @@ regallocIteration i@(virtual, li) = do
   expireOld i
   -- have not yet implemented spilling
   r <- getNextAvailable
-  addMapping virtual r
+  addMapping virtual $ Register (fromInteger r)
   addActive li (fromIntegral r)
 
 expireOld :: (Integer, LiveInterval) -> State RAState ()
