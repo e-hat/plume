@@ -16,7 +16,7 @@ data Value
   | VFloat Double
   | VByte Char
   | SyscallCode SyscallCode
-  | MemLoc Int
+  | StackLoc Int
   deriving (Eq)
 
 data SyscallCode = Exit deriving (Show, Eq)
@@ -125,7 +125,7 @@ instance Show Value where
   show (VByte b) = show b
   show (VFloat f) = show f
   show (SyscallCode c) = show c
-  show (MemLoc m) = show m
+  show (StackLoc m) = printf "[%s]" (show m)
 
 instance Show Inst where
   show (Move v r) = printf "Mov %s -> %s" (show v) (show r)
