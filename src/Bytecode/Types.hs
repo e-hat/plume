@@ -16,6 +16,7 @@ data Value
   | VFloat Double
   | VByte Char
   | SyscallCode SyscallCode
+  | MemLoc Int
   deriving (Eq)
 
 data SyscallCode = Exit deriving (Show, Eq)
@@ -44,8 +45,6 @@ data Inst
   | Pop Value
   | Call String
   | Syscall
--- this could become more complex later
-  | LoadMem MemLoc
 
 
 data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
@@ -126,6 +125,7 @@ instance Show Value where
   show (VByte b) = show b
   show (VFloat f) = show f
   show (SyscallCode c) = show c
+  show (MemLoc m) = show m
 
 instance Show Inst where
   show (Move v r) = printf "Mov %s -> %s" (show v) (show r)
@@ -150,4 +150,3 @@ instance Show Inst where
   show (Pop v) = printf "Pop %s" (show v)
   show (Call l) = printf "Call %s" l
   show Syscall = "Syscall"
-  show (LoadMem m) = printf "Load (%s)" (show m)
