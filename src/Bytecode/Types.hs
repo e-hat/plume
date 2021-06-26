@@ -57,7 +57,9 @@ data BytecodeProgram = BytecodeProgram
   , getLabelTable :: M.Map Label Integer
   }
 
-funcs :: BytecodeProgram -> M.Map Label [Inst]
+type BytecodeFuncs = M.Map Label [Inst]
+
+funcs :: BytecodeProgram -> BytecodeFuncs 
 funcs b =
   M.fromList $
     zip (map fst flocs) (sliceLocs (map (fromInteger . snd) flocs) is)
