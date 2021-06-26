@@ -11,7 +11,7 @@ import qualified Data.Map.Strict as M
 data GState = GState
   { getCurrentProgram :: BytecodeProgram
   , getOpenRegisters :: [Integer]
-  , getVarRegisters :: M.Map String Integer
+  , getVarRegisters :: M.Map String Value
   , getGlobalVars :: M.Map String Value
   , getOpenLabelNums :: [Integer]
   }
@@ -44,21 +44,21 @@ setOpenRegisters rs = modify $ \s -> s{getOpenRegisters = rs}
 setOpenLabelNums :: [Integer] -> State GState ()
 setOpenLabelNums ls = modify $ \s -> s{getOpenLabelNums = ls}
 
-setVarRegisters :: M.Map String Integer -> State GState ()
+setVarRegisters :: M.Map String Value -> State GState ()
 setVarRegisters vr = modify $ \s -> s{getVarRegisters = vr}
 
-setVarRegister :: String -> Integer -> State GState ()
+setVarRegister :: String -> Value -> State GState ()
 setVarRegister i r = gets getVarRegisters >>= setVarRegisters . M.insert i r
 
 setGlobalVars :: M.Map String Value -> State GState ()
 setGlobalVars gv = modify $ \s -> s{getGlobalVars = gv}
 
-getNextRegister :: State GState Integer
+getNextRegister :: State GState Value
 getNextRegister = do
   rs <- gets getOpenRegisters
   let result = head rs
   setOpenRegisters $ tail rs
-  return result
+  return (VRegister result)
 
 getNextLabel :: State GState String
 getNextLabel = do
@@ -68,12 +68,7 @@ getNextLabel = do
   return (prettifyLabel result)
 
 initState :: GState
-initState = GState (BytecodeProgram [] M.empty) [retReg + 1 ..] M.empty M.empty [1 ..]
-
-ensureMinRegister :: Integer -> State GState ()
-ensureMinRegister i = do
-  i' <- gets (head . getOpenRegisters)
-  setOpenRegisters [max i i' ..]
+initState = GState (BytecodeProgram [] M.empty) [0..] M.empty M.empty [1 ..]
 
 -------------------------------------------------------------------------------
 ----------------------------- BYTECODE GENERATION -----------------------------
@@ -113,15 +108,15 @@ genGlobalTree _ = undefined
 genSyscall :: [ExprAug SymData] -> SyscallSchema -> State GState ()
 genSyscall es (SyscallSchema rs code) = do
   -- save hardcoded register values
-  mapM_ (appendInst . Push . Register) rs
+  mapM_ (appendInst . Push) rs
   -- this is VERY similar to how a function call works, this is moving the params
   -- into the designated registers
   zipWithM_ moveExprIntoSafe rs es
-  appendInst $ Push (Register 0)
-  appendInst $ Move (SyscallCode code) (Register 0)
+  appendInst $ Push retReg
+  appendInst $ Move (SyscallCode code) retReg
   appendInst Syscall
-  appendInst $ Pop (Register 0)
-  mapM_ (appendInst . Pop . Register) (reverse rs)
+  appendInst $ Pop retReg
+  mapM_ (appendInst . Pop) (reverse rs)
 
 -----------------------------------------------------------------------------
 ---------------------CALLING CONVENTION--------------------------------------
@@ -142,7 +137,7 @@ genSyscall es (SyscallSchema rs code) = do
 setupParams :: [Param] -> State GState ()
 setupParams ps = do
   -- map each parameter name to a register, starting at $1
-  zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps [1 ..]
+  zipWithM_ (\p r -> setVarRegister (snd $ getParam p) r) ps (map PRegister [1 ..])
   lowestOpenReg <- gets (head . getOpenRegisters)
   let maxParamRegBound = toInteger $ length ps + 1
   -- make sure the rest of the generated code is aware that this happened "unnaturally"
@@ -180,13 +175,13 @@ genDecl (IfDecl ic ie eifs me, _) =
         genCE exit ((ic, ie) : eifs)
         appendJmpLabel exit
 genDecl (CallDecl i args, _) = do
-  appendInst (Push (Register retReg))
-  let argRegs = [1 .. toInteger $ length args]
-  traverse_ (appendInst . Push . Register) argRegs
+  appendInst (Push retReg)
+  let argRegs = map PRegister [1 .. toInteger $ length args]
+  traverse_ (appendInst . Push) argRegs
   zipWithM_ moveExprIntoSafe argRegs args
   appendInst (Call i)
-  traverse_ (appendInst . Pop . Register) (reverse argRegs)
-  appendInst (Pop (Register retReg))
+  traverse_ (appendInst . Pop) (reverse argRegs)
+  appendInst (Pop retReg)
 genDecl _ = error "haven't implemented this yet"
 
 -------------------------------------------------------------------------------
@@ -209,16 +204,15 @@ genDecl _ = error "haven't implemented this yet"
 -- The "safe" version assumes that the register `t` contains a value that might
 -- be used in the expression. It takes a conservative approach that does not
 -- use `t` in intermediate calculations.
-moveExprIntoSafe :: Integer -> ExprAug SymData -> State GState ()
+moveExprIntoSafe :: Value -> ExprAug SymData -> State GState ()
 moveExprIntoSafe t e = do
-  ensureMinRegister (t + 1)
   x <- moveExprIntoNewReg e
-  appendInst $ Move (Register x) (Register t)
+  appendInst $ Move x t
 
 -- This version moves the expressions value into a previously unused register.
 -- Since this register is guaranteed to contain nothing, it can be used more
 -- efficiently in intermediate calculations.
-moveExprIntoNewReg :: ExprAug SymData -> State GState Integer
+moveExprIntoNewReg :: ExprAug SymData -> State GState Value
 moveExprIntoNewReg e = do
   t <- getNextRegister
   moveExprIntoUnsafe t e
@@ -227,7 +221,7 @@ moveExprIntoNewReg e = do
 -- This function provides the core functionality for the `moveExprInto` family.
 -- It is marked `unsafe` because it will not work correctly if the register `t`
 -- is used in the bytecode generated for the expression AST.
-moveExprIntoUnsafe :: Integer -> ExprAug SymData -> State GState ()
+moveExprIntoUnsafe :: Value -> ExprAug SymData -> State GState ()
 moveExprIntoUnsafe t (BlockExpr ds e, _) = do
   traverse_ genDecl ds
   moveExprIntoUnsafe t e
@@ -241,28 +235,28 @@ moveExprIntoUnsafe t b@(BinOp NotEqual _ _, _) = moveRelInto t b
 moveExprIntoUnsafe t b@(BinOp _ l r, _) = do
   lval <- genExprValue l
   rval <- genExprValue r
-  appendInst (Move lval (Register t))
-  appendInst (binOpMapping b rval (Register t))
+  appendInst (Move lval t)
+  appendInst (binOpMapping b rval t)
 moveExprIntoUnsafe t (UnaryOp Negate e, _) = do
   val <- genExprValue e
-  appendInst (Move val (Register t))
-  appendInst (Neg (Register t))
+  appendInst (Move val t)
+  appendInst (Neg t)
 moveExprIntoUnsafe t (UnaryOp Not e, _) = do
   val <- genExprValue e
-  appendInst (Move val (Register t))
-  appendInst (Inv (Register t))
+  appendInst (Move val t)
+  appendInst (Inv t)
 moveExprIntoUnsafe t i@(IfExpr{}, _) = genIfElseStructure (moveExprIntoUnsafe t) i
 moveExprIntoUnsafe t (CallExpr i args, _) = do
-  let usedRegs = filter (/= t) (retReg : [1 .. toInteger $ length args])
-  let argRegs = [1 .. toInteger $ length args]
-  traverse_ (appendInst . Push . Register) usedRegs
+  let usedRegs = filter (/= t) (retReg : map PRegister [1 .. toInteger $ length args])
+  let argRegs = map PRegister [1 .. toInteger $ length args]
+  traverse_ (appendInst . Push) usedRegs
   zipWithM_ moveExprIntoSafe argRegs args
   appendInst (Call i)
-  appendInst (Move (Register retReg) (Register t))
-  traverse_ (appendInst . Pop . Register) (reverse usedRegs)
+  appendInst (Move retReg t)
+  traverse_ (appendInst . Pop) (reverse usedRegs)
 moveExprIntoUnsafe t e = do
   v <- genExprValue e
-  appendInst (Move v (Register t))
+  appendInst (Move v t)
 
 -- this function takes a condition, a body to execute if that condition is
 -- true, and a place to jump to if that condition is false. Equivalent to:
@@ -307,14 +301,14 @@ genIfElseStructure bodyGen (IfExpr ic ie eifs ee, _) =
         appendJmpLabel exit
 genIfElseStructure _ _ = undefined
 
-moveRelInto :: Integer -> ExprAug SymData -> State GState ()
+moveRelInto :: Value -> ExprAug SymData -> State GState ()
 moveRelInto t rel = do
   false <- getNextLabel
   exit <- getNextLabel
-  genConditional rel (appendInst (Move (VBool True) (Register t))) false
+  genConditional rel (appendInst (Move (VBool True) t)) false
   appendInst (Jmp exit)
   appendJmpLabel false
-  appendInst (Move (VBool False) (Register t))
+  appendInst (Move (VBool False) t)
   appendJmpLabel exit
 
 genExprValue :: ExprAug SymData -> State GState Value
@@ -326,16 +320,14 @@ genExprValue (LitFloat v, _) = return (VFloat v)
 genExprValue (Subs i, _) = do
   rvs <- gets getVarRegisters
   case M.lookup i rvs of
-    Just reg -> return (Register reg)
+    Just reg -> return reg
     Nothing -> do
       gvs <- gets getGlobalVars
       case M.lookup i gvs of
         Nothing -> error $ "ERROR: SYMBOL " ++ i ++ " CANNOT BE FOUND"
         Just v -> return v
 genExprValue (Return, _) = appendInst Ret >> return (VInt 0)
-genExprValue e = do
-  n <- moveExprIntoNewReg e
-  return (Register n)
+genExprValue e = moveExprIntoNewReg e
 
 genVoidExpr :: ExprAug SymData -> State GState ()
 genVoidExpr (Return, _) = appendInst Ret

@@ -1,21 +1,22 @@
-module RegAlloc.LiveIntervals (liveIntervals) where
+module RegAlloc.LiveIntervals  where
 
 import Bytecode.Types
 
 import qualified Data.Map.Strict as M
 
 type LiveInterval = (Integer, Integer)
+type VRegIntervals = M.Map Integer LiveInterval
 
 -- live intervals are local to the function
--- this will return a set of live intervals for each function in the program
-liveIntervals :: BytecodeProgram -> M.Map Label (M.Map Integer LiveInterval)
+-- this will return a mapping of live intervals for each function in the program
+liveIntervals :: BytecodeProgram -> M.Map Label VRegIntervals
 liveIntervals b = M.map funcLiveIntervals $ funcs b
 
-funcLiveIntervals :: [Inst] -> M.Map Integer LiveInterval
+funcLiveIntervals :: [Inst] -> VRegIntervals
 funcLiveIntervals is = foldl updateIntervalsInst M.empty (zip [0 .. toInteger $ length is] is)
  where
-  -- takes an instruction and updates the live intervals accordingly
-  updateIntervalsInst :: M.Map Integer LiveInterval -> (Integer, Inst) -> M.Map Integer LiveInterval
+  -- takes an instruction and updates the mapping accordingly
+  updateIntervalsInst :: VRegIntervals -> (Integer, Inst) -> VRegIntervals
   updateIntervalsInst m (loc, Move v1 _) =
     updateIntervalsVal loc m v1
   updateIntervalsInst m (loc, Add v1 v2) =
@@ -40,8 +41,9 @@ funcLiveIntervals is = foldl updateIntervalsInst M.empty (zip [0 .. toInteger $ 
     updateIntervalsVal loc m v
   updateIntervalsInst m _ = m
   -- updates the intervals according to the value
-  updateIntervalsVal :: Integer -> M.Map Integer LiveInterval -> Value -> M.Map Integer LiveInterval
-  updateIntervalsVal loc m (Register r) = updated
+  -- params are ordered for currying purposes
+  updateIntervalsVal :: Integer -> VRegIntervals -> Value -> VRegIntervals
+  updateIntervalsVal loc m (VRegister r) = updated
    where
     updateLiveInterval :: Integer -> LiveInterval -> LiveInterval
     updateLiveInterval l (pMin, pMax) = (min pMin l, max pMax l)
