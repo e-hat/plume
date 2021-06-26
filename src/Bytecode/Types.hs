@@ -19,6 +19,7 @@ data Value
   deriving (Eq)
 
 data SyscallCode = Exit deriving (Show, Eq)
+type MemLoc = Int
 
 data Inst
   = Ret
@@ -43,6 +44,9 @@ data Inst
   | Pop Value
   | Call String
   | Syscall
+-- this could become more complex later
+  | LoadMem MemLoc
+
 
 data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
 
@@ -146,3 +150,4 @@ instance Show Inst where
   show (Pop v) = printf "Pop %s" (show v)
   show (Call l) = printf "Call %s" l
   show Syscall = "Syscall"
+  show (LoadMem m) = printf "Load (%s)" (show m)
