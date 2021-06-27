@@ -1,5 +1,58 @@
 module RegAlloc.Shared where 
 
+import Bytecode.Types
+import RegAlloc.LiveIntervals
+
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
+import Data.List
+
+data VRegAssignment = Register Int | Spill Int
+type VRegMapping = M.Map Integer VRegAssignment
+
+numPhysical :: Int 
+numPhysical = 10
+
+regalloc :: (VRegIntervals -> [Int] -> VRegMapping) -> BytecodeProgram -> BytecodeProgram
+regalloc regMappings p@(BytecodeProgram _ ltbl) =
+  let frms = M.intersectionWith ($) (M.map regMappings (liveIntervals p)) regPools
+      rebuildFromFuncs :: BytecodeFuncs -> [Inst]
+      rebuildFromFuncs fm = concatMap snd fl
+       where
+        fl = sortBy (\(f1, _) (f2, _) -> compare (ltbl M.! f1) (ltbl M.! f2)) (M.assocs fm)
+      fs = funcs p
+      regPools = M.map regPool fs
+      regPool :: [Inst] -> [Int]
+      regPool is =
+        S.toList $
+          S.fromAscList [1 .. numPhysical] S.\\ usedPhysicals is
+   in p{getInstructions = rebuildFromFuncs $ M.intersectionWith convertToPhysical frms fs}
+
+usedPhysicals :: [Inst] -> S.Set Int
+usedPhysicals = foldl handleInst (S.fromList [])
+ where
+  handleInst :: S.Set Int -> Inst -> S.Set Int
+  handleInst accum (Move v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Add v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Sub v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Mul v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Div v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Neg v) = singleVal accum v
+  handleInst accum (IAnd v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (IOr v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Inv v) = singleVal accum v
+  handleInst accum (Cmp v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Push v) = singleVal accum v
+  handleInst accum (Pop v) = singleVal accum v
+  handleInst accum _ = accum
+  handleValue :: S.Set Int -> Value -> S.Set Int
+  handleValue accum (PRegister r) = S.insert (fromInteger r) accum
+  handleValue accum _ = accum
+  doubleVal :: S.Set Int -> [Value] -> S.Set Int
+  doubleVal = foldl handleValue
+  singleVal :: S.Set Int -> Value -> S.Set Int
+  singleVal = handleValue
+
 convertToPhysical :: VRegMapping -> [Inst] -> [Inst]
 convertToPhysical rm = map updateRs
  where

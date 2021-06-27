@@ -140,4 +140,4 @@ run (RegAllocInput f) = do
     Left err -> print err 
     Right p -> case validateSemantics p of 
       Left err -> putStrLn err 
-      Right trees -> print $ regalloc $ genBytecode trees
+      Right trees -> print $ linearScanRegalloc $ genBytecode trees
