@@ -166,16 +166,19 @@ expireOld (_, li) = do
 -- spilling isn't too complicated here -- just assign each reg its next place on the stack
 spill :: (Integer, LiveInterval) -> State RAState ()
 spill i@(virtual, li) = do
-  (sli, sr) <-
-    gets (bimap getLI toInteger . last . SL.fromSortedList . getActive)
-  if snd sli > snd li
-    then do
-      addMapping virtual =<< lookupAssignment sr
-      addMapping (toInteger sr) =<< getNextLoc
-      gets
-        (SL.delete (ActiveLI sli, fromInteger sr) . getActive)
-        >>= setActive
-      gets
-        (SL.insert (bimap ActiveLI fromInteger $ swap i) . getActive)
-        >>= setActive
-    else addMapping virtual =<< getNextLoc
+  actives <- gets (map (bimap getLI toInteger) . SL.fromSortedList . getActive)
+  case actives of
+    [] -> addMapping virtual =<< getNextLoc
+    _ -> do
+      let (sli, sr) = last actives
+      if snd sli > snd li
+        then do
+          addMapping virtual =<< lookupAssignment sr
+          addMapping (toInteger sr) =<< getNextLoc
+          gets
+            (SL.delete (ActiveLI sli, fromInteger sr) . getActive)
+            >>= setActive
+          gets
+            (SL.insert (bimap ActiveLI fromInteger $ swap i) . getActive)
+            >>= setActive
+        else addMapping virtual =<< getNextLoc
