@@ -115,16 +115,16 @@ addAvailable :: Integer -> State RAState ()
 addAvailable i = gets getAvailable >>= setAvailable . (fromIntegral i :)
 
 addMapping :: Integer -> VRegAssignment -> State RAState ()
-addMapping virtual assignment = 
+addMapping virtual assignment =
   gets getMapping >>= setMapping . M.insert virtual assignment
 
 addActive :: LiveInterval -> Int -> State RAState ()
 addActive li i = gets getActive >>= setActive . SL.insert (ActiveLI li, i)
 
-getNextLoc :: State RAState VRegAssignment 
-getNextLoc = do 
-  result <- gets getStackTop 
-  setStackTop (result + 1) 
+getNextLoc :: State RAState VRegAssignment
+getNextLoc = do
+  result <- gets getStackTop
+  setStackTop (result + 1)
   return $ Spill result
 
 lookupAssignment :: Integer -> State RAState VRegAssignment
@@ -165,14 +165,17 @@ expireOld (_, li) = do
 
 -- spilling isn't too complicated here -- just assign each reg its next place on the stack
 spill :: (Integer, LiveInterval) -> State RAState ()
-spill i@(virtual, li) = do 
-  (sli, sr) <- 
+spill i@(virtual, li) = do
+  (sli, sr) <-
     gets (bimap getLI toInteger . last . SL.fromSortedList . getActive)
-  if snd sli > snd li 
-     then do
-       addMapping virtual =<< lookupAssignment sr
-       addMapping (toInteger sr) =<< getNextLoc
-       gets (SL.delete (ActiveLI sli, fromInteger sr) . getActive) >>= setActive
-       gets (SL.insert (bimap ActiveLI fromInteger $ swap i) . getActive) >>= setActive
-     else 
-       addMapping virtual =<< getNextLoc
+  if snd sli > snd li
+    then do
+      addMapping virtual =<< lookupAssignment sr
+      addMapping (toInteger sr) =<< getNextLoc
+      gets
+        (SL.delete (ActiveLI sli, fromInteger sr) . getActive)
+        >>= setActive
+      gets
+        (SL.insert (bimap ActiveLI fromInteger $ swap i) . getActive)
+        >>= setActive
+    else addMapping virtual =<< getNextLoc
