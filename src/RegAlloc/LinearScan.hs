@@ -9,6 +9,7 @@ import Data.Bifunctor
 import Data.List
 import qualified Data.Set as S
 import qualified Data.SortedList as SL
+import Data.Tuple
 
 data VRegAssignment = Register Int | Spill Int
 type VRegMapping = M.Map Integer VRegAssignment
@@ -29,39 +30,39 @@ regalloc p@(BytecodeProgram _ ltbl) =
    in p{getInstructions = rebuildFromFuncs $ M.intersectionWith convertToPhysical frms fs}
 
 numPhysical :: Int
-numPhysical = 5
+numPhysical = 1
 
 usedPhysicals :: [Inst] -> S.Set Int
 usedPhysicals = foldl handleInst (S.fromList [])
-  where 
-    handleInst :: S.Set Int -> Inst -> S.Set Int
-    handleInst accum (Move v1 v2) = doubleVal accum [v1, v2]
-    handleInst accum (Add v1 v2) =  doubleVal accum [v1, v2] 
-    handleInst accum (Sub v1 v2) = doubleVal accum [v1, v2] 
-    handleInst accum (Mul v1 v2) = doubleVal accum [v1, v2] 
-    handleInst accum (Div v1 v2) = doubleVal accum [v1, v2] 
-    handleInst accum (Neg v) = singleVal accum v 
-    handleInst accum (IAnd v1 v2) = doubleVal accum [v1, v2] 
-    handleInst accum (IOr v1 v2) = doubleVal accum [v1, v2] 
-    handleInst accum (Inv v) = singleVal accum v 
-    handleInst accum (Cmp v1 v2) = doubleVal accum [v1, v2] 
-    handleInst accum (Push v) = singleVal accum v 
-    handleInst accum (Pop v) = singleVal accum v
-    handleInst accum _ = accum
-    handleValue :: S.Set Int -> Value -> S.Set Int
-    handleValue accum (PRegister r) = S.insert (fromInteger r) accum
-    handleValue accum _ = accum
-    doubleVal :: S.Set Int -> [Value] ->  S.Set Int
-    doubleVal = foldl handleValue
-    singleVal :: S.Set Int -> Value -> S.Set Int 
-    singleVal = handleValue 
+ where
+  handleInst :: S.Set Int -> Inst -> S.Set Int
+  handleInst accum (Move v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Add v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Sub v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Mul v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Div v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Neg v) = singleVal accum v
+  handleInst accum (IAnd v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (IOr v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Inv v) = singleVal accum v
+  handleInst accum (Cmp v1 v2) = doubleVal accum [v1, v2]
+  handleInst accum (Push v) = singleVal accum v
+  handleInst accum (Pop v) = singleVal accum v
+  handleInst accum _ = accum
+  handleValue :: S.Set Int -> Value -> S.Set Int
+  handleValue accum (PRegister r) = S.insert (fromInteger r) accum
+  handleValue accum _ = accum
+  doubleVal :: S.Set Int -> [Value] -> S.Set Int
+  doubleVal = foldl handleValue
+  singleVal :: S.Set Int -> Value -> S.Set Int
+  singleVal = handleValue
 
 convertToPhysical :: VRegMapping -> [Inst] -> [Inst]
 convertToPhysical rm = map updateRs
  where
   u :: Value -> Value
-  u (VRegister v) = 
-    case rm M.! v of 
+  u (VRegister v) =
+    case rm M.! v of
       Register p -> PRegister $ toInteger p
       Spill l -> StackLoc l
   u v = v
@@ -114,12 +115,20 @@ addAvailable :: Integer -> State RAState ()
 addAvailable i = gets getAvailable >>= setAvailable . (fromIntegral i :)
 
 addMapping :: Integer -> VRegAssignment -> State RAState ()
-addMapping virtual assignment =
+addMapping virtual assignment = 
   gets getMapping >>= setMapping . M.insert virtual assignment
 
 addActive :: LiveInterval -> Int -> State RAState ()
-addActive li i =
-  gets getActive >>= setActive . SL.insert (ActiveLI li, i)
+addActive li i = gets getActive >>= setActive . SL.insert (ActiveLI li, i)
+
+getNextLoc :: State RAState VRegAssignment 
+getNextLoc = do 
+  result <- gets getStackTop 
+  setStackTop (result + 1) 
+  return $ Spill result
+
+lookupAssignment :: Integer -> State RAState VRegAssignment
+lookupAssignment k = gets ((M.! k) . getMapping)
 
 -- implementation of linear scan register allocation, taken directly from
 -- http://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf
@@ -138,9 +147,13 @@ regallocIteration :: (Integer, LiveInterval) -> State RAState ()
 regallocIteration i@(virtual, li) = do
   expireOld i
   -- have not yet implemented spilling
-  r <- getNextAvailable
-  addMapping virtual $ Register (fromInteger r)
-  addActive li (fromIntegral r)
+  nActive <- gets (length . getActive)
+  if nActive == numPhysical
+    then spill i
+    else do
+      r <- getNextAvailable
+      addMapping virtual $ Register (fromInteger r)
+      addActive li (fromIntegral r)
 
 expireOld :: (Integer, LiveInterval) -> State RAState ()
 expireOld (_, li) = do
@@ -152,5 +165,14 @@ expireOld (_, li) = do
 
 -- spilling isn't too complicated here -- just assign each reg its next place on the stack
 spill :: (Integer, LiveInterval) -> State RAState ()
-spill = undefined
-
+spill i@(virtual, li) = do 
+  (sli, sr) <- 
+    gets (bimap getLI toInteger . last . SL.fromSortedList . getActive)
+  if snd sli > snd li 
+     then do
+       addMapping virtual =<< lookupAssignment sr
+       addMapping (toInteger sr) =<< getNextLoc
+       gets (SL.delete (ActiveLI sli, fromInteger sr) . getActive) >>= setActive
+       gets (SL.insert (bimap ActiveLI fromInteger $ swap i) . getActive) >>= setActive
+     else 
+       addMapping virtual =<< getNextLoc
