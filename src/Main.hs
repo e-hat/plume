@@ -1,7 +1,7 @@
 module Main where
 
 import Bytecode.Generation
-import Bytecode.Types ()
+import Bytecode.Types 
 import Parsing.Parser
 import Parsing.Syntax ()
 import RegAlloc.LiveIntervals
@@ -133,7 +133,7 @@ run (LiveIntervalInput f) = do
     Left err -> print err
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
-      Right trees -> print $ liveIntervals $ genBytecode trees
+      Right trees -> print $ liveIntervals $ getInstructions $ genBytecode trees
 run (RegAllocInput f) = do
   nodes <- P.parse program f <$> readFile f 
   case nodes of  

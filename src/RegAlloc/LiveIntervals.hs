@@ -1,4 +1,4 @@
-module RegAlloc.LiveIntervals  where
+module RegAlloc.LiveIntervals where
 
 import Bytecode.Types
 
@@ -9,11 +9,8 @@ type VRegIntervals = M.Map Integer LiveInterval
 
 -- live intervals are local to the function
 -- this will return a mapping of live intervals for each function in the program
-liveIntervals :: BytecodeProgram -> M.Map Label VRegIntervals
-liveIntervals b = M.map funcLiveIntervals $ funcs b
-
-funcLiveIntervals :: [Inst] -> VRegIntervals
-funcLiveIntervals is = foldl updateIntervalsInst M.empty (zip [0 .. toInteger $ length is] is)
+liveIntervals :: [Inst] -> VRegIntervals
+liveIntervals is = foldl updateIntervalsInst M.empty (zip [0 .. toInteger $ length is] is)
  where
   -- takes an instruction and updates the mapping accordingly
   updateIntervalsInst :: VRegIntervals -> (Integer, Inst) -> VRegIntervals
