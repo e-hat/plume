@@ -1,21 +1,20 @@
-module RegAlloc.Shared where 
+module RegAlloc.Shared where
 
 import Bytecode.Types
-import RegAlloc.LiveIntervals
 
+import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import Data.List
 
 data VRegAssignment = Register Int | Spill Int
 type VRegMapping = M.Map Integer VRegAssignment
 
-numPhysical :: Int 
+numPhysical :: Int
 numPhysical = 10
 
-regalloc :: (VRegIntervals -> [Int] -> VRegMapping) -> BytecodeProgram -> BytecodeProgram
+regalloc :: ([Inst] -> [Int] -> VRegMapping) -> BytecodeProgram -> BytecodeProgram
 regalloc regMappings p@(BytecodeProgram _ ltbl) =
-  let frms = M.intersectionWith ($) (M.map regMappings (liveIntervals p)) regPools
+  let frms = M.intersectionWith ($) (M.map regMappings fs) regPools
       rebuildFromFuncs :: BytecodeFuncs -> [Inst]
       rebuildFromFuncs fm = concatMap snd fl
        where

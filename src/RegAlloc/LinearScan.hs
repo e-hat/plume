@@ -67,9 +67,10 @@ lookupAssignment k = gets ((M.! k) . getMapping)
 -- http://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf
 -- has a slight modification to deal with the precoloring specified by Plume's
 -- calling convention
-regMappings :: VRegIntervals -> [Int] -> VRegMapping
-regMappings lis regPool =
-  let sortedIntervals =
+regMappings :: [Inst] -> [Int] -> VRegMapping
+regMappings is regPool =
+  let lis = liveIntervals is
+      sortedIntervals =
         sortBy (\a b -> compare (fst (snd a)) (fst (snd b))) (M.assocs lis)
       initState = RAState regPool (SL.toSortedList []) M.empty 0
       statefulProgram :: State RAState ()
