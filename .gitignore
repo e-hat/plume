@@ -30,3 +30,6 @@ cabal.project.local~
 
 # ignoring hpack output 
 plume.cabal
+
+# ignoring ex folder for now, since I 99% of the time don't care about them
+ex/
