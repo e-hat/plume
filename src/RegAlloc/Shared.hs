@@ -2,7 +2,6 @@ module RegAlloc.Shared where
 
 import Bytecode.Types
 
-import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
@@ -15,17 +14,13 @@ numPhysical = 10
 regalloc :: ([Inst] -> [Int] -> VRegMapping) -> BytecodeProgram -> BytecodeProgram
 regalloc regMappings p@(BytecodeProgram _ ltbl) =
   let frms = M.intersectionWith ($) (M.map regMappings fs) regPools
-      rebuildFromFuncs :: BytecodeFuncs -> [Inst]
-      rebuildFromFuncs fm = concatMap snd fl
-       where
-        fl = sortBy (\(f1, _) (f2, _) -> compare (ltbl M.! f1) (ltbl M.! f2)) (M.assocs fm)
       fs = funcs p
       regPools = M.map regPool fs
       regPool :: [Inst] -> [Int]
       regPool is =
         S.toList $
           S.fromAscList [1 .. numPhysical] S.\\ usedPhysicals is
-   in p{getInstructions = rebuildFromFuncs $ M.intersectionWith convertToPhysical frms fs}
+   in p{getInstructions = rebuild ltbl $ M.intersectionWith convertToPhysical frms fs}
 
 usedPhysicals :: [Inst] -> S.Set Int
 usedPhysicals = foldl handleInst (S.fromList [])
