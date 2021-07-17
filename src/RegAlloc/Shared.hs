@@ -11,18 +11,18 @@ type VRegMapping = M.Map Integer VRegAssignment
 numPhysical :: Int
 numPhysical = 10
 
-regalloc :: ([Inst] -> [Int] -> VRegMapping) -> BytecodeProgram -> BytecodeProgram
+regalloc :: (Func -> [Int] -> VRegMapping) -> BytecodeProgram -> BytecodeProgram
 regalloc regMappings p@(BytecodeProgram _ ltbl) =
   let frms = M.intersectionWith ($) (M.map regMappings fs) regPools
       fs = funcs p
       regPools = M.map regPool fs
-      regPool :: [Inst] -> [Int]
+      regPool :: Func -> [Int]
       regPool is =
         S.toList $
           S.fromAscList [1 .. numPhysical] S.\\ usedPhysicals is
    in p{getInstructions = rebuild ltbl $ M.intersectionWith convertToPhysical frms fs}
 
-usedPhysicals :: [Inst] -> S.Set Int
+usedPhysicals :: Func -> S.Set Int
 usedPhysicals = foldl handleInst (S.fromList [])
  where
   handleInst :: S.Set Int -> Inst -> S.Set Int
