@@ -7,6 +7,7 @@ import Parsing.Syntax ()
 import RegAlloc.LiveIntervals
 import Semantics.Validation
 import RegAlloc.Simple
+import X8664.StackExpansion
 
 import Control.Monad ()
 import Data.Semigroup ()
@@ -140,4 +141,4 @@ run (RegAllocInput f) = do
     Left err -> print err 
     Right p -> case validateSemantics p of 
       Left err -> putStrLn err 
-      Right trees -> print $ simpleRegalloc $ genBytecode trees
+      Right trees -> print $ expandStack $  simpleRegalloc $ genBytecode trees
