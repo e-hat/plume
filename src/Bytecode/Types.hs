@@ -8,9 +8,9 @@ import Text.Printf (printf)
 
 -- types of values that can be moved around
 data Value
-  -- distinction between physical and virtual registers is important for regalloc
-  = PRegister Integer
-  | VRegister Integer 
+  = -- distinction between physical and virtual registers is important for regalloc
+    PRegister Integer
+  | VRegister Integer
   | VBool Bool
   | VInt Integer
   | VFloat Double
@@ -46,7 +46,6 @@ data Inst
   | Call String
   | Syscall
 
-
 data Label = FuncLabel String | JmpLabel String deriving (Eq, Ord)
 
 -- list of registers that it uses, then SyscallCode
@@ -60,9 +59,9 @@ data BytecodeProgram = BytecodeProgram
   , getLabelTable :: M.Map Label Integer
   }
 
-type BytecodeFuncs = M.Map Label [Inst]
+type Func = [Inst]
 
-funcs :: BytecodeProgram -> BytecodeFuncs 
+funcs :: BytecodeProgram -> M.Map Label Func
 funcs b =
   M.fromList $
     zip (map fst flocs) (sliceLocs (map (fromInteger . snd) flocs) is)
