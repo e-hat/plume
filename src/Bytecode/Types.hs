@@ -71,6 +71,11 @@ funcs b =
   flbls = funcLbls b
   flocs = sortBy (\(_, x) (_, y) -> compare x y) (M.assocs flbls)
 
+rebuild :: M.Map Label Integer -> M.Map Label Func -> [Inst]
+rebuild ltbl fm = concatMap snd fl
+ where
+  fl = sortBy (\(f1, _) (f2, _) -> compare (ltbl M.! f1) (ltbl M.! f2)) (M.assocs fm)
+
 funcLbls :: BytecodeProgram -> M.Map Label Integer
 funcLbls b = M.filterWithKey isFuncLbl lt
  where
