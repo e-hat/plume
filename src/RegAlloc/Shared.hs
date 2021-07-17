@@ -47,8 +47,23 @@ usedPhysicals = foldl handleInst (S.fromList [])
   singleVal :: S.Set Int -> Value -> S.Set Int
   singleVal = handleValue
 
-convertToPhysical :: VRegMapping -> [Inst] -> [Inst]
-convertToPhysical rm = map updateRs
+traverseVals :: (Value -> Value) -> Inst -> Inst
+traverseVals f (Move v1 v2) = Move (f v1) (f v2)
+traverseVals f (Add v1 v2) = Add (f v1) (f v2)
+traverseVals f (Sub v1 v2) = Sub (f v1) (f v2)
+traverseVals f (Mul v1 v2) = Mul (f v1) (f v2)
+traverseVals f (Div v1 v2) = Div (f v1) (f v2)
+traverseVals f (Neg v) = Neg (f v)
+traverseVals f (IAnd v1 v2) = IAnd (f v1) (f v2)
+traverseVals f (IOr v1 v2) = IOr (f v1) (f v2)
+traverseVals f (Inv v) = Inv (f v)
+traverseVals f (Cmp v1 v2) = Cmp (f v1) (f v2)
+traverseVals f (Push v) = Push (f v)
+traverseVals f (Pop v) = Pop (f v)
+traverseVals _ other = other
+
+convertToPhysical :: VRegMapping -> Func -> Func
+convertToPhysical rm = map (traverseVals u)
  where
   u :: Value -> Value
   u (VRegister v) =
@@ -56,17 +71,3 @@ convertToPhysical rm = map updateRs
       Register p -> PRegister $ toInteger p
       Spill l -> StackLoc l
   u v = v
-  updateRs :: Inst -> Inst
-  updateRs (Move v1 v2) = Move (u v1) (u v2)
-  updateRs (Add v1 v2) = Add (u v1) (u v2)
-  updateRs (Sub v1 v2) = Sub (u v1) (u v2)
-  updateRs (Mul v1 v2) = Mul (u v1) (u v2)
-  updateRs (Div v1 v2) = Div (u v1) (u v2)
-  updateRs (Neg v) = Neg (u v)
-  updateRs (IAnd v1 v2) = IAnd (u v1) (u v2)
-  updateRs (IOr v1 v2) = IOr (u v1) (u v2)
-  updateRs (Inv v) = Inv (u v)
-  updateRs (Cmp v1 v2) = Cmp (u v1) (u v2)
-  updateRs (Push v) = Push (u v)
-  updateRs (Pop v) = Pop (u v)
-  updateRs other = other
