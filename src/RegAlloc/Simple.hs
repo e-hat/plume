@@ -29,7 +29,7 @@ getNextAssignment = do
 
 regMappings :: [Inst] -> [Int] -> VRegMapping
 regMappings is rs =
-  let initState = RAState M.empty rs 0
+  let initState = RAState M.empty rs 1
       statefulProgram = mapM_ simpleIteration is
    in getMapping $ execState statefulProgram initState
 
