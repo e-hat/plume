@@ -6,7 +6,6 @@
 * [ About ](#about)
   * [ Motivation ](#mot)
   * [ Approach ](#appr)
-  * [ Current State ](#curr)
 
 * [ Using Plume ](#use)
   * [ Installation ](#in)
@@ -32,29 +31,6 @@ I also wanted make a compiler, because who doesn't want their very own programmi
 
 ### Approach
 This compiler will be written in Haskell with a Parsec-based frontend and will target x86-64 assembly. It will also feature an intermediate bytecode representation that can be run in the Plume VM. This VM will be used to test against the behavior of the emitted assembly and it could possibly turn into its own project.
-
-<a name="curr"></a>
-
-### Current State
-I have created a type-checking/scope resolution system (in `src/Semantics.hs`). I am on the tail end of producing Plume bytecode which you can look at using `plume compile -b [plume file]`. For now, I am translating a couple of these Plume bytecode programs into x86-64 assembly to get familiar with that process. Then, I'll split the bytecode into basic blocks and perform register allocation, and then I'll finally be ready to do the final translation and emit x86-64! However, to accelerate progress on this project, I've forgone some basic language constructs such as for-loops and and user-defined types, so I'll add these in later. There is a virtual machine that you can use to run Plume programs (`plume run [plume file]`), but I have suspended progress on that for the time being as well. 
-
-Plume supports running the following program in the virtual machine, where each feature is labelled:
-
-```python
-# global variables
-Int global := 5
-# functions and block expressions
-def main(): Int := {
-  # local variables
-  Bool torf := true
-  # reassignment
-  torf <- false
-  # returning 5 as the exit code
-  global
-}
-```
-
-This program exits with a status of `5`. Note that only primitive types are currently allowed as I have only added very basic memory concepts to the bytecode. 
 
 <a name="use">
 
