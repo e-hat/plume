@@ -7,7 +7,7 @@ import Parsing.Syntax ()
 import RegAlloc.LiveIntervals
 import Semantics.Validation
 import RegAlloc.Simple
-import X8664.StackExpansion
+import Ir.Tac
 
 import Control.Monad ()
 import Data.Semigroup ()
@@ -23,6 +23,7 @@ data Input
   | PrintBytecodeInput String
   | LiveIntervalInput String
   | RegAllocInput String
+  | CompileInput String
 
 astInput :: Parser Input
 astInput =
@@ -74,8 +75,18 @@ regallocInput =
           <> help "Print the bytecode after performing register allocation"
       )
 
+compileInput :: Parser Input 
+compileInput = 
+  CompileInput 
+    <$> strOption 
+      ( long "compile"
+          <> short 'c'
+          <> metavar "FILENAME"
+          <> help "Compile a plume program"
+      )
+
 compileOptions :: Parser Input
-compileOptions = astInput <|> valInput <|> printBytecodeInput <|> liveIntervalInput <|> regallocInput
+compileOptions = astInput <|> valInput <|> printBytecodeInput <|> liveIntervalInput <|> regallocInput <|> compileInput
 
 runArg :: Parser Input
 runArg =
@@ -141,4 +152,7 @@ run (RegAllocInput f) = do
     Left err -> print err 
     Right p -> case validateSemantics p of 
       Left err -> putStrLn err 
-      Right trees -> print $ expandStack $  simpleRegalloc $ genBytecode trees
+      Right trees -> print $ simpleRegalloc $ genBytecode trees
+run (CompileInput _) = do 
+  let prog = [Assignment (Local (1, Int)) (Bin (LitInt 5) Plus (Subs (Local (0, Int))))]
+  putStrLn (unlines $ map show prog)
