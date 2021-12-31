@@ -2,6 +2,7 @@ module Ir.Tac where
 
 import Text.Printf (printf)
 import Data.Char
+import qualified Data.Map.Strict as M
 
 -- This module defines a Three Address Code (henceforth TAC) 
 -- that will be used as an intermediate representation for the input program
@@ -37,6 +38,10 @@ data Expr = Bin Term BinOp Term | Un UnOp Term | None Term
 -- instruction
 data Inst = Assignment Local Expr | Cond Expr Label | Goto Label
 
+newtype Func = Func {getFunc :: [(Maybe Label, Inst)]} 
+
+newtype Program = Program { getProgram :: M.Map String Func }
+
 -- Show instances for the types defined above
 instance Show Local where 
   show = printf "$%d" . getId
@@ -67,4 +72,3 @@ instance Show Inst where
   show (Assignment dst src) = printf "%s := %s" (show dst) (show src)
   show (Cond cond dst) = printf "if %s then goto %s" (show cond) (show dst)
   show (Goto dst) = printf "goto %s" (show dst)
-
