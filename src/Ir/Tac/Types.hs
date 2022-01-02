@@ -47,7 +47,8 @@ data Inst = Assignment Symbol Expr
           | Goto Label 
           | VoidReturn
           | Return Symbol
-          | Call String [Symbol]
+          | VoidCall String [Symbol]
+          | AssignCall Symbol String [Symbol]
 
 newtype Func = Func {getFunc :: [(Maybe Label, Inst)]}
 
@@ -85,5 +86,7 @@ instance Show Inst where
   show (Assignment dst src) = printf "%s := %s" (show dst) (show src)
   show (Cond cond dst) = printf "if %s then goto %s" (show cond) (show dst)
   show (Goto dst) = printf "goto %s" (show dst)
+  show VoidReturn = "return"
   show (Return var) = printf "return %s" (show var)
-  show (Call fname ps) = printf "call %s(%s)" fname (intercalate ", " (map show ps)) 
+  show (VoidCall fname ps) = printf "call %s(%s)" fname (intercalate ", " (map show ps)) 
+  show (AssignCall dst fname ps) = printf "%s := %s(%s)" (show dst) fname (intercalate ", " (map show ps))
