@@ -7,7 +7,7 @@ import Parsing.Syntax ()
 import RegAlloc.LiveIntervals
 import Semantics.Validation
 import RegAlloc.Simple
-import Ir.Tac
+import Ir.Tac.Types
 
 import Control.Monad ()
 import Data.Semigroup ()
@@ -154,5 +154,5 @@ run (RegAllocInput f) = do
       Left err -> putStrLn err 
       Right trees -> print $ simpleRegalloc $ genBytecode trees
 run (CompileInput _) = do 
-  let prog = [Assignment (Local (1, Int)) (Bin (LitInt 5) Plus (Subs (Local (0, Int))))]
+  let prog = [Assignment (Local 1 "Int") (Bin (LitInt 5) Plus (Subs (Local 0 "Int")))]
   putStrLn (unlines $ map show prog)
