@@ -20,6 +20,9 @@ type DeclAug t = (Decl t, t)
 
 type ExprAug t = (Expr t, t)
 
+voidSentinel :: String 
+voidSentinel = "Void"
+
 -- each stmt in Plume is either a declaration or an expression
 -- this is an "augmented" tree structure
 -- it allows me to maintain the same "shape" of the tree, but carry different
