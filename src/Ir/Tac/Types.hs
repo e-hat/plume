@@ -5,7 +5,6 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Text.Printf (printf)
 
-
 -- This module defines a Three Address Code (henceforth TAC)
 -- that will be used as an intermediate representation for the input program
 
@@ -37,18 +36,28 @@ getType (Subs sym) = getSType sym
 data BinOp = Plus | Sub | Mult
 data UnOp = Neg | Not
 
-data Expr = Bin Term BinOp Term | Un UnOp Term | None Term
+newtype FuncCall a = FuncCall {getFuncCall :: (String, [a])} 
+  deriving (Functor, Foldable, Traversable)
+
+-- An expr contains less than 4 terms, unless it is a function call in which it has a list of them
+data Expr a
+  = Bin a BinOp a
+  | Un UnOp a
+  | None a
+  | FuncCallExpr (FuncCall a)
+  deriving (Functor, Foldable, Traversable)
 
 -- These types have been formulated such that a maximum of 3 terms are in each
 -- instruction
--- Note: the Return instruction could probably be
-data Inst = Assignment Symbol Expr 
-          | Cond Expr Label 
-          | Goto Label 
-          | VoidReturn
-          | Return Symbol
-          | VoidCall String [Symbol]
-          | AssignCall Symbol String [Symbol]
+data GeneralInst a
+  = Assignment Symbol (Expr a)
+  | Cond (Expr a) Label
+  | Goto Label
+  | Return (Maybe Term)
+  | IgnoreReturnValCall (FuncCall a)
+  deriving (Functor, Foldable, Traversable)
+
+type Inst = GeneralInst Term
 
 newtype Func = Func {getFunc :: [(Maybe Label, Inst)]}
 
@@ -77,16 +86,19 @@ instance Show UnOp where
   show Neg = "-"
   show Not = "!"
 
-instance Show Expr where
+instance Show a => Show (FuncCall a) where
+  show (FuncCall (name, ps)) = printf "%s(%s)" name (intercalate ", " (map show ps))
+
+instance Show a => Show (Expr a) where
   show (Bin l op r) = printf "%s %s %s" (show l) (show op) (show r)
   show (Un op t) = printf "%s(%s)" (show op) (show t)
   show (None t) = show t
+  show (FuncCallExpr fcall) = show fcall
 
-instance Show Inst where
+instance Show a => Show (GeneralInst a) where
   show (Assignment dst src) = printf "%s := %s" (show dst) (show src)
   show (Cond cond dst) = printf "if %s then goto %s" (show cond) (show dst)
   show (Goto dst) = printf "goto %s" (show dst)
-  show VoidReturn = "return"
-  show (Return var) = printf "return %s" (show var)
-  show (VoidCall fname ps) = printf "call %s(%s)" fname (intercalate ", " (map show ps)) 
-  show (AssignCall dst fname ps) = printf "%s := %s(%s)" (show dst) fname (intercalate ", " (map show ps))
+  show (Return Nothing) = "return"
+  show (Return (Just t)) = printf "return %s" (show t)
+  show (IgnoreReturnValCall fcall) = show fcall
