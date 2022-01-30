@@ -9,6 +9,8 @@ import Control.Monad
 import Control.Monad.State
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Sq
+import Text.Printf
+import Debug.Trace
 
 translate :: SymTreeList -> Program
 translate (SymTreeList topLevelDecls) =
@@ -31,7 +33,6 @@ collectGlobals = fst . foldl step (M.empty, 0)
 getFuncName :: S.DeclAug SymData -> S.Identifier
 getFuncName (S.DefFn name _ _ _, _) = name
 getFuncName _ = error "expected a function declaration"
-
 isFunc :: S.DeclAug SymData -> Bool
 isFunc (S.DefFn{}, _) = True
 isFunc _ = False
@@ -40,7 +41,7 @@ data Translator = Translator
   { getCurrentFunc :: Func
   , getLocalCounter :: Int
   , getEnv :: Env
-  , getEdgeQueue :: Sq.Seq (Int, Int)
+  , getEdgeList :: [(Int, Int)]
   }
 
 setCurrentFunc :: Func -> State Translator ()
@@ -52,8 +53,13 @@ setEnv env = modify $ \s -> s{getEnv = env}
 setLocalCounter :: Int -> State Translator ()
 setLocalCounter n = modify $ \s -> s{getLocalCounter = n}
 
-setEdgeQueue :: Sq.Seq (Int, Int) -> State Translator ()
-setEdgeQueue q = modify $ \s -> s{getEdgeQueue = q}
+setEdgeList :: [(Int, Int)] -> State Translator ()
+setEdgeList es = modify $ \s -> s{getEdgeList = trace (printf "q's value: %s" (show es)) es}
+
+addEdgeToList :: Int -> Int -> State Translator ()
+addEdgeToList src dst = do 
+  edgeList <- gets getEdgeList
+  setEdgeList $ (src, dst):edgeList
 
 addVarToEnv :: S.Identifier -> Symbol -> State Translator ()
 addVarToEnv name sym = do
@@ -69,14 +75,6 @@ appendLine :: Line -> State Translator ()
 appendLine l = do
   f <- gets getCurrentFunc
   setCurrentFunc $ f{getFunc = getFunc f Sq.|> l}
-  q <- gets getEdgeQueue
-  case Sq.viewl q of
-    Sq.EmptyL -> return ()
-    ((src, dst) Sq.:< es) -> do
-      newIdx <- gets lastSN
-      when (newIdx == src || newIdx == dst) $ do
-        setEdgeQueue es
-        addEdge src dst
 
 nextLocal :: Type -> State Translator Symbol
 nextLocal typ = do
@@ -88,24 +86,16 @@ nextSN :: Translator -> Int
 nextSN = length . getFunc . getCurrentFunc
 
 lastSN :: Translator -> Int
-lastSN = (-) 1 . nextSN
+lastSN = (+)(-1) . nextSN
 
-addEdge :: Int -> Int -> State Translator ()
-addEdge src dst = do
-  f <- gets getCurrentFunc
-  let l = length $ getFunc f
-  if src < l && dst < l
-    then do
-      let oldSrc = Sq.index (getFunc f) src
-      let newSrc = oldSrc{getOutgoing = getOutgoing oldSrc ++ [dst]}
-      let oldDst = Sq.index (getFunc f) dst
-      let newDst = oldDst{getIncoming = getIncoming oldSrc ++ [src]}
-      setCurrentFunc $ f{getFunc = Sq.update src newSrc (getFunc f)}
-      setCurrentFunc $ f{getFunc = Sq.update dst newDst (getFunc f)}
-      return ()
-    else do
-      q <- gets getEdgeQueue
-      setEdgeQueue $ q Sq.|> (src, dst)
+addEdgeToFunction :: Func -> (Int, Int) -> Func
+addEdgeToFunction f (src, dst) =
+  let oldSrc = Sq.index (getFunc f) src
+      newSrc = oldSrc{getOutgoing = getOutgoing oldSrc ++ [dst]}
+      oldDst = Sq.index (getFunc f) dst
+      newDst = oldDst{getIncoming = getIncoming oldSrc ++ [src]}
+      afterSrcUpdate = f{getFunc = Sq.update src newSrc (getFunc f)}
+   in afterSrcUpdate{getFunc = Sq.update dst newDst (getFunc afterSrcUpdate)}
 
 paramMap :: [S.Param] -> Env
 paramMap = fst . foldl step (M.empty, 0)
@@ -119,8 +109,9 @@ paramMap = fst . foldl step (M.empty, 0)
 -- because it was becoming repetitive
 func :: Env -> S.DeclAug SymData -> Func
 func globals funcDef@(S.DefFn _ ps _ _, _) =
-  let initState = Translator (Func Sq.empty) 0 (M.union globals (paramMap ps)) Sq.empty
-   in getCurrentFunc $ execState (decl funcDef) initState
+  let initial = Translator (Func Sq.empty) 0 (M.union globals (paramMap ps)) []
+      final = execState (decl funcDef) initial
+   in foldl addEdgeToFunction (getCurrentFunc final) (getEdgeList final)
 func _ _ = error "expected a function declaration"
 
 decl :: S.DeclAug SymData -> State Translator ()
@@ -146,7 +137,7 @@ decl (S.BlockDecl decls, _) = mapM_ decl decls
 decl ifDecl@(S.IfDecl{}, _) = do
   exitPoints <- ifDeclHelper Nothing ifDecl
   exit <- gets nextSN
-  mapM_ (`addEdge` exit) exitPoints
+  mapM_ (`addEdgeToList` exit) exitPoints
 
 ifDeclHelper :: Maybe Int -> S.DeclAug SymData -> State Translator [Int]
 ifDeclHelper = undefined
@@ -186,7 +177,7 @@ exprTerm ifExpr@(S.IfExpr{}, _) = do
   result <- nextLocal (V.getType ifExpr)
   exitPoints <- ifExprTermHelper result Nothing ifExpr
   exit <- gets nextSN
-  mapM_ (`addEdge` exit) exitPoints
+  mapM_ (`addEdgeToList` exit) exitPoints
   return $ Subs result
 exprTerm (S.BlockExpr decls out, _) = do
   mapM_ decl decls
@@ -215,7 +206,7 @@ ifExprTermHelper result mPrevCondSN (S.IfExpr p c [] els, _) = do
   predExprStart <- gets nextSN
   predExpr <- exprExpr p
   case mPrevCondSN of
-    Just prevCondSN -> addEdge prevCondSN predExprStart
+    Just prevCondSN -> addEdgeToList prevCondSN predExprStart
     Nothing -> return ()
   appendLine $ Line (Cond predExpr) [] []
   cond <- gets lastSN
@@ -223,7 +214,7 @@ ifExprTermHelper result mPrevCondSN (S.IfExpr p c [] els, _) = do
   appendLine $ Line (Assignment result consExpr) [] []
   consEnd <- gets lastSN
   elseStart <- gets nextSN
-  addEdge cond elseStart
+  addEdgeToList cond elseStart
   elseExpr <- exprExpr els
   appendLine $ Line (Assignment result elseExpr) [] []
   return [consEnd]
@@ -240,7 +231,7 @@ ifExprTermHelper
     predExprStart <- gets nextSN
     predExpr <- exprExpr p
     case mPrevCondSN of
-      Just prevCondSN -> addEdge prevCondSN predExprStart
+      Just prevCondSN -> addEdgeToList prevCondSN predExprStart
       Nothing -> return ()
     appendLine $ Line (Cond predExpr) [] []
     cond <- gets lastSN
