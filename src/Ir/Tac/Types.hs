@@ -76,7 +76,10 @@ instance Typed Symbol where
 
 instance Typed Term where
   getType (LitInt _) = "Int"
+  getType (LitFloat _) = "Float"
+  getType (LitString _) = "String"
   getType (LitBool _) = "Bool"
+  getType (LitChar _) = "Char"
   getType (Subs sym) = getType sym
 
 instance Typed a => Typed (Expr a) where 
@@ -110,7 +113,10 @@ instance Show Label where
 instance Show Term where
   show (Subs l) = show l
   show (LitInt i) = show i
+  show (LitFloat f) = show f
+  show (LitString s) = show s
   show (LitBool b) = map toLower $ show b
+  show (LitChar c) = show c
 
 instance Show a => Show (FuncCall a) where
   show (FuncCall (name, ps)) = printf "%s(%s)" name (intercalate ", " (map show ps))
@@ -125,6 +131,18 @@ newtype OpWrapper = OpWrapper {getOp :: S.Op}
 instance Show OpWrapper where 
   show (OpWrapper S.Plus) = "+"
   show (OpWrapper S.Minus) = "-"
+  show (OpWrapper S.Multiply) = "*"
+  show (OpWrapper S.Divide) = "/"
+  show (OpWrapper S.Negate) = "-"
+  show (OpWrapper S.And) = "&&"
+  show (OpWrapper S.Or) = "||"
+  show (OpWrapper S.Not) = "!"
+  show (OpWrapper S.Less) = "<"
+  show (OpWrapper S.Leq) = "<="
+  show (OpWrapper S.Greater) = ">"
+  show (OpWrapper S.Geq) = ">="
+  show (OpWrapper S.Equal) = "=="
+  show (OpWrapper S.NotEqual) = "!="
 
 instance Show a => Show (GeneralInst a) where
   show (Assignment dst src) = printf "%s := %s" (show dst) (show src)
