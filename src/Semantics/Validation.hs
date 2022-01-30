@@ -1,4 +1,4 @@
-module Semantics.Validation (validateSemantics) where
+module Semantics.Validation (validateSemantics, getType) where
 
 import Semantics.Error
 import Semantics.SymbolTable

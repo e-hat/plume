@@ -7,7 +7,7 @@ import Parsing.Syntax ()
 import RegAlloc.LiveIntervals
 import Semantics.Validation
 import RegAlloc.Simple
-import Ir.Tac.Types
+import Ir.Tac.Translation
 
 import Control.Monad ()
 import Data.Semigroup ()
@@ -153,6 +153,10 @@ run (RegAllocInput f) = do
     Right p -> case validateSemantics p of 
       Left err -> putStrLn err 
       Right trees -> print $ simpleRegalloc $ genBytecode trees
-run (CompileInput _) = do 
-  let prog = [Assignment (Local 1 "Int") (Bin (LitInt 5) Plus (Subs (Local 0 "Int")))]
-  putStrLn (unlines $ map show prog)
+run (CompileInput f) = do 
+  nodes <- P.parse program f <$> readFile f
+  case nodes of 
+    Left err -> print err 
+    Right p -> case validateSemantics p of 
+      Left err -> putStrLn err
+      Right trees -> print $ translate trees
