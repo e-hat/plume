@@ -5,12 +5,9 @@ import qualified Parsing.Syntax as S
 import Semantics.SymbolTable
 import qualified Semantics.Validation as V
 
-import Control.Monad
 import Control.Monad.State
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Sq
-import Text.Printf
-import Debug.Trace
 
 translate :: SymTreeList -> Program
 translate (SymTreeList topLevelDecls) =
@@ -54,7 +51,7 @@ setLocalCounter :: Int -> State Translator ()
 setLocalCounter n = modify $ \s -> s{getLocalCounter = n}
 
 setEdgeList :: [(Int, Int)] -> State Translator ()
-setEdgeList es = modify $ \s -> s{getEdgeList = trace (printf "q's value: %s" (show es)) es}
+setEdgeList es = modify $ \s -> s{getEdgeList = es}
 
 addEdgeToList :: Int -> Int -> State Translator ()
 addEdgeToList src dst = do 
