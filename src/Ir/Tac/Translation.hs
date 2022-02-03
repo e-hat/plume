@@ -137,7 +137,55 @@ decl ifDecl@(S.IfDecl{}, _) = do
   mapM_ (`addEdgeToList` exit) exitPoints
 
 ifDeclHelper :: Maybe Int -> S.DeclAug SymData -> State Translator [Int]
-ifDeclHelper = undefined
+ifDeclHelper mPrevCondSN (S.IfDecl p c [] mElse, _) = do
+  -- predStart --> incoming prevCondSN 
+  -- pred instructions...
+  -- if not (predExpr) --> outgoing elseStart 
+  -- cons instructions...
+  -- consEnd --> return [consEnd], outgoing elseEnd
+  -- elseStart --> incoming condSN
+  -- else instructions...
+  -- elseEnd --> incoming consEnd
+  predExprStart <- gets nextSN
+  predExpr <- exprExpr p
+  case mPrevCondSN of 
+    Just prevCondSN -> addEdgeToList prevCondSN predExprStart
+    Nothing -> return ()
+  appendLine $ Line (Cond predExpr) [] []
+  cond <- gets lastSN
+  decl c
+  case mElse of 
+    Just els -> do 
+      consEnd <- gets lastSN
+      elseStart <- gets nextSN
+      addEdgeToList cond elseStart
+      decl els
+      return [consEnd]
+    Nothing -> return [cond]
+ifDeclHelper 
+  mPrevCondSN 
+  (S.IfDecl p c ((elseIfPred, elseIfCons) : elseIfTail) mElse, s) = do 
+  -- predStart --> incoming prevCondSN
+  -- pred instructions...
+  -- if not (predExpr) --> outgoing elseIfPredStart
+  -- cons instructions
+  -- consEnd --> return consEnd : (recursion result), outgoing exit
+  -- elseIfPredStart --> incoming cond
+  predExprStart <- gets nextSN
+  predExpr <- exprExpr p
+  case mPrevCondSN of 
+    Just prevCondSN -> addEdgeToList prevCondSN predExprStart
+    Nothing -> return ()
+  appendLine $ Line (Cond predExpr) [] []
+  cond <- gets lastSN
+  decl c
+  consEnd <- gets lastSN
+  otherEndings <-
+    ifDeclHelper 
+      (Just cond)
+      (S.IfDecl elseIfPred elseIfCons elseIfTail mElse, s)
+  return (consEnd : otherEndings)
+ifDeclHelper _ _ = undefined
 
 exprExpr :: S.ExprAug SymData -> State Translator (Expr Term)
 exprExpr e@(S.Subs{}, _) = None <$> exprTerm e
