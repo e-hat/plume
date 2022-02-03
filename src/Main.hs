@@ -1,12 +1,8 @@
 module Main where
 
-import Bytecode.Generation
-import Bytecode.Types 
 import Parsing.Parser
 import Parsing.Syntax ()
-import RegAlloc.LiveIntervals
 import Semantics.Validation
-import RegAlloc.Simple
 import Ir.Tac.Translation
 
 import Control.Monad ()
@@ -20,9 +16,7 @@ data Input
   = ASTInput String
   | ValInput String
   | RunInput String
-  | PrintBytecodeInput String
-  | LiveIntervalInput String
-  | RegAllocInput String
+  | TacInput String
   | CompileInput String
 
 astInput :: Parser Input
@@ -45,34 +39,14 @@ valInput =
           <> help "Validate the semantics of the input file"
       )
 
-printBytecodeInput :: Parser Input
-printBytecodeInput =
-  PrintBytecodeInput
+tacInput :: Parser Input
+tacInput = 
+  TacInput 
     <$> strOption
-      ( long "print-bytecode"
-          <> short 'b'
+      ( long "tac"
+          <> short 't'
           <> metavar "FILENAME"
-          <> help "Print the bytecode generated for the input file"
-      )
-
-liveIntervalInput :: Parser Input
-liveIntervalInput =
-  LiveIntervalInput
-    <$> strOption
-      ( long "live-intervals"
-          <> short 'l'
-          <> metavar "FILENAME"
-          <> help "Display the virtual registers' live intervals for the bytecode generated from the input file"
-      )
-
-regallocInput :: Parser Input 
-regallocInput = 
-  RegAllocInput 
-    <$> strOption 
-      ( long "regalloc"
-          <> short 'r'
-          <> metavar "FILENAME" 
-          <> help "Print the bytecode after performing register allocation"
+          <> help "Produce the TAC for a plume program"
       )
 
 compileInput :: Parser Input 
@@ -86,7 +60,7 @@ compileInput =
       )
 
 compileOptions :: Parser Input
-compileOptions = astInput <|> valInput <|> printBytecodeInput <|> liveIntervalInput <|> regallocInput <|> compileInput
+compileOptions = astInput <|> valInput <|> tacInput <|> compileInput
 
 runArg :: Parser Input
 runArg =
@@ -130,33 +104,13 @@ run (ValInput f) = do
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
       Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
-run (PrintBytecodeInput f) = do
-  nodes <- P.parse program f <$> readFile f
-  case nodes of
-    Left err -> print err
-    Right p -> case validateSemantics p of
-      Left err -> putStrLn err
-      Right trees -> print $ genBytecode trees
 run RunInput{} = do
   hPutStrLn stderr "The Plume VM has been deprecated and is no longer available for use."
-run (LiveIntervalInput f) = do
-  nodes <- P.parse program f <$> readFile f
-  case nodes of
-    Left err -> print err
-    Right p -> case validateSemantics p of
-      Left err -> putStrLn err
-      Right trees -> print $ liveIntervals $ getInstructions $ genBytecode trees
-run (RegAllocInput f) = do
-  nodes <- P.parse program f <$> readFile f 
-  case nodes of  
-    Left err -> print err 
-    Right p -> case validateSemantics p of 
-      Left err -> putStrLn err 
-      Right trees -> print $ simpleRegalloc $ genBytecode trees
-run (CompileInput f) = do 
+run (TacInput f) = do 
   nodes <- P.parse program f <$> readFile f
   case nodes of 
     Left err -> print err 
     Right p -> case validateSemantics p of 
       Left err -> putStrLn err
       Right trees -> print $ translate trees
+run _ = error "unimplemented"
