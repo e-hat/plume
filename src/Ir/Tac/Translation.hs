@@ -1,4 +1,4 @@
-module Ir.Tac.Translation (translate) where
+module Ir.Tac.Translation (toTac) where
 
 import Ir.Tac.Types
 import qualified Parsing.Syntax as S
@@ -9,8 +9,8 @@ import Control.Monad.State
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Sq
 
-translate :: SymTreeList -> Program
-translate (SymTreeList topLevelDecls) =
+toTac :: SymTreeList -> Program
+toTac (SymTreeList topLevelDecls) =
   let ds = map getSymDeclAug topLevelDecls
       globals = collectGlobals ds
       funcDecls = filter isFunc ds
@@ -105,8 +105,9 @@ paramMap = fst . foldl step (M.empty, 0)
 -- The names of these functions do not have the word "translate" preceding them
 -- because it was becoming repetitive
 func :: Env -> S.DeclAug SymData -> Func
-func globals funcDef@(S.DefFn _ ps _ _, _) =
-  let initial = Translator (Func Sq.empty) 0 (M.union globals (paramMap ps)) []
+func globals funcDef@(S.DefFn _ ps ret _, _) =
+  let paramTypes = map (fst . S.getParam) ps
+      initial = Translator (Func paramTypes ret Sq.empty) 0 (M.union globals (paramMap ps)) []
       final = execState (decl funcDef) initial
    in foldl addEdgeToFunction (getCurrentFunc final) (getEdgeList final)
 func _ _ = error "expected a function declaration"

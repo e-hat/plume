@@ -62,7 +62,7 @@ data Line = Line
   , getOutgoing :: [Int]
   }
 
-newtype Func = Func {getFunc :: Seq Line}
+data Func = Func {getParamTypes :: [Type], getReturnType :: Type, getFunc :: Seq Line}
 
 newtype Program = Program {getProgram :: M.Map String Func}
 
