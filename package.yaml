@@ -10,13 +10,16 @@ default-extensions:
   - DeriveTraversable, DeriveFunctor, DeriveFoldable, RankNTypes
 
 dependencies: 
-    - base >= 4.7 && < 5
+    - base >= 4.0 && < 5
     - parsec 
     - pretty-show 
     - optparse-applicative 
     - containers 
     - mtl 
     - sorted-list
+    - binary
+    - bytestring
+    - leb128-binary
 
 ghc-options: -Wall
 

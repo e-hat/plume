@@ -3,7 +3,14 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    hackage: leb128-binary-0.1.1@sha256:a42aea832ab9e9acde8d141ccc4ae8a3c9c7c4ea5fef3bf0b5ef2a4461f7d8be,1004
+    pantry-tree:
+      size: 401
+      sha256: e9cbf925f5109e94602f3e6e4513f6d692017e2cac5c10c50183d97fc3712d37
+  original:
+    hackage: leb128-binary-0.1.1
 snapshots:
 - completed:
     size: 534126

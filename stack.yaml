@@ -1,4 +1,5 @@
 resolver: lts-16.31
 packages: 
   - .
-extra-deps: []
+extra-deps:
+  - leb128-binary-0.1.1
