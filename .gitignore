@@ -1,6 +1,10 @@
 # ignoring ctags
 src/tags
 
+# ignore outputted binaries 
+# because binaries actually get outputted!!! :D
+bin/
+
 dist
 dist-*
 cabal-dev
