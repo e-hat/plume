@@ -1,11 +1,15 @@
 module Main where
 
+import Ir.Tac.Translation
 import Parsing.Parser
 import Parsing.Syntax ()
 import Semantics.Validation
-import Ir.Tac.Translation
+import Wasm.Emit
+import Wasm.Types
 
 import Control.Monad ()
+import Data.Binary.Put
+import qualified Data.ByteString.Lazy as BL
 import Data.Semigroup ()
 import Options.Applicative
 import System.IO
@@ -40,8 +44,8 @@ valInput =
       )
 
 tacInput :: Parser Input
-tacInput = 
-  TacInput 
+tacInput =
+  TacInput
     <$> strOption
       ( long "tac"
           <> short 't'
@@ -49,10 +53,10 @@ tacInput =
           <> help "Produce the TAC for a plume program"
       )
 
-compileInput :: Parser Input 
-compileInput = 
-  CompileInput 
-    <$> strOption 
+compileInput :: Parser Input
+compileInput =
+  CompileInput
+    <$> strOption
       ( long "compile"
           <> short 'c'
           <> metavar "FILENAME"
@@ -106,11 +110,37 @@ run (ValInput f) = do
       Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
 run RunInput{} = do
   hPutStrLn stderr "The Plume VM has been deprecated and is no longer available for use."
-run (TacInput f) = do 
+run (TacInput f) = do
   nodes <- P.parse program f <$> readFile f
-  case nodes of 
-    Left err -> print err 
-    Right p -> case validateSemantics p of 
+  case nodes of
+    Left err -> print err
+    Right p -> case validateSemantics p of
       Left err -> putStrLn err
-      Right trees -> print $ translate trees
-run _ = error "unimplemented"
+      Right trees -> print $ toTac trees
+run CompileInput{} = do
+  let prog =
+        Program
+          [ Module
+              [ Types $
+                  Array
+                    [ FuncSignature
+                        (Array [])
+                        (Array [])
+                    ]
+              , Funcs $
+                  Array
+                    [VarU32 0]
+              , Start $ VarU32 0
+              , Code $
+                  Array
+                    [ FuncBody
+                        (Array [])
+                        [ BasicInst Nop
+                        , ControlFlow End ]
+                    ]
+              ]
+          ]
+  let expr = Array [ FuncSignature (Array []) (Array []) ]
+  let output = runPut $ emit prog
+  BL.putStr output
+  return ()
