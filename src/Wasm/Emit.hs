@@ -7,6 +7,7 @@ import qualified Data.Binary.SLEB128 as SLEB
 import qualified Data.Binary.ULEB128 as ULEB
 import qualified Data.ByteString.Lazy as BL
 import Data.Int
+import Data.List
 import Data.Word
 
 class Emit a where
@@ -18,8 +19,9 @@ instance Emit Program where
     emit $ head ms
 
 instance Emit Module where
-  emit (Module sections) =
-    mapM_ emit sections
+  emit (Module sections) = do
+    let sortedSections = sortBy (\l r -> opcode l `compare` opcode r) sections
+    mapM_ emit sortedSections
 
 instance Emit KnownSection where
   emit k = do
@@ -58,6 +60,9 @@ instance Emit Instruction where
 instance Emit Basic where
   emit Nop = do
     putWord8 0x1
+  emit (I32Const n) = do
+    putWord8 0x41
+    putVarSInt32 n
 
 instance Emit Cf where
   emit End = do
@@ -70,6 +75,18 @@ instance Emit ValueType where
   emit F32 = putVarSInt7 $ -0x3
   emit F64 = putVarSInt7 $ -0x4
   emit Func = putVarSInt7 $ -0x20
+
+instance Emit ExternalKind where 
+  emit Function = putVarSInt7 0x0 
+  emit Table = putVarSInt7 0x1
+  emit Memory = putVarSInt7 0x2
+  emit Global = putVarSInt7 0x3
+
+instance Emit Export where 
+  emit (Export name kind idx) = do 
+    emit name
+    emit kind
+    emit idx
 
 putAsByteArray :: Put -> Put
 putAsByteArray p = do
@@ -84,12 +101,14 @@ payload (Start n) = emit n
 payload (Types fs) = emit fs
 payload (Funcs is) = emit is
 payload (Code bs) = emit bs
+payload (Exports es) = emit es
 
 opcode :: KnownSection -> Word8
 opcode Start{} = 0x8
 opcode Types{} = 0x1
 opcode Funcs{} = 0x3
 opcode Code{} = 0xa
+opcode Exports{} = 0x7
 
 putOpcode :: Word8 -> Put
 putOpcode = putWord8
