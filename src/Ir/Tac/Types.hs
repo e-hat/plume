@@ -24,12 +24,13 @@ getId (Param n _) = n
 
 newtype Label = Label {getLabel :: Int}
 
-data Term = Subs Symbol 
-          | LitInt Integer
-          | LitFloat Double
-          | LitString String 
-          | LitBool Bool
-          | LitChar Char
+data Term
+  = Subs Symbol
+  | LitInt Integer
+  | LitFloat Double
+  | LitString String
+  | LitBool Bool
+  | LitChar Char
 
 newtype FuncCall a = FuncCall {getFuncCall :: (String, [a])}
   deriving (Functor, Foldable, Traversable)
@@ -66,7 +67,7 @@ data Func = Func {getParamTypes :: [Type], getReturnType :: Type, getFunc :: Seq
 
 newtype Program = Program {getProgram :: M.Map String Func}
 
-class Typed a where 
+class Typed a where
   getType :: a -> Type
 
 instance Typed Symbol where
@@ -82,7 +83,7 @@ instance Typed Term where
   getType (LitChar _) = "Char"
   getType (Subs sym) = getType sym
 
-instance Typed a => Typed (Expr a) where 
+instance Typed a => Typed (Expr a) where
   getType (Bin l op _)
     | isRel op = "Bool"
     | otherwise = getType l
@@ -128,7 +129,7 @@ instance Show a => Show (Expr a) where
   show (FuncCallExpr _ fcall) = show fcall
 
 newtype OpWrapper = OpWrapper {getOp :: S.Op}
-instance Show OpWrapper where 
+instance Show OpWrapper where
   show (OpWrapper S.Plus) = "+"
   show (OpWrapper S.Minus) = "-"
   show (OpWrapper S.Multiply) = "*"

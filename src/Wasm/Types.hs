@@ -1,8 +1,8 @@
 module Wasm.Types where
 
-import Data.Word
-import Data.Int
 import qualified Data.ByteString.Char8 as C
+import Data.Int
+import Data.Word
 
 newtype Program = Program {getModules :: [Module]}
 
@@ -17,7 +17,7 @@ data KnownSection
 
 data FuncSignature = FuncSignature
   { getParams :: Array ValueType
-  , getReturns :: Array ValueType 
+  , getReturns :: Array ValueType
   }
 
 data FuncBody = FuncBody
@@ -30,15 +30,15 @@ data LocalEntry = LocalEntry
   , getType :: ValueType
   }
 
-data Instruction 
+data Instruction
   = BasicInst Basic
   | ControlFlow Cf
 
-data Basic 
+data Basic
   = Nop
   | I32Const Int32
 
-data Cf 
+data Cf
   = End
 
 data BasicInst
@@ -47,16 +47,16 @@ data ValueType = B | I32 | I64 | F32 | F64 | Func
 
 data ExternalKind = Function | Table | Memory | Global
 
-data Export = Export 
-  { getName :: Identifier 
-  , getKind :: ExternalKind 
+data Export = Export
+  { getName :: Identifier
+  , getKind :: ExternalKind
   , getIndex :: VarU32
   }
 
-newtype Array a = Array{getArray :: [a]}
+newtype Array a = Array {getArray :: [a]}
 
 type Index = VarU32
-newtype VarU32 = VarU32{getVarU32 :: Int}
+newtype VarU32 = VarU32 {getVarU32 :: Int}
 type Byte = Word8
 type Identifier = Array Byte
 

@@ -76,14 +76,14 @@ instance Emit ValueType where
   emit F64 = putVarSInt7 $ -0x4
   emit Func = putVarSInt7 $ -0x20
 
-instance Emit ExternalKind where 
-  emit Function = putVarSInt7 0x0 
+instance Emit ExternalKind where
+  emit Function = putVarSInt7 0x0
   emit Table = putVarSInt7 0x1
   emit Memory = putVarSInt7 0x2
   emit Global = putVarSInt7 0x3
 
-instance Emit Export where 
-  emit (Export name kind idx) = do 
+instance Emit Export where
+  emit (Export name kind idx) = do
     emit name
     emit kind
     emit idx

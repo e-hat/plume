@@ -119,11 +119,11 @@ run (TacInput f) = do
       Right trees -> print $ toTac trees
 run (CompileInput f) = do
   nodes <- P.parse program f <$> readFile f
-  case nodes of 
+  case nodes of
     Left err -> print err
-    Right p -> case validateSemantics p of 
+    Right p -> case validateSemantics p of
       Left err -> putStrLn err
-      Right trees -> 
+      Right trees ->
         let tac = toTac trees
             output = runPut $ emit $ toWasm tac
          in BL.putStr output
