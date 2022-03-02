@@ -5,7 +5,7 @@ import Parsing.Parser
 import Parsing.Syntax ()
 import Semantics.Validation
 import Wasm.Emit
-import Wasm.Types
+import Wasm.Translation
 
 import Control.Monad ()
 import Data.Binary.Put
@@ -117,30 +117,13 @@ run (TacInput f) = do
     Right p -> case validateSemantics p of
       Left err -> putStrLn err
       Right trees -> print $ toTac trees
-run CompileInput{} = do
-  let prog =
-        Program
-          [ Module
-              [ Types $
-                  Array
-                    [ FuncSignature
-                        (Array [])
-                        (Array [])
-                    ]
-              , Funcs $
-                  Array
-                    [VarU32 0]
-              , Start $ VarU32 0
-              , Code $
-                  Array
-                    [ FuncBody
-                        (Array [])
-                        [ BasicInst Nop
-                        , ControlFlow End ]
-                    ]
-              ]
-          ]
-  let expr = Array [ FuncSignature (Array []) (Array []) ]
-  let output = runPut $ emit prog
-  BL.putStr output
-  return ()
+run (CompileInput f) = do
+  nodes <- P.parse program f <$> readFile f
+  case nodes of 
+    Left err -> print err
+    Right p -> case validateSemantics p of 
+      Left err -> putStrLn err
+      Right trees -> 
+        let tac = toTac trees
+            output = runPut $ emit $ toWasm tac
+         in BL.putStr output
