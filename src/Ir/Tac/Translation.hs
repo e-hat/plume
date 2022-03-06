@@ -7,7 +7,6 @@ import qualified Semantics.Validation as V
 
 import Control.Monad.State
 import qualified Data.Map.Strict as M
-import qualified Data.Sequence as Sq
 
 toTac :: SymTreeList -> Program
 toTac (SymTreeList topLevelDecls) =
@@ -38,7 +37,6 @@ data Translator = Translator
   { getCurrentFunc :: Func
   , getLocalCounter :: Int
   , getEnv :: Env
-  , getEdgeList :: [(Int, Int)]
   }
 
 setCurrentFunc :: Func -> State Translator ()
@@ -50,14 +48,6 @@ setEnv env = modify $ \s -> s{getEnv = env}
 setLocalCounter :: Int -> State Translator ()
 setLocalCounter n = modify $ \s -> s{getLocalCounter = n}
 
-setEdgeList :: [(Int, Int)] -> State Translator ()
-setEdgeList es = modify $ \s -> s{getEdgeList = es}
-
-addEdgeToList :: Int -> Int -> State Translator ()
-addEdgeToList src dst = do 
-  edgeList <- gets getEdgeList
-  setEdgeList $ (src, dst):edgeList
-
 addVarToEnv :: S.Identifier -> Symbol -> State Translator ()
 addVarToEnv name sym = do
   env <- gets getEnv
@@ -68,31 +58,16 @@ lookupVar name = do
   env <- gets getEnv
   return $ env M.! name
 
-appendLine :: Line -> State Translator ()
-appendLine l = do
+appendInst :: Inst -> State Translator ()
+appendInst i = do
   f <- gets getCurrentFunc
-  setCurrentFunc $ f{getFunc = getFunc f Sq.|> l}
+  setCurrentFunc $ f{getFunc = getFunc f ++ [i]}
 
 nextLocal :: Type -> State Translator Symbol
 nextLocal typ = do
   n <- gets getLocalCounter
   setLocalCounter (n + 1)
   return $ Local n typ
-
-nextSN :: Translator -> Int
-nextSN = length . getFunc . getCurrentFunc
-
-lastSN :: Translator -> Int
-lastSN = (+)(-1) . nextSN
-
-addEdgeToFunction :: Func -> (Int, Int) -> Func
-addEdgeToFunction f (src, dst) =
-  let oldSrc = Sq.index (getFunc f) src
-      newSrc = oldSrc{getOutgoing = getOutgoing oldSrc ++ [dst]}
-      oldDst = Sq.index (getFunc f) dst
-      newDst = oldDst{getIncoming = getIncoming oldSrc ++ [src]}
-      afterSrcUpdate = f{getFunc = Sq.update src newSrc (getFunc f)}
-   in afterSrcUpdate{getFunc = Sq.update dst newDst (getFunc afterSrcUpdate)}
 
 paramMap :: [S.Param] -> Env
 paramMap = fst . foldl step (M.empty, 0)
@@ -107,86 +82,46 @@ paramMap = fst . foldl step (M.empty, 0)
 func :: Env -> S.DeclAug SymData -> Func
 func globals funcDef@(S.DefFn _ ps ret _, _) =
   let paramTypes = map (fst . S.getParam) ps
-      initial = Translator (Func paramTypes ret Sq.empty) 0 (M.union globals (paramMap ps)) []
+      initial = Translator (Func paramTypes ret []) 0 (M.union globals (paramMap ps))
       final = execState (decl funcDef) initial
-   in foldl addEdgeToFunction (getCurrentFunc final) (getEdgeList final)
+   in getCurrentFunc final
 func _ _ = error "expected a function declaration"
 
 decl :: S.DeclAug SymData -> State Translator ()
 decl (S.DefFn _ _ "Void" e, _) = do
   voidExpr e
-  appendLine (Line (Return Nothing) [] [])
+  appendInst $ Return Nothing
 decl (S.DefFn _ _ _ e, _) = do
   result <- exprExpr e
-  appendLine (Line (Return (Just result)) [] [])
+  appendInst $ Return $ Just result
 decl (S.Let typ name e, _) = do
   rhs <- exprExpr e
   lhs <- nextLocal typ
   addVarToEnv name lhs
-  appendLine $ Line (Assignment lhs rhs) [] []
+  appendInst $ Assignment lhs rhs
 decl (S.Reassign name e, _) = do
   rhs <- exprExpr e
   lhs <- lookupVar name
-  appendLine $ Line (Assignment lhs rhs) [] []
+  appendInst $ Assignment lhs rhs
 decl (S.CallDecl name paramExprs, _) = do
   paramTerms <- mapM exprTerm paramExprs
-  appendLine $ Line (IgnoreReturnValCall $ FuncCall (name, paramTerms)) [] []
-decl (S.BlockDecl decls, _) = mapM_ decl decls
-decl ifDecl@(S.IfDecl{}, _) = do
-  exitPoints <- ifDeclHelper Nothing ifDecl
-  exit <- gets nextSN
-  mapM_ (`addEdgeToList` exit) exitPoints
-
-ifDeclHelper :: Maybe Int -> S.DeclAug SymData -> State Translator [Int]
-ifDeclHelper mPrevCondSN (S.IfDecl p c [] mElse, _) = do
-  -- predStart --> incoming prevCondSN 
-  -- pred instructions...
-  -- if not (predExpr) --> outgoing elseStart 
-  -- cons instructions...
-  -- consEnd --> return [consEnd], outgoing elseEnd
-  -- elseStart --> incoming condSN
-  -- else instructions...
-  -- elseEnd --> incoming consEnd
-  predExprStart <- gets nextSN
-  predExpr <- exprExpr p
-  case mPrevCondSN of 
-    Just prevCondSN -> addEdgeToList prevCondSN predExprStart
-    Nothing -> return ()
-  appendLine $ Line (Cond predExpr) [] []
-  cond <- gets lastSN
-  decl c
-  case mElse of 
-    Just els -> do 
-      consEnd <- gets lastSN
-      elseStart <- gets nextSN
-      addEdgeToList cond elseStart
-      decl els
-      return [consEnd]
-    Nothing -> return [cond]
-ifDeclHelper 
-  mPrevCondSN 
-  (S.IfDecl p c ((elseIfPred, elseIfCons) : elseIfTail) mElse, s) = do 
-  -- predStart --> incoming prevCondSN
-  -- pred instructions...
-  -- if not (predExpr) --> outgoing elseIfPredStart
-  -- cons instructions
-  -- consEnd --> return consEnd : (recursion result), outgoing exit
-  -- elseIfPredStart --> incoming cond
-  predExprStart <- gets nextSN
-  predExpr <- exprExpr p
-  case mPrevCondSN of 
-    Just prevCondSN -> addEdgeToList prevCondSN predExprStart
-    Nothing -> return ()
-  appendLine $ Line (Cond predExpr) [] []
-  cond <- gets lastSN
-  decl c
-  consEnd <- gets lastSN
-  otherEndings <-
-    ifDeclHelper 
-      (Just cond)
-      (S.IfDecl elseIfPred elseIfCons elseIfTail mElse, s)
-  return (consEnd : otherEndings)
-ifDeclHelper _ _ = undefined
+  appendInst $ IgnoreReturnValCall $ FuncCall (name, paramTerms)
+decl (S.BlockDecl decls, _) = do
+  body <- snd <$> translateSublist (mapM_ decl decls)
+  appendInst $ Block body
+decl (S.IfDecl predicate cons [] mElse, _) = do
+  predExpr <- exprExpr predicate
+  consList <- snd <$> translateSublist (decl cons)
+  alternative <-
+    case mElse of
+      Nothing -> return []
+      Just d -> snd <$> translateSublist (decl d)
+  appendInst $ Cond predExpr consList alternative
+decl (S.IfDecl predicate cons ((elseIfPred, elseIfCons) : elseIfs) mElse, symData) = do
+  predExpr <- exprExpr predicate
+  consList <- snd <$> translateSublist (decl cons)
+  alternative <- snd <$> translateSublist (decl (S.IfDecl elseIfPred elseIfCons elseIfs mElse, symData))
+  appendInst $ Cond predExpr consList alternative
 
 exprExpr :: S.ExprAug SymData -> State Translator (Expr Term)
 exprExpr e@(S.Subs{}, _) = None <$> exprTerm e
@@ -207,7 +142,7 @@ exprExpr (S.LitFloat float, _) = return $ None $ LitFloat float
 exprExpr (S.LitString str, _) = return $ None $ LitString str
 exprExpr (S.LitBool bool, _) = return $ None $ LitBool bool
 exprExpr (S.LitChar char, _) = return $ None $ LitChar char
-exprExpr (S.Return, _) = error "voidExpr should be called on Return ExprAug"
+exprExpr (S.Return, _) = error "only `voidExpr` should be called on Return ExprAug"
 
 exprTerm :: S.ExprAug SymData -> State Translator Term
 exprTerm (S.Subs name, _) = do
@@ -217,17 +152,16 @@ exprTerm e@(S.CallExpr name _, SymData tbl _) = do
   rhs <- exprExpr e
   -- lookup return type of function `name`
   lhs <- nextLocal (lookupSymbolType name tbl)
-  appendLine $ Line (Assignment lhs rhs) [] []
+  appendInst $ Assignment lhs rhs
   return $ Subs lhs
-exprTerm ifExpr@(S.IfExpr{}, _) = do
-  result <- nextLocal (V.getType ifExpr)
-  exitPoints <- ifExprTermHelper result Nothing ifExpr
-  exit <- gets nextSN
-  mapM_ (`addEdgeToList` exit) exitPoints
-  return $ Subs result
 exprTerm (S.BlockExpr decls out, _) = do
-  mapM_ decl decls
-  exprTerm out
+  (result, block) <- translateSublist (mapM_ decl decls >> exprTerm out)
+  appendInst $ Block block
+  return result
+exprTerm e@(S.IfExpr{}, _) = do
+  dst <- nextLocal $ V.getType e
+  ifExprTermHelper dst e
+  return $ Subs dst
 exprTerm (S.LitInt l, _) = return $ LitInt l
 exprTerm (S.LitFloat l, _) = return $ LitFloat l
 exprTerm (S.LitString l, _) = return $ LitString l
@@ -236,61 +170,37 @@ exprTerm (S.LitChar l, _) = return $ LitChar l
 exprTerm e = do
   rhs <- exprExpr e
   lhs <- nextLocal (getType rhs)
-  appendLine $ Line (Assignment lhs rhs) [] []
+  appendInst $ Assignment lhs rhs
   return $ Subs lhs
 
-ifExprTermHelper :: Symbol -> Maybe Int -> S.ExprAug SymData -> State Translator [Int]
-ifExprTermHelper result mPrevCondSN (S.IfExpr p c [] els, _) = do
-  -- predStart --> incoming prevCondSN
-  -- pred instructions...
-  -- if not (predExpr) --> outgoing elseStart
-  -- cons instructions...
-  -- consEnd --> return [consEnd], outgoing elseEnd
-  -- elseStart --> incoming condSN
-  -- else instructions...
-  -- elseEnd --> incoming consEnd
-  predExprStart <- gets nextSN
-  predExpr <- exprExpr p
-  case mPrevCondSN of
-    Just prevCondSN -> addEdgeToList prevCondSN predExprStart
-    Nothing -> return ()
-  appendLine $ Line (Cond predExpr) [] []
-  cond <- gets lastSN
-  consExpr <- exprExpr c
-  appendLine $ Line (Assignment result consExpr) [] []
-  consEnd <- gets lastSN
-  elseStart <- gets nextSN
-  addEdgeToList cond elseStart
-  elseExpr <- exprExpr els
-  appendLine $ Line (Assignment result elseExpr) [] []
-  return [consEnd]
-ifExprTermHelper
-  result
-  mPrevCondSN
-  (S.IfExpr p c ((elseIfPred, elseIfCons) : elseIfTail) els, s) = do
-    -- predStart --> incoming prevCondSN
-    -- pred instructions...
-    -- if not (predExpr) --> outgoing elseIfPredStart
-    -- cons instructions
-    -- consEnd --> return consEnd : (recursion result), outgoing exit
-    -- elseIfPredStart --> incoming cond
-    predExprStart <- gets nextSN
-    predExpr <- exprExpr p
-    case mPrevCondSN of
-      Just prevCondSN -> addEdgeToList prevCondSN predExprStart
-      Nothing -> return ()
-    appendLine $ Line (Cond predExpr) [] []
-    cond <- gets lastSN
-    consExpr <- exprExpr c
-    appendLine $ Line (Assignment result consExpr) [] []
-    consEnd <- gets lastSN
-    otherEndings <-
-      ifExprTermHelper
-        result
-        (Just cond)
-        (S.IfExpr elseIfPred elseIfCons elseIfTail els, s)
-    return (consEnd : otherEndings)
-ifExprTermHelper _ _ _ = error "Expected an IfExpr"
+ifExprTermHelper :: Symbol -> S.ExprAug SymData -> State Translator ()
+ifExprTermHelper dst (S.IfExpr predicate cons [] els, _) = do
+  predExpr <- exprExpr predicate
+  (consExpr, consList) <- translateSublist (exprExpr cons)
+  (elseExpr, elseList) <- translateSublist (exprExpr els)
+  appendInst $
+    Cond
+      predExpr
+      (consList ++ [Assignment dst consExpr])
+      (elseList ++ [Assignment dst elseExpr])
+ifExprTermHelper dst (S.IfExpr predicate cons ((elseIfPred, elseIfCons) : elseIfs) els, symData) = do
+  predExpr <- exprExpr predicate
+  (consExpr, consList) <- translateSublist (exprExpr cons)
+  alternative <- snd <$> translateSublist (ifExprTermHelper dst (S.IfExpr elseIfPred elseIfCons elseIfs els, symData))
+  appendInst $
+    Cond
+      predExpr
+      (consList ++ [Assignment dst consExpr])
+      alternative
+ifExprTermHelper _ _ = undefined
+
+translateSublist :: State Translator a -> State Translator (a, [Inst])
+translateSublist action = do
+  before <- get
+  let initial = before{getCurrentFunc = Func [] [] []}
+  let (result, final) = runState action initial
+  put $ before{getLocalCounter = getLocalCounter final}
+  return (result, getFunc $ getCurrentFunc final)
 
 -- These are the only Expr's that could possibly return void
 voidExpr :: S.ExprAug SymData -> State Translator ()

@@ -47,13 +47,13 @@ localEntries (T.Func _ _ is) =
        where
         existing = M.findWithDefault S.empty t groups
       step groups _ = groups
-      varsByType = foldl step M.empty (toList $ T.getInst <$> is)
+      varsByType = foldl step M.empty is
       localEntry :: T.Type -> S.Set Int -> LocalEntry
       localEntry t s = LocalEntry (VarU32 $ S.size s) (valueType t)
    in Array $ map (uncurry localEntry) (M.assocs varsByType)
 
 instructions :: T.Func -> [Instruction]
-instructions = concatMap (inst . T.getInst) . toList . T.getFunc
+instructions = concatMap inst . T.getFunc
 
 inst :: T.Inst -> [Instruction]
 inst (T.Return Nothing) = [ControlFlow End]

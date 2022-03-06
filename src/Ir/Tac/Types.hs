@@ -3,10 +3,8 @@ module Ir.Tac.Types where
 import qualified Parsing.Syntax as S
 
 import Data.Char
-import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Sequence
 import Text.Printf (printf)
 
 -- This module defines a Three Address Code (henceforth TAC)
@@ -47,23 +45,15 @@ data Expr a
 -- instruction
 data GeneralInst a
   = Assignment Symbol (Expr a)
-  | -- These would normally hold a jump label/destination
-    -- This data can instead be found in Line's getOutgoing member
-    Cond (Expr a)
-  | Goto
+  | Cond{getPred :: Expr a, getConsequent :: [GeneralInst a], getAlternative :: [GeneralInst a]}
+  | Block [GeneralInst a]
   | Return (Maybe (Expr a))
   | IgnoreReturnValCall (FuncCall a)
   deriving (Functor, Foldable, Traversable)
 
 type Inst = GeneralInst Term
 
-data Line = Line
-  { getInst :: Inst
-  , getIncoming :: [Int]
-  , getOutgoing :: [Int]
-  }
-
-data Func = Func {getParamTypes :: [Type], getReturnType :: Type, getFunc :: Seq Line}
+data Func = Func {getParamTypes :: [Type], getReturnType :: Type, getFunc :: [Inst]}
 
 newtype Program = Program {getProgram :: M.Map String Func}
 
@@ -145,23 +135,17 @@ instance Show OpWrapper where
   show (OpWrapper S.Equal) = "=="
   show (OpWrapper S.NotEqual) = "!="
 
-instance Show a => Show (GeneralInst a) where
-  show (Assignment dst src) = printf "%s := %s" (show dst) (show src)
-  show (Cond cond) = printf "if not (%s)" (show cond)
-  show Goto = "goto"
-  show (Return Nothing) = "return"
-  show (Return (Just t)) = printf "return %s" (show t)
-  show (IgnoreReturnValCall fcall) = show fcall
-
-instance Show Line where
-  show (Line i _ []) = printf "%s" (show i)
-  show (Line i _ os) = printf "%s |--> %s" (show i) (intercalate "," $ map show os)
-
 instance Show Func where
-  show = intercalate "\n" . toList . mapWithIndex step . getFunc
-   where
-    step :: Int -> Line -> String
-    step loc l = printf "%06d   %s" loc (show l)
+  show = intercalate "\n" . concatMap showInst . getFunc
+
+showInst :: Inst -> [String]
+showInst (Assignment dst src) = [printf "%s := %s" (show dst) (show src)]
+showInst (Cond p c []) = printf "if %s then" (show p) : map ("  "++) (concatMap showInst c)
+showInst (Cond p c e) = showInst (Cond p c []) ++ ["else"] ++ map ("  "++) (concatMap showInst e)
+showInst (Block b) = map ("  "++) (concatMap showInst b)
+showInst (Return (Just t)) = [printf "return %s" (show t)]
+showInst (Return Nothing) = ["return"]
+showInst (IgnoreReturnValCall fcall) = [show fcall]
 
 instance Show Program where
   show = intercalate "\n\n" . map step . M.assocs . getProgram
