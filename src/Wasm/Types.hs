@@ -1,6 +1,5 @@
 module Wasm.Types where
 
-import qualified Data.ByteString.Char8 as C
 import Data.Int
 import Data.Word
 
@@ -37,6 +36,8 @@ data Instruction
 data Basic
   = Nop
   | I32Const Int32
+  | F64Const Double
+  | GetLocal VarU32
 
 data Cf
   = End
