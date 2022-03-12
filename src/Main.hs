@@ -120,9 +120,9 @@ run (TacInput f) = do
 run (CompileInput f) = do
   nodes <- P.parse program f <$> readFile f
   case nodes of
-    Left err -> print err
+    Left err -> hPrint stderr err
     Right p -> case validateSemantics p of
-      Left err -> putStrLn err
+      Left err -> hPutStrLn stderr err
       Right trees ->
         let tac = toTac trees
             output = runPut $ emit $ toWasm tac
