@@ -129,9 +129,7 @@ exprExpr (S.CallExpr name paramExprs, SymData tbl _) = do
   paramTerms <- mapM exprTerm paramExprs
   return (FuncCallExpr (lookupSymbolType name tbl) (FuncCall (name, paramTerms)))
 exprExpr e@(S.IfExpr{}, _) = None <$> exprTerm e
-exprExpr (S.BlockExpr decls out, _) = do
-  mapM_ decl decls
-  exprExpr out
+exprExpr e@(S.BlockExpr{}, _) = None <$> exprTerm e
 exprExpr (S.BinOp op l r, _) = do
   lTerm <- exprTerm l
   rTerm <- exprTerm r
