@@ -32,17 +32,51 @@ data LocalEntry = LocalEntry
 data Instruction
   = BasicInst Basic
   | ControlFlow Cf
+  | IntArithInst IntArith
+  | FloatArithInst FloatArith
+  | IntCmpInst IntCmp
+  | FloatCmpInst FloatCmp
 
 data Basic
   = Nop
   | I32Const Int32
   | F64Const Double
   | GetLocal VarU32
+  | SetLocal VarU32
 
 data Cf
   = End
 
-data BasicInst
+data IntArith 
+  = I32Sub 
+  | I32Eqz
+  | I32Add
+  | I32Mul
+  | I32DivS
+  | I32And
+  | I32Or
+
+data FloatArith 
+  = F64Sub
+  | F64Add
+  | F64Mul
+  | F64Div
+
+data IntCmp 
+  = I32LtS
+  | I32LeS
+  | I32GtS
+  | I32GeS
+  | I32Eq 
+  | I32Ne
+
+data FloatCmp 
+  = F64Eq
+  | F64Ne 
+  | F64Lt
+  | F64Le
+  | F64Gt
+  | F64Ge
 
 data ValueType = B | I32 | I64 | F32 | F64 | Func
 
