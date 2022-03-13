@@ -45,7 +45,7 @@ data Expr a
 -- instruction
 data GeneralInst a
   = Assignment Symbol (Expr a)
-  | Cond{getPred :: Expr a, getConsequent :: [GeneralInst a], getAlternative :: [GeneralInst a]}
+  | Cond {getPred :: Expr a, getConsequent :: [GeneralInst a], getAlternative :: [GeneralInst a]}
   | Block [GeneralInst a]
   | Return (Maybe (Expr a))
   | IgnoreReturnValCall (FuncCall a)
@@ -140,9 +140,9 @@ instance Show Func where
 
 showInst :: Inst -> [String]
 showInst (Assignment dst src) = [printf "%s := %s" (show dst) (show src)]
-showInst (Cond p c []) = printf "if %s then" (show p) : map ("  "++) (concatMap showInst c)
-showInst (Cond p c e) = showInst (Cond p c []) ++ ["else"] ++ map ("  "++) (concatMap showInst e)
-showInst (Block b) = map ("  "++) (concatMap showInst b)
+showInst (Cond p c []) = printf "if %s then" (show p) : map ("  " ++) (concatMap showInst c)
+showInst (Cond p c e) = showInst (Cond p c []) ++ ["else"] ++ map ("  " ++) (concatMap showInst e)
+showInst (Block b) = map ("  " ++) (concatMap showInst b)
 showInst (Return (Just t)) = [printf "return %s" (show t)]
 showInst (Return Nothing) = ["return"]
 showInst (IgnoreReturnValCall fcall) = [show fcall]
