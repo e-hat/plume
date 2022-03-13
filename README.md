@@ -29,5 +29,6 @@ Right now, I'm working out translating TAC programs to Wasm programs. I'm going 
 - [X] Type-checking 
 - [X] Translation to TAC
 - [ ] Translation from TAC to Wasm
+  * Almost there!!!
 - [X] Emit valid Wasm programs
 - [ ] More stuff!
