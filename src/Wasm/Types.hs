@@ -47,9 +47,11 @@ data Basic
 data Cf
   = End
   | Block ValueType
+  | If ValueType
+  | Else
 
-data IntArith 
-  = I32Sub 
+data IntArith
+  = I32Sub
   | I32Eqz
   | I32Add
   | I32Mul
@@ -57,23 +59,23 @@ data IntArith
   | I32And
   | I32Or
 
-data FloatArith 
+data FloatArith
   = F64Sub
   | F64Add
   | F64Mul
   | F64Div
 
-data IntCmp 
+data IntCmp
   = I32LtS
   | I32LeS
   | I32GtS
   | I32GeS
-  | I32Eq 
+  | I32Eq
   | I32Ne
 
-data FloatCmp 
+data FloatCmp
   = F64Eq
-  | F64Ne 
+  | F64Ne
   | F64Lt
   | F64Le
   | F64Gt

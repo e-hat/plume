@@ -78,43 +78,41 @@ instance Emit Basic where
     putVarUInt32 $ fromIntegral $ getVarU32 i
 
 instance Emit Cf where
-  emit End = do
-    putWord8 0xb
-  emit (Block sig) = do
-    putWord8 0x2
-    emit sig
-
+  emit End = putWord8 0xb
+  emit (Block sig) = putWord8 0x2 >> emit sig
+  emit (If sig) = putWord8 0x4 >> emit sig
+  emit Else = putWord8 0x5
 
 instance Emit IntArith where
-  emit I32Sub = putWord8 0x6b
   emit I32Eqz = putWord8 0x45
   emit I32Add = putWord8 0x6a
+  emit I32Sub = putWord8 0x6b
   emit I32Mul = putWord8 0x6c
   emit I32DivS = putWord8 0x6d
   emit I32And = putWord8 0x71
   emit I32Or = putWord8 0x72
 
 instance Emit FloatArith where
-  emit F64Sub = putWord8 0x93
-  emit F64Add = putWord8 0x92
-  emit F64Mul = putWord8 0x94
-  emit F64Div = putWord8 0x95
+  emit F64Add = putWord8 0xa0
+  emit F64Sub = putWord8 0xa1
+  emit F64Mul = putWord8 0xa2
+  emit F64Div = putWord8 0xa3
 
 instance Emit IntCmp where
+  emit I32Eq = putWord8 0x46
+  emit I32Ne = putWord8 0x47
   emit I32LtS = putWord8 0x48
   emit I32LeS = putWord8 0x4c
   emit I32GtS = putWord8 0x4a
   emit I32GeS = putWord8 0x4e
-  emit I32Eq = putWord8 0x46
-  emit I32Ne = putWord8 0x47
 
 instance Emit FloatCmp where
-  emit F64Lt = putWord8 0x5d
-  emit F64Le = putWord8 0x5f
-  emit F64Gt = putWord8 0x5e
-  emit F64Ge = putWord8 0x60
-  emit F64Eq = putWord8 0x5b
+  emit F64Eq = putWord8 0x61
   emit F64Ne = putWord8 0x5c
+  emit F64Lt = putWord8 0x63
+  emit F64Le = putWord8 0x65
+  emit F64Gt = putWord8 0x64
+  emit F64Ge = putWord8 0x66
 
 instance Emit ValueType where
   emit B = emit I32

@@ -110,6 +110,17 @@ inst (T.Block body) = do
   appendInst $ ControlFlow $ Block Void
   mapM_ inst body
   appendInst $ ControlFlow End
+inst (T.Cond e c a) = do
+  expr e
+  appendInst $ ControlFlow $ If Void
+  mapM_ inst c
+  case a of
+    [] -> do
+      appendInst $ ControlFlow End
+    as -> do
+      appendInst $ ControlFlow Else
+      mapM_ inst as
+      appendInst $ ControlFlow End
 inst _ = undefined
 
 term :: T.Term -> State TState ()
@@ -245,5 +256,5 @@ signatur (T.Func ps r _) =
 valueType :: T.Type -> ValueType
 valueType "Int" = I32
 valueType "Bool" = B
-valueType "Float" = F32
+valueType "Float" = F64
 valueType t = error ("cannot create ValueType for " ++ t)
