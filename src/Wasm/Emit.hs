@@ -80,6 +80,10 @@ instance Emit Basic where
 instance Emit Cf where
   emit End = do
     putWord8 0xb
+  emit (Block sig) = do
+    putWord8 0x2
+    emit sig
+
 
 instance Emit IntArith where
   emit I32Sub = putWord8 0x6b
@@ -119,6 +123,7 @@ instance Emit ValueType where
   emit F32 = putVarSInt7 $ -0x3
   emit F64 = putVarSInt7 $ -0x4
   emit Func = putVarSInt7 $ -0x20
+  emit Void = putVarSInt7 $ -0x40
 
 instance Emit ExternalKind where
   emit Function = putVarSInt7 0x0

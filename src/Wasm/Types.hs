@@ -46,6 +46,7 @@ data Basic
 
 data Cf
   = End
+  | Block ValueType
 
 data IntArith 
   = I32Sub 
@@ -78,7 +79,7 @@ data FloatCmp
   | F64Gt
   | F64Ge
 
-data ValueType = B | I32 | I64 | F32 | F64 | Func
+data ValueType = B | I32 | I64 | F32 | F64 | Func | Void
 
 data ExternalKind = Function | Table | Memory | Global
 

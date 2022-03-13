@@ -63,6 +63,8 @@ localEntries =
         M.insert t (S.insert n existing) groups
        where
         existing = M.findWithDefault S.empty t groups
+      step groups (T.Cond _ c a) = foldl step groups $ c ++ a
+      step groups (T.Block is) = foldl step groups is
       step groups _ = groups
       localEntry :: T.Type -> S.Set Int -> LocalEntry
       localEntry t s = LocalEntry (VarU32 $ S.size s) (valueType t)
@@ -104,6 +106,10 @@ inst (T.Assignment lhs rhs) = do
   expr rhs
   idx <- getLocalIdx lhs
   appendInst $ BasicInst $ SetLocal idx
+inst (T.Block body) = do
+  appendInst $ ControlFlow $ Block Void
+  mapM_ inst body
+  appendInst $ ControlFlow End
 inst _ = undefined
 
 term :: T.Term -> State TState ()
@@ -167,32 +173,32 @@ expr (T.Bin l S.And r) = do
   term r
   appendInst $ IntArithInst I32And
 expr (T.Bin l S.Or r) = do
-  term l 
+  term l
   term r
   appendInst $ IntArithInst I32Or
-expr (T.Bin l S.Less r) 
+expr (T.Bin l S.Less r)
   | T.getType l == "Int" = do
-    term l 
+    term l
     term r
     appendInst $ IntCmpInst I32LtS
   | T.getType l == "Float" = do
-    term l 
-    term r 
+    term l
+    term r
     appendInst $ FloatCmpInst F64Lt
   | otherwise = error "Invalid term types in Less expression"
-expr (T.Bin l S.Leq r) 
+expr (T.Bin l S.Leq r)
   | T.getType l == "Int" = do
     term l
     term r
     appendInst $ IntCmpInst I32LeS
   | T.getType l == "Float" = do
-    term l 
+    term l
     term r
     appendInst $ FloatCmpInst F64Le
   | otherwise = error "Invalid term types in Leq expression"
-expr (T.Bin l S.Greater r) 
+expr (T.Bin l S.Greater r)
   | T.getType l == "Int" = do
-    term l 
+    term l
     term r
     appendInst $ IntCmpInst I32GtS
   | T.getType l == "Float" = do
@@ -200,18 +206,18 @@ expr (T.Bin l S.Greater r)
     term r
     appendInst $ FloatCmpInst F64Gt
   | otherwise = error "Invalid term types in Greater expression"
-expr (T.Bin l S.Geq r) 
-  |  T.getType l == "Int" = do
-    term l 
-    term r 
+expr (T.Bin l S.Geq r)
+  | T.getType l == "Int" = do
+    term l
+    term r
     appendInst $ IntCmpInst I32GeS
   | T.getType l == "Float" = do
-    term l 
-    term r 
+    term l
+    term r
     appendInst $ FloatCmpInst F64Ge
   | otherwise = error "Invalid term types in Geq expression"
-expr (T.Bin l S.Equal r) 
-  | T.getType l == "Int" = do 
+expr (T.Bin l S.Equal r)
+  | T.getType l == "Int" = do
     term l
     term r
     appendInst $ IntCmpInst I32Eq
@@ -220,9 +226,9 @@ expr (T.Bin l S.Equal r)
     term r
     appendInst $ FloatCmpInst F64Eq
   | otherwise = error "Invalid term types in Equal expression"
-expr (T.Bin l S.NotEqual r) 
+expr (T.Bin l S.NotEqual r)
   | T.getType l == "Int" = do
-    term l 
+    term l
     term r
     appendInst $ IntCmpInst I32Ne
   | T.getType l == "Float" = do
