@@ -15,12 +15,12 @@ All of the semantic validation/type-checking takes place in `src/Semantics`,
 mainly in `Validation.hs`. This also builds up a symbol table that I use later on for the code generation phases.
 
 Next, the AST is translated to a three-address code (TAC) IR, which you can see in 
-`src/Ir/Tac`. I'll eventually make control-flow graphs from this and perform optimizations on those.
+`src/Ir/Tac/Translation.hs`. I'll eventually make control-flow graphs from this and perform optimizations on those.
 
-Finally, all Wasm related code is in, you guessed it, `src/Wasm`. I currently have a data structure that I use 
-to represent Wasm programs that is pretty much directly copied from the Wasm reference manual.
+After this, the TAC is translated to Wasm, which happens in `src/Wasm/Translation.hs`. This is pretty simple. The Wasm representation is 
+defined in `src/Wasm/Types.hs` and is copied pretty much directly from the offical Wasm docs, although a lot of that is missing because I simply don't need it for now. 
 
-Right now, I'm working out translating TAC programs to Wasm programs. I'm going to make some changes to the way I do TAC that will make this (and many other things) easier.
+Once I've got my program represented in Wasm, I have to emit a Wasm binary. This is done in `src/Wasm/Emit.hs` and is also copied directly from the Wasm documentation. This is pretty straightforward. 
 
 ## Roadmap
 
@@ -28,7 +28,8 @@ Right now, I'm working out translating TAC programs to Wasm programs. I'm going 
 - [X] Parsing 
 - [X] Type-checking 
 - [X] Translation to TAC
-- [ ] Translation from TAC to Wasm
-  * Almost there!!!
+- [X] Translation from TAC to Wasm
 - [X] Emit valid Wasm programs
 - [ ] More stuff!
+
+Omg! I made it to the "More stuff!" item! I think my next goal is to have the TAC fit the requirements of Static Single Assignment (SSA). Then I can perform all sorts of optimizations on the result of that.
