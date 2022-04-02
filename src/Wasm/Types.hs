@@ -39,10 +39,12 @@ data Instruction
 
 data Basic
   = Nop
+  | Drop
   | I32Const Int32
   | F64Const Double
   | GetLocal VarU32
   | SetLocal VarU32
+  | Call VarU32
 
 data Cf
   = End

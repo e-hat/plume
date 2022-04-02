@@ -19,7 +19,7 @@ genModule funcMapping =
       exports = exportsSection $ map fst funcAssocs
       types = typeSection $ map snd funcAssocs
       funcs = funcSection $ map fst funcAssocs
-      code = codeSection $ map snd funcAssocs
+      code = codeSection funcAssocs
    in Module [types, funcs, exports, code]
 
 exportsSection :: [String] -> KnownSection
@@ -34,18 +34,21 @@ startSection = Start . VarU32 . fromIntegral . fromJust . elemIndex "main"
 funcSection :: [String] -> KnownSection
 funcSection fs = Funcs $ Array $ map VarU32 $ take (length fs) [0 ..]
 
-codeSection :: [T.Func] -> KnownSection
-codeSection fs = Code $ Array $ map funcBody fs
+codeSection :: [(String, T.Func)] -> KnownSection
+codeSection fs = Code $ Array $ map (funcBody idxMap . snd) fs
+  where 
+    idxMap = M.fromList $ zip (map fst fs) ([0..] :: [Int])
 
 data TState = TState
-  { getOriginalFunc :: T.Func
+  { getFuncIdxMap :: M.Map String Int
+  , getOriginalFunc :: T.Func
   , getCurrentInsts :: [Instruction]
   , getLocalEnv :: M.Map Int VarU32
   }
 
-funcBody :: T.Func -> FuncBody
-funcBody f =
-  let initial = TState f [] M.empty
+funcBody :: M.Map String Int -> T.Func -> FuncBody
+funcBody idxs f =
+  let initial = TState idxs f [] M.empty
       (ls, final) =
         runState
           ( do
@@ -121,7 +124,15 @@ inst (T.Cond e c a) = do
       appendInst $ ControlFlow Else
       mapM_ inst as
       appendInst $ ControlFlow End
-inst _ = undefined
+inst (T.IgnoreReturnValCall call) = do
+  funcCall call
+  appendInst $ BasicInst Drop
+
+funcCall :: T.FuncCall T.Term -> State TState ()
+funcCall (T.FuncCall (name,ps)) = do
+  mapM_ term ps
+  idxs <- gets getFuncIdxMap
+  appendInst $ BasicInst $ Call $ VarU32 $ idxs M.! name
 
 term :: T.Term -> State TState ()
 term (T.LitInt n) = appendInst $ BasicInst $ I32Const $ fromIntegral n
@@ -159,6 +170,15 @@ expr (T.Bin l S.Plus r)
     term r
     appendInst $ FloatArithInst F64Add
   | otherwise = error "Invalid term types in Plus expression"
+expr (T.Bin l S.Minus r) 
+  | T.getType l == "Int" = do
+    term l
+    term r 
+    appendInst $ IntArithInst I32Sub
+  | T.getType l == "Float" = do 
+    term l
+    term r
+    appendInst $ FloatArithInst F64Sub
 expr (T.Bin l S.Multiply r)
   | T.getType l == "Int" = do
     term l
@@ -247,7 +267,8 @@ expr (T.Bin l S.NotEqual r)
     term r
     appendInst $ FloatCmpInst F64Ne
   | otherwise = error "Invalid term types in NotEqual expression"
-expr _ = undefined
+expr T.Bin{} = error "Invalid operation for binary Expr"
+expr (T.FuncCallExpr _ call) = funcCall call
 
 signatur :: T.Func -> FuncSignature
 signatur (T.Func ps r _) =

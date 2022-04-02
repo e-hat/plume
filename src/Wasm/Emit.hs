@@ -34,7 +34,7 @@ instance Emit a => Emit (Array a) where
     mapM_ emit as
 
 instance Emit VarU32 where
-  emit (VarU32 n) = ULEB.putWord $ fromIntegral n
+  emit = putVarUInt32 . fromIntegral . getVarU32
 
 instance Emit Word8 where
   emit = putWord8
@@ -49,9 +49,7 @@ instance Emit FuncBody where
   emit (FuncBody ls is) = putAsByteArray $ emit ls >> mapM_ emit is
 
 instance Emit LocalEntry where
-  emit (LocalEntry n t) = do
-    emit n
-    emit t
+  emit (LocalEntry n t) = emit n >> emit t
 
 instance Emit Instruction where
   emit (BasicInst b) = emit b
@@ -62,20 +60,13 @@ instance Emit Instruction where
   emit (FloatCmpInst f) = emit f
 
 instance Emit Basic where
-  emit Nop = do
-    putWord8 0x1
-  emit (I32Const n) = do
-    putWord8 0x41
-    putVarSInt32 n
-  emit (F64Const d) = do
-    putWord8 0x44
-    putF64 d
-  emit (GetLocal i) = do
-    putWord8 0x20
-    putVarUInt32 $ fromIntegral $ getVarU32 i
-  emit (SetLocal i) = do
-    putWord8 0x21
-    putVarUInt32 $ fromIntegral $ getVarU32 i
+  emit Nop = putWord8 0x1
+  emit Drop = putWord8 0x1a
+  emit (I32Const n) = putWord8 0x41 >> putVarSInt32 n
+  emit (F64Const d) = putWord8 0x44 >> putF64 d
+  emit (GetLocal i) = putWord8 0x20 >> emit i
+  emit (SetLocal i) = putWord8 0x21 >> emit i
+  emit (Call i) = putWord8 0x10 >> emit i
 
 instance Emit Cf where
   emit End = putWord8 0xb
