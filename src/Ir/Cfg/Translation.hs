@@ -15,8 +15,8 @@ fromCfgFunc :: Func -> T.Func
 fromCfgFunc (Func pts rt blk) = T.Func pts rt $ fromBlk blk
 
 fromBlk :: BasicBlock -> [T.Inst]
-fromBlk (BasicBlock insts _ out) = insts ++ fromEdge out
+fromBlk (BasicBlock insts _ out) = insts ++ maybe [] fromEdge out
 
 fromEdge :: Edge -> [T.Inst]
-fromEdge Nil = []
-fromEdge (Cond p cons mAlt) = [T.Cond p (fromBlk cons) (maybe [] fromBlk mAlt)]
+fromEdge (Cond _ p cons mAlt) = [T.Cond p (fromBlk cons) (maybe [] fromBlk mAlt)]
+fromEdge (Simple _ child) = [T.Block $ fromBlk child]
