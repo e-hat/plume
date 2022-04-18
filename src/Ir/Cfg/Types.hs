@@ -3,24 +3,28 @@ module Ir.Cfg.Types where
 import qualified Data.Map.Strict as M
 import qualified Ir.Tac.Types as T
 
-data BasicBlock = BasicBlock {getInsts :: [T.Inst], getIncoming :: Maybe Edge, getOutgoing :: Maybe Edge}
+type Id = String
+
+data BasicBlock = BasicBlock
+  { getId :: Id,
+    getInsts :: [T.Inst],
+    getLast :: Last,
+    getOutgoing :: Edge
+  }
 
 data Edge
-  = Cond
-      { getCondParent :: BasicBlock,
-        getPred :: T.Expr T.Term,
-        getCons :: BasicBlock,
-        getAlt :: Maybe BasicBlock
-      }
-  | Simple {getSimpleParent :: BasicBlock, getSimpleNext :: BasicBlock}
+  = If {getCons :: Id, getAlt :: Id, getExit :: Id}
+  | Simple Id
+  | Block {getBody :: Id, getExit :: Id}
+  | ScopeEnd Id
 
-data Func = Func {getParamTypes :: [T.Type], getReturnType :: T.Type, getFunc :: BasicBlock}
+data Last
+  = Cond {getPred :: T.Expr T.Term}
+  | Return (Maybe (T.Expr T.Term))
+  | Nil
+
+type BlockPool = M.Map String BasicBlock
+
+data Func = Func {getParamTypes :: [T.Type], getReturnType :: T.Type, getEntryBlock :: BasicBlock, getPool :: BlockPool}
 
 type Program = M.Map String Func
-
-getParent :: BasicBlock -> Maybe BasicBlock
-getParent (BasicBlock _ mIncoming _) = getParentEdge <$> mIncoming
-
-getParentEdge :: Edge -> BasicBlock
-getParentEdge (Cond p _ _ _) = p
-getParentEdge (Simple p _) = p
