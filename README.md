@@ -13,12 +13,11 @@ All of the semantic validation/type-checking takes place in `src/Semantics`,
 mainly in `Validation.hs`. This also builds up a symbol table that I use later on for the code generation phases.
 
 Next, the AST is translated to a three-address code (TAC) IR, which you can see in 
-`src/Ir/Tac/Translation.hs`. I'll eventually make control-flow graphs from this and perform optimizations on those.
+`src/Ir/Tac/Translation.hs`.
 
-After this, the TAC is translated to Wasm, which happens in `src/Wasm/Translation.hs`. This is pretty simple. The Wasm representation is 
-defined in `src/Wasm/Types.hs` and is copied pretty much directly from the offical Wasm docs, although a lot of that is missing because I simply don't need it for now. 
-
-Once I've got my program represented in Wasm, I have to emit a Wasm binary. This is done in `src/Wasm/Emit.hs` and is also copied directly from the Wasm documentation. This is pretty straightforward. 
+After this, the somewhat-linear TAC gets translated to a data type that represents Wasm in the Plume compiler. 
+This data type is defined in `src/Wasm/Types.hs` and the translation from TAC to Wasm happens in `src/Wasm/Translation.hs`. 
+Next, the wasm binary is emitted in `src/Wasm/Emit.hs`. 
 
 ## Roadmap
 
@@ -30,4 +29,7 @@ Once I've got my program represented in Wasm, I have to emit a Wasm binary. This
 - [X] Emit valid Wasm programs
 - [ ] More stuff!
 
-Omg! I made it to the "More stuff!" item! I think my next goal is to have the TAC fit the requirements of Static Single Assignment (SSA). Then I can perform all sorts of optimizations on the result of that.
+More stuff:
+- [ ] Control flow graphs from TAC!
+
+Working on control flow graphs atm!
