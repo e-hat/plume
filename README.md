@@ -1,7 +1,7 @@
 # Plume 🦚
 
 ## About
-This is a strongly typed language that I've been writing a compiler for. A while 
+This is a statically typed language that I've been writing a compiler for. A while 
 ago it could emit a subset of x86-64 assembly but I am currently in the process 
 of writing a WebAssembly backend instead, ~~which you can see on the `wasm` branch~~ which is being developed on the `main` branch. I'm tired of making feature branches when I'm the only one working on this lol.
 
