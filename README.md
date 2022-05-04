@@ -1,11 +1,9 @@
 # Plume 🦚
 
 ## About
-This is a statically typed language that I've been writing a compiler for. A while 
-ago it could emit a subset of x86-64 assembly but I am currently in the process 
-of writing a WebAssembly backend instead, ~~which you can see on the `wasm` branch~~ which is being developed on the `main` branch. I'm tired of making feature branches when I'm the only one working on this lol.
+Plume is a statically typed programming language that compiles to Web Assembly. I use this project to mess around with compilers stuff. Plume probably wouldn't be very useful in production.
 
-You can get into the nitty-gritty details of the expresion-based syntax of Plume here: https://www.eddiehatfield.com/blog/plume-syntax
+Here's an overview of the syntax: https://www.eddiehatfield.com/blog/plume-syntax
 
 ## How things work
 Check out `src/Parsing` for the abstract syntax tree, lexer, and parser, for which I 
