@@ -121,6 +121,10 @@ buildSymTreeD tbl (IfDecl b fd eis med, sr) =
             <*> traverse (buildSymTreeEF tbl) eis
             <*> traverse (buildSymTreeD tbl) med
         return (bi, SymData tbl sr)
+buildSymTreeD tbl (WhileDecl cond body, sr) = do
+  builtCond <- buildSymTreeE tbl cond 
+  builtBody <- buildSymTreeD tbl body
+  return (WhileDecl builtCond builtBody, SymData tbl sr)
 
 -- performs the "scoping" part of validation for expressions
 buildSymTreeE :: SymTable -> ExprAug SpanRec -> Either String (ExprAug SymData)
@@ -208,6 +212,10 @@ typecheckD i@(IfDecl b fd eis med, s) =
         teisf <- traverse (applyTplM (typecheckE, pure)) teisi
         tmed <- traverse typecheckD med
         return (IfDecl tb tfd teisf tmed, s)
+typecheckD w@(WhileDecl cond body, s) = do 
+  checkedCond <- handleBTerm w cond 
+  checkedBody <- typecheckD body 
+  return (WhileDecl checkedCond checkedBody, s)
 
 -- helper functions for typechecking expressions
 numericalTypes :: [String]

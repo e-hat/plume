@@ -4,8 +4,8 @@ import Ir.Tac.Translation
 import Parsing.Parser
 import Parsing.Syntax ()
 import Semantics.Validation
-import Wasm.Emit
-import Wasm.Translation
+import CodeGen.Wasm.Emit
+import CodeGen.Wasm.Translation
 
 import Control.Monad ()
 import Data.Binary.Put

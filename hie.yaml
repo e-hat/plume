@@ -1,0 +1,40 @@
+cradle:
+  cabal:
+    - path: "src/Main.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Ir/Tac/Translation.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Ir/Tac/Types.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Parsing/Lexer.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Parsing/Parser.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Parsing/Syntax.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Semantics/Error.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Semantics/SymbolTable.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Semantics/Validation.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Wasm/Emit.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Wasm/Translation.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Wasm/Types.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/Paths_plume.hs"
+      component: "plume:exe:plume"

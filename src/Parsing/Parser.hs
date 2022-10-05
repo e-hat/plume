@@ -109,6 +109,7 @@ declaration =
     P.<|> P.try calldecl
     P.<|> P.try reassign
     P.<|> P.try ifdecl
+    P.<|> P.try whiledecl
     P.<|> P.try blockdecl
     P.<?> "a declaration (something without a result)"
 
@@ -119,6 +120,7 @@ bodyDeclaration =
     P.<|> P.try calldecl
     P.<|> P.try reassign
     P.<|> P.try ifdecl
+    P.<|> P.try whiledecl
     P.<|> P.try blockdecl
     P.<|> P.try letdecl
     P.<?> "a declaration (something without a result)"
@@ -268,6 +270,14 @@ elsedecl =
     L.reserved "else"
     L.reservedOp "=>"
     bodyDeclaration
+
+whiledecl :: P.Parsec String () (DeclAug SpanRec)
+whiledecl = 
+  declWrapper $ do 
+    L.reserved "while"
+    cond <- opExpression 
+    L.reservedOp "=>"
+    WhileDecl cond <$> bodyDeclaration
 
 blockreturnexpr :: P.Parsec String () (ExprAug SpanRec)
 blockreturnexpr =

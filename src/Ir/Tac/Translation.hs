@@ -122,6 +122,10 @@ decl (S.IfDecl predicate cons ((elseIfPred, elseIfCons) : elseIfs) mElse, symDat
   consList <- snd <$> translateSublist (decl cons)
   alternative <- snd <$> translateSublist (decl (S.IfDecl elseIfPred elseIfCons elseIfs mElse, symData))
   appendInst $ Cond predExpr consList alternative
+decl (S.WhileDecl cond body, _) = do 
+  condExpr <- exprExpr cond 
+  bodyList <- snd <$> translateSublist (decl body)
+  appendInst $ While condExpr bodyList
 
 exprExpr :: S.ExprAug SymData -> State Translator (Expr Term)
 exprExpr e@(S.Subs{}, _) = None <$> exprTerm e
@@ -192,6 +196,8 @@ ifExprTermHelper dst (S.IfExpr predicate cons ((elseIfPred, elseIfCons) : elseIf
       alternative
 ifExprTermHelper _ _ = undefined
 
+-- Translates a term and returns the list of instructions that the term creates,
+-- without changing the State. It also returns intermediate State used for the dummy translation.
 translateSublist :: State Translator a -> State Translator (a, [Inst])
 translateSublist action = do
   before <- get

@@ -35,6 +35,7 @@ data Decl t
   | DefFn Identifier [Param] Type (ExprAug t)
   | CallDecl Identifier [ExprAug t]
   | IfDecl (ExprAug t) (DeclAug t) [(ExprAug t, DeclAug t)] (Maybe (DeclAug t))
+  | WhileDecl (ExprAug t) (DeclAug t)
   | BlockDecl [DeclAug t]
   deriving (Functor, Foldable, Traversable)
 
@@ -126,6 +127,7 @@ instance PrettyVal ASTDeclAug where
    where
     augEFPair (e', d') = (ASTExprAug e', ASTDeclAug d')
   prettyVal (ASTDeclAug (BlockDecl ds, _)) = Con "BlockDecl" [prettyVal (map ASTDeclAug ds)]
+  prettyVal (ASTDeclAug (WhileDecl cond body, _)) = Con "WhileDecl" [prettyVal $ ASTExprAug cond, prettyVal $ ASTDeclAug body]
 
 instance PrettyVal ASTExprAug where
   prettyVal (ASTExprAug (Subs i, _)) = Con "Subs" [String i]

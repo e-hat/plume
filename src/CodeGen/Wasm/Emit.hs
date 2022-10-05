@@ -1,6 +1,6 @@
-module Wasm.Emit (emit) where
+module CodeGen.Wasm.Emit (emit) where
 
-import Wasm.Types
+import CodeGen.Wasm.Types
 
 import Data.Binary.Put
 import qualified Data.Binary.SLEB128 as SLEB
@@ -73,6 +73,8 @@ instance Emit Cf where
   emit (Block sig) = putWord8 0x2 >> emit sig
   emit (If sig) = putWord8 0x4 >> emit sig
   emit Else = putWord8 0x5
+  emit (Loop sig) = putWord8 0x3 >> emit sig
+  emit (BrIf depth) = putWord8 0xd >> emit depth
 
 instance Emit IntArith where
   emit I32Eqz = putWord8 0x45

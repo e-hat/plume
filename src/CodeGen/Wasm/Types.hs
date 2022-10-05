@@ -1,4 +1,4 @@
-module Wasm.Types where
+module CodeGen.Wasm.Types where
 
 import Data.Int
 import Data.Word
@@ -51,6 +51,8 @@ data Cf
   | Block ValueType
   | If ValueType
   | Else
+  | Loop ValueType
+  | BrIf VarU32
 
 data IntArith
   = I32Sub

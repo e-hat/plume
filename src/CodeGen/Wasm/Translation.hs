@@ -1,8 +1,8 @@
-module Wasm.Translation (toWasm) where
+module CodeGen.Wasm.Translation (toWasm) where
 
 import qualified Ir.Tac.Types as T
 import qualified Parsing.Syntax as S
-import Wasm.Types
+import CodeGen.Wasm.Types
 
 import Control.Monad.State
 import Data.List
@@ -124,6 +124,13 @@ inst (T.Cond e c a) = do
       appendInst $ ControlFlow Else
       mapM_ inst as
       appendInst $ ControlFlow End
+inst (T.While cond body) = do 
+  appendInst $ ControlFlow $ Loop Void
+  expr cond
+  appendInst $ IntArithInst I32Eqz
+  appendInst $ ControlFlow $ BrIf $ VarU32 1
+  mapM_ inst body 
+  appendInst $ ControlFlow End
 inst (T.IgnoreReturnValCall call) = do
   funcCall call
   appendInst $ BasicInst Drop

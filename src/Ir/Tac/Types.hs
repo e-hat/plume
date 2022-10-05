@@ -46,6 +46,7 @@ data Expr a
 data GeneralInst a
   = Assignment Symbol (Expr a)
   | Cond {getPred :: Expr a, getConsequent :: [GeneralInst a], getAlternative :: [GeneralInst a]}
+  | While {getWhileCond :: Expr a, getWhileBody :: [GeneralInst a]}
   | Block [GeneralInst a]
   | Return (Maybe (Expr a))
   | IgnoreReturnValCall (FuncCall a)
@@ -142,6 +143,7 @@ showInst :: Inst -> [String]
 showInst (Assignment dst src) = [printf "%s := %s" (show dst) (show src)]
 showInst (Cond p c []) = printf "if %s then" (show p) : map ("  " ++) (concatMap showInst c)
 showInst (Cond p c e) = showInst (Cond p c []) ++ ["else"] ++ map ("  " ++) (concatMap showInst e)
+showInst (While cond body) = printf "while %s:" (show cond) : map ("  " ++) (concatMap showInst body)
 showInst (Block b) = map ("  " ++) (concatMap showInst b)
 showInst (Return (Just t)) = [printf "return %s" (show t)]
 showInst (Return Nothing) = ["return"]
