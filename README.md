@@ -1,7 +1,7 @@
 # Plume 🦚
 
 ## About
-Plume is a statically typed programming language that compiles to Web Assembly. I use this project to mess around with compilers stuff. Plume probably wouldn't be very useful in production.
+Plume is a statically typed programming language that compiles to Web Assembly (and maybe ARM64 soon). I use this project to mess around with compilers stuff. Plume probably wouldn't be very useful in production.
 
 Here's an overview of the syntax: https://www.eddiehatfield.com/blog/plume-syntax
 
@@ -30,6 +30,7 @@ Next, the wasm binary is emitted in `src/Wasm/Emit.hs`.
 - [ ] More stuff!
 
 More stuff:
-- [ ] Control flow graphs from TAC!
+- [ ] Adding an ARM64 backend
+- [ ] Control flow graphs from TAC
 
-Working on control flow graphs atm!
+This branch is dedicated to work on the ARM64 backend.
