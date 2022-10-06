@@ -3,6 +3,18 @@ cradle:
     - path: "src/Main.hs"
       component: "plume:exe:plume"
 
+    - path: "src/CodeGen/ARM64/RegAlloc.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/CodeGen/Wasm/Emit.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/CodeGen/Wasm/Translation.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/CodeGen/Wasm/Types.hs"
+      component: "plume:exe:plume"
+
     - path: "src/Ir/Tac/Translation.hs"
       component: "plume:exe:plume"
 
@@ -25,15 +37,6 @@ cradle:
       component: "plume:exe:plume"
 
     - path: "src/Semantics/Validation.hs"
-      component: "plume:exe:plume"
-
-    - path: "src/Wasm/Emit.hs"
-      component: "plume:exe:plume"
-
-    - path: "src/Wasm/Translation.hs"
-      component: "plume:exe:plume"
-
-    - path: "src/Wasm/Types.hs"
       component: "plume:exe:plume"
 
     - path: "src/Paths_plume.hs"
