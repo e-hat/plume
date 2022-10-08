@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module Parsing.Lexer where
 
 import Text.Parsec as P
@@ -6,46 +7,46 @@ import Text.Parsec.Language
 import qualified Text.Parsec.Token as Tok
 
 languageDef =
-  emptyDef
-    { Tok.commentStart = "/*"
-    , Tok.commentEnd = "*/"
-    , Tok.commentLine = "#"
-    , Tok.identStart = P.lower
-    , Tok.identLetter = P.alphaNum
-    , Tok.reservedNames =
-        [ "if"
-        , "for"
-        , "while"
-        , "def"
-        , "true"
-        , "false"
-        , "else"
-        , "not"
-        , "and"
-        , "or"
-        , "return"
-        , "main"
-        , "yield"
-        ]
-    , Tok.reservedOpNames =
-        [ "+"
-        , "-"
-        , "/"
-        , ":="
-        , "<"
-        , "<="
-        , "="
-        , "!="
-        , ">"
-        , "and"
-        , "or"
-        , "not"
-        , "<-"
-        , ":"
-        , ","
-        , "=>"
-        ]
-    }
+    emptyDef
+        { Tok.commentStart = "/*"
+        , Tok.commentEnd = "*/"
+        , Tok.commentLine = "#"
+        , Tok.identStart = P.lower
+        , Tok.identLetter = P.alphaNum
+        , Tok.reservedNames =
+            [ "if"
+            , "for"
+            , "while"
+            , "def"
+            , "true"
+            , "false"
+            , "else"
+            , "not"
+            , "and"
+            , "or"
+            , "return"
+            , "main"
+            , "yield"
+            ]
+        , Tok.reservedOpNames =
+            [ "+"
+            , "-"
+            , "/"
+            , ":="
+            , "<"
+            , "<="
+            , "="
+            , "!="
+            , ">"
+            , "and"
+            , "or"
+            , "not"
+            , "<-"
+            , ":"
+            , ","
+            , "=>"
+            ]
+        }
 
 lexer = Tok.makeTokenParser languageDef
 

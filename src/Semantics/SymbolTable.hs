@@ -1,9 +1,7 @@
 module Semantics.SymbolTable where
 
-import Parsing.Syntax
-
 import qualified Data.Map.Strict as Map
-
+import Parsing.Syntax
 import Text.Show.Pretty
 
 data TEntry = Single Type | Many [Type] Type deriving (Eq, Ord, Show)
@@ -48,44 +46,45 @@ insertDecl :: DeclAug t -> SymTable -> SymTable
 insertDecl d = uncurry Map.insert (getSymKV d)
 
 data SymData = SymData
-  { getScope :: SymTable
-  , getSymSpan :: SpanRec
-  }
-  deriving (Show)
+    { getScope :: SymTable
+    , getSymSpan :: SpanRec
+    }
+    deriving (Show)
 
 newtype SymDeclAug = SymDeclAug {getSymDeclAug :: DeclAug SymData}
+
 newtype SymExprAug = SymExprAug {getSymExprAug :: ExprAug SymData}
 
 newtype SymTreeList = SymTreeList {getSymTreeList :: [SymDeclAug]}
 
 instance PrettyVal SymTreeList where
-  prettyVal (SymTreeList ts) = prettyVal ts
+    prettyVal (SymTreeList ts) = prettyVal ts
 
 instance PrettyVal SymDeclAug where
-  prettyVal (SymDeclAug (Let t i e, SymData scp _)) = Con "Let" [String $ show scp, String t, String i, prettyVal $ SymExprAug e]
-  prettyVal (SymDeclAug (Reassign i e, _)) = Con "Reassign" [String i, prettyVal $ SymExprAug e]
-  prettyVal (SymDeclAug (DefFn i ps t e, SymData scp _)) =
-    Con "DefFn" [String $ show scp, Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal $ SymExprAug e]]
-  prettyVal (SymDeclAug (CallDecl i es, SymData scp _)) = Con "CallDecl" [String $ show scp, String i, Con "Params passed" [prettyVal $ map SymExprAug es]]
-  prettyVal (SymDeclAug (IfDecl e d eds md, SymData scp _)) =
-    Con "IfDecl" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug e], Con "IfResult" [prettyVal $ SymDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (SymDeclAug <$> md)]]
-   where
-    augEFPair (e', d') = (SymExprAug e', SymDeclAug d')
-  prettyVal (SymDeclAug (BlockDecl ds, SymData scp _)) = Con "BlockDecl" [String $ show scp, prettyVal (map SymDeclAug ds)]
+    prettyVal (SymDeclAug (Let t i e, SymData scp _)) = Con "Let" [String $ show scp, String t, String i, prettyVal $ SymExprAug e]
+    prettyVal (SymDeclAug (Reassign i e, _)) = Con "Reassign" [String i, prettyVal $ SymExprAug e]
+    prettyVal (SymDeclAug (DefFn i ps t e, SymData scp _)) =
+        Con "DefFn" [String $ show scp, Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal $ SymExprAug e]]
+    prettyVal (SymDeclAug (CallDecl i es, SymData scp _)) = Con "CallDecl" [String $ show scp, String i, Con "Params passed" [prettyVal $ map SymExprAug es]]
+    prettyVal (SymDeclAug (IfDecl e d eds md, SymData scp _)) =
+        Con "IfDecl" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug e], Con "IfResult" [prettyVal $ SymDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (SymDeclAug <$> md)]]
+      where
+        augEFPair (e', d') = (SymExprAug e', SymDeclAug d')
+    prettyVal (SymDeclAug (BlockDecl ds, SymData scp _)) = Con "BlockDecl" [String $ show scp, prettyVal (map SymDeclAug ds)]
 
 instance PrettyVal SymExprAug where
-  prettyVal (SymExprAug (Subs i, SymData scp _)) = Con "Subs" [String $ show scp, String i]
-  prettyVal (SymExprAug (CallExpr i es, SymData scp _)) = Con "CallExpr" [String $ show scp, String i, Con "Params passed" [prettyVal (map SymExprAug es)]]
-  prettyVal (SymExprAug (IfExpr c e ees me, SymData scp _)) =
-    Con "IfExpr" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug c], Con "IfResult" [prettyVal $ SymExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (SymExprAug me)]]
-   where
-    augEFPair (e1, e2) = (SymExprAug e1, SymExprAug e2)
-  prettyVal (SymExprAug (BlockExpr ds e, SymData scp _)) = Con "BlockExpr" [String $ show scp, prettyVal (map SymDeclAug ds), prettyVal $ SymExprAug e]
-  prettyVal (SymExprAug (BinOp o a b, SymData scp _)) = Con "BinOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a, prettyVal $ SymExprAug b]
-  prettyVal (SymExprAug (UnaryOp o a, SymData scp _)) = Con "UnaryOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a]
-  prettyVal (SymExprAug (LitInt i, SymData{})) = Integer (show i)
-  prettyVal (SymExprAug (LitBool b, SymData{})) = String (show b)
-  prettyVal (SymExprAug (LitFloat f, SymData{})) = Float (show f)
-  prettyVal (SymExprAug (LitString s, SymData{})) = String s
-  prettyVal (SymExprAug (LitChar c, SymData{})) = Char (show c)
-  prettyVal (SymExprAug (Return, SymData{})) = String "return"
+    prettyVal (SymExprAug (Subs i, SymData scp _)) = Con "Subs" [String $ show scp, String i]
+    prettyVal (SymExprAug (CallExpr i es, SymData scp _)) = Con "CallExpr" [String $ show scp, String i, Con "Params passed" [prettyVal (map SymExprAug es)]]
+    prettyVal (SymExprAug (IfExpr c e ees me, SymData scp _)) =
+        Con "IfExpr" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug c], Con "IfResult" [prettyVal $ SymExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (SymExprAug me)]]
+      where
+        augEFPair (e1, e2) = (SymExprAug e1, SymExprAug e2)
+    prettyVal (SymExprAug (BlockExpr ds e, SymData scp _)) = Con "BlockExpr" [String $ show scp, prettyVal (map SymDeclAug ds), prettyVal $ SymExprAug e]
+    prettyVal (SymExprAug (BinOp o a b, SymData scp _)) = Con "BinOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a, prettyVal $ SymExprAug b]
+    prettyVal (SymExprAug (UnaryOp o a, SymData scp _)) = Con "UnaryOp" [String $ show scp, String $ show o, prettyVal $ SymExprAug a]
+    prettyVal (SymExprAug (LitInt i, SymData{})) = Integer (show i)
+    prettyVal (SymExprAug (LitBool b, SymData{})) = String (show b)
+    prettyVal (SymExprAug (LitFloat f, SymData{})) = Float (show f)
+    prettyVal (SymExprAug (LitString s, SymData{})) = String s
+    prettyVal (SymExprAug (LitChar c, SymData{})) = Char (show c)
+    prettyVal (SymExprAug (Return, SymData{})) = String "return"

@@ -3,7 +3,10 @@ cradle:
     - path: "src/Main.hs"
       component: "plume:exe:plume"
 
-    - path: "src/CodeGen/ARM64/RegAlloc.hs"
+    - path: "src/CodeGen/ARM/Emit.hs"
+      component: "plume:exe:plume"
+
+    - path: "src/CodeGen/ARM/RegAlloc.hs"
       component: "plume:exe:plume"
 
     - path: "src/CodeGen/Wasm/Emit.hs"

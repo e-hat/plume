@@ -1,7 +1,6 @@
 module CodeGen.Wasm.Emit (emit) where
 
 import CodeGen.Wasm.Types
-
 import Data.Binary.Put
 import qualified Data.Binary.SLEB128 as SLEB
 import qualified Data.Binary.ULEB128 as ULEB
@@ -11,128 +10,128 @@ import Data.List
 import Data.Word
 
 class Emit a where
-  emit :: a -> Put
+    emit :: a -> Put
 
 instance Emit Program where
-  emit (Program ms) = do
-    header
-    emit $ head ms
+    emit (Program ms) = do
+        header
+        emit $ head ms
 
 instance Emit Module where
-  emit (Module sections) = do
-    let sortedSections = sortBy (\l r -> opcode l `compare` opcode r) sections
-    mapM_ emit sortedSections
+    emit (Module sections) = do
+        let sortedSections = sortBy (\l r -> opcode l `compare` opcode r) sections
+        mapM_ emit sortedSections
 
 instance Emit KnownSection where
-  emit k = do
-    putOpcode $ opcode k
-    putAsByteArray $ payload k
+    emit k = do
+        putOpcode $ opcode k
+        putAsByteArray $ payload k
 
 instance Emit a => Emit (Array a) where
-  emit (Array as) = do
-    putVarUInt32 $ fromIntegral $ length as
-    mapM_ emit as
+    emit (Array as) = do
+        putVarUInt32 $ fromIntegral $ length as
+        mapM_ emit as
 
 instance Emit VarU32 where
-  emit = putVarUInt32 . fromIntegral . getVarU32
+    emit = putVarUInt32 . fromIntegral . getVarU32
 
 instance Emit Word8 where
-  emit = putWord8
+    emit = putWord8
 
 instance Emit FuncSignature where
-  emit (FuncSignature ps rs) = do
-    emit Func
-    emit ps
-    emit rs
+    emit (FuncSignature ps rs) = do
+        emit Func
+        emit ps
+        emit rs
 
 instance Emit FuncBody where
-  emit (FuncBody ls is) = putAsByteArray $ emit ls >> mapM_ emit is
+    emit (FuncBody ls is) = putAsByteArray $ emit ls >> mapM_ emit is
 
 instance Emit LocalEntry where
-  emit (LocalEntry n t) = emit n >> emit t
+    emit (LocalEntry n t) = emit n >> emit t
 
 instance Emit Instruction where
-  emit (BasicInst b) = emit b
-  emit (ControlFlow c) = emit c
-  emit (IntArithInst i) = emit i
-  emit (FloatArithInst f) = emit f
-  emit (IntCmpInst i) = emit i
-  emit (FloatCmpInst f) = emit f
+    emit (BasicInst b) = emit b
+    emit (ControlFlow c) = emit c
+    emit (IntArithInst i) = emit i
+    emit (FloatArithInst f) = emit f
+    emit (IntCmpInst i) = emit i
+    emit (FloatCmpInst f) = emit f
 
 instance Emit Basic where
-  emit Nop = putWord8 0x1
-  emit Drop = putWord8 0x1a
-  emit (I32Const n) = putWord8 0x41 >> putVarSInt32 n
-  emit (F64Const d) = putWord8 0x44 >> putF64 d
-  emit (GetLocal i) = putWord8 0x20 >> emit i
-  emit (SetLocal i) = putWord8 0x21 >> emit i
-  emit (Call i) = putWord8 0x10 >> emit i
+    emit Nop = putWord8 0x1
+    emit Drop = putWord8 0x1a
+    emit (I32Const n) = putWord8 0x41 >> putVarSInt32 n
+    emit (F64Const d) = putWord8 0x44 >> putF64 d
+    emit (GetLocal i) = putWord8 0x20 >> emit i
+    emit (SetLocal i) = putWord8 0x21 >> emit i
+    emit (Call i) = putWord8 0x10 >> emit i
 
 instance Emit Cf where
-  emit End = putWord8 0xb
-  emit (Block sig) = putWord8 0x2 >> emit sig
-  emit (If sig) = putWord8 0x4 >> emit sig
-  emit Else = putWord8 0x5
-  emit (Loop sig) = putWord8 0x3 >> emit sig
-  emit (BrIf depth) = putWord8 0xd >> emit depth
+    emit End = putWord8 0xb
+    emit (Block sig) = putWord8 0x2 >> emit sig
+    emit (If sig) = putWord8 0x4 >> emit sig
+    emit Else = putWord8 0x5
+    emit (Loop sig) = putWord8 0x3 >> emit sig
+    emit (BrIf depth) = putWord8 0xd >> emit depth
 
 instance Emit IntArith where
-  emit I32Eqz = putWord8 0x45
-  emit I32Add = putWord8 0x6a
-  emit I32Sub = putWord8 0x6b
-  emit I32Mul = putWord8 0x6c
-  emit I32DivS = putWord8 0x6d
-  emit I32And = putWord8 0x71
-  emit I32Or = putWord8 0x72
+    emit I32Eqz = putWord8 0x45
+    emit I32Add = putWord8 0x6a
+    emit I32Sub = putWord8 0x6b
+    emit I32Mul = putWord8 0x6c
+    emit I32DivS = putWord8 0x6d
+    emit I32And = putWord8 0x71
+    emit I32Or = putWord8 0x72
 
 instance Emit FloatArith where
-  emit F64Add = putWord8 0xa0
-  emit F64Sub = putWord8 0xa1
-  emit F64Mul = putWord8 0xa2
-  emit F64Div = putWord8 0xa3
+    emit F64Add = putWord8 0xa0
+    emit F64Sub = putWord8 0xa1
+    emit F64Mul = putWord8 0xa2
+    emit F64Div = putWord8 0xa3
 
 instance Emit IntCmp where
-  emit I32Eq = putWord8 0x46
-  emit I32Ne = putWord8 0x47
-  emit I32LtS = putWord8 0x48
-  emit I32LeS = putWord8 0x4c
-  emit I32GtS = putWord8 0x4a
-  emit I32GeS = putWord8 0x4e
+    emit I32Eq = putWord8 0x46
+    emit I32Ne = putWord8 0x47
+    emit I32LtS = putWord8 0x48
+    emit I32LeS = putWord8 0x4c
+    emit I32GtS = putWord8 0x4a
+    emit I32GeS = putWord8 0x4e
 
 instance Emit FloatCmp where
-  emit F64Eq = putWord8 0x61
-  emit F64Ne = putWord8 0x5c
-  emit F64Lt = putWord8 0x63
-  emit F64Le = putWord8 0x65
-  emit F64Gt = putWord8 0x64
-  emit F64Ge = putWord8 0x66
+    emit F64Eq = putWord8 0x61
+    emit F64Ne = putWord8 0x5c
+    emit F64Lt = putWord8 0x63
+    emit F64Le = putWord8 0x65
+    emit F64Gt = putWord8 0x64
+    emit F64Ge = putWord8 0x66
 
 instance Emit ValueType where
-  emit B = emit I32
-  emit I32 = putVarSInt7 $ -0x1
-  emit I64 = putVarSInt7 $ -0x2
-  emit F32 = putVarSInt7 $ -0x3
-  emit F64 = putVarSInt7 $ -0x4
-  emit Func = putVarSInt7 $ -0x20
-  emit Void = putVarSInt7 $ -0x40
+    emit B = emit I32
+    emit I32 = putVarSInt7 $ -0x1
+    emit I64 = putVarSInt7 $ -0x2
+    emit F32 = putVarSInt7 $ -0x3
+    emit F64 = putVarSInt7 $ -0x4
+    emit Func = putVarSInt7 $ -0x20
+    emit Void = putVarSInt7 $ -0x40
 
 instance Emit ExternalKind where
-  emit Function = putVarSInt7 0x0
-  emit Table = putVarSInt7 0x1
-  emit Memory = putVarSInt7 0x2
-  emit Global = putVarSInt7 0x3
+    emit Function = putVarSInt7 0x0
+    emit Table = putVarSInt7 0x1
+    emit Memory = putVarSInt7 0x2
+    emit Global = putVarSInt7 0x3
 
 instance Emit Export where
-  emit (Export name kind idx) = do
-    emit name
-    emit kind
-    emit idx
+    emit (Export name kind idx) = do
+        emit name
+        emit kind
+        emit idx
 
 putAsByteArray :: Put -> Put
 putAsByteArray p = do
-  let bytes = runPut p
-  putVarUInt32 $ fromIntegral $ BL.length bytes
-  putLazyByteString bytes
+    let bytes = runPut p
+    putVarUInt32 $ fromIntegral $ BL.length bytes
+    putLazyByteString bytes
 
 -- TODO: Could this be written cleaner with GADTs?
 -- Eg, Emit a => KnownSection -> a
@@ -155,8 +154,8 @@ putOpcode = putWord8
 
 header :: Put
 header = do
-  putUInt32 magicCookie
-  putUInt32 version
+    putUInt32 magicCookie
+    putUInt32 version
 
 magicCookie :: Word32
 magicCookie = 0x6d736100
