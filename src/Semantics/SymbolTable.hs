@@ -70,6 +70,8 @@ instance PrettyVal SymDeclAug where
         Con "IfDecl" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug e], Con "IfResult" [prettyVal $ SymDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (SymDeclAug <$> md)]]
       where
         augEFPair (e', d') = (SymExprAug e', SymDeclAug d')
+    prettyVal (SymDeclAug (WhileDecl cond body, SymData scp _)) =
+        Con "WhileDecl" [String $ show scp, Con "Condition" [prettyVal $ SymExprAug cond], Con "Body" [prettyVal $ SymDeclAug body]]
     prettyVal (SymDeclAug (BlockDecl ds, SymData scp _)) = Con "BlockDecl" [String $ show scp, prettyVal (map SymDeclAug ds)]
 
 instance PrettyVal SymExprAug where

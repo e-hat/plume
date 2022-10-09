@@ -33,6 +33,7 @@ instance ErrRep (Decl t) where
     errRep (DefFn n _ _ _) = "Function Definition Declaration for " ++ n
     errRep (CallDecl n _) = "Function Call Declaration of function " ++ n
     errRep IfDecl{} = "If Statement Declaration"
+    errRep WhileDecl{} = "While Loop Declaration"
     errRep BlockDecl{} = "Block Statement Declaration"
 
 instance ErrRep (Expr t) where
