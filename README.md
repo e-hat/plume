@@ -1,7 +1,7 @@
 # Plume 🦚
 
 ## About
-Plume is a statically typed programming language that compiles to Web Assembly (and maybe ARM soon). I use this project to mess around with compilers stuff. Plume probably wouldn't be very useful in production.
+Plume is a statically typed programming language that compiles to Web Assembly and ARM. I use this project to mess around with compilers stuff. Plume probably wouldn't be very useful in production.
 
 Here's an overview of the syntax: https://www.eddiehatfield.com/blog/plume-syntax
 
@@ -22,16 +22,20 @@ spec](https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssemb
 
 Otherwise, if compiling for ARM, the TAC IR virtual registers get mapped to
 physical registers or stack memory. This is called register allocation, or
-RegAlloc in the codebase. Then, this TAC gets emitted as textual ARM assembly.
-Then, it gets linked against `libc` by compiling with `gcc` for ARM. Pretty
-mmuch none of this has been implemented yet.
+RegAlloc in the codebase. At the moment, it just spills everything to the stack.
 
-To compile an ARM binary, you'll need `arm-linux-gnueabihf-gcc`. Then, run the
+Then, this TAC gets emitted as textual ARM assembly.
+
+Then, it gets linked against `libc` by compiling with `gcc` for ARM.
+
+To compile an ARM binary, you'll need `arm-linux-gnueabihf-gcc` (or at least that's how I do it). Then, run the
 following:
 ```bash
 $ chmod u+x compile-arm.sh 
 $ ./compile-arm.sh <plumefile>
 ```
+
+If you have your own ARM linker setup you can use that instead.
 
 ## Roadmap
 
@@ -41,13 +45,12 @@ $ ./compile-arm.sh <plumefile>
 - [X] Translation to TAC
 - [X] Translation from TAC to Wasm
 - [X] Emit valid Wasm programs
-- [ ] More stuff!
+- [X] Emit valid ARM programs
+- [X] More stuff
 
 More stuff:
-- [ ] Adding an ARM backend
-    - [ ] Naive register allocation (spill everything)
-    - [ ] CodeGen ARM assembly 
+- [X] Adding an ARM backend
+    - [X] Naive register allocation (spill everything)
+    - [X] CodeGen ARM assembly 
     - [ ] Smarter register allocation, based on linear-scan
 - [ ] Control flow graphs from TAC
-
-This branch is dedicated to work on the ARM backend.
