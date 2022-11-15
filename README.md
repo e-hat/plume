@@ -35,7 +35,7 @@ $ chmod u+x compile-arm.sh
 $ ./compile-arm.sh <plumefile>
 ```
 
-If you have your own ARM linker setup you can use that instead.
+If you have your own ARM assembler setup you can use that instead.
 
 ## Roadmap
 
