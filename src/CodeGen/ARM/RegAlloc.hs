@@ -58,7 +58,7 @@ naiveRegAllocFunc (T.Func paramTypes returnType insts) =
 replaceWithStackRead :: M.Map String Int -> T.Term -> Term
 replaceWithStackRead m (T.Subs (T.Param paramId typ)) = MemoryLoc typ $ Stack $ m M.! ("p" ++ show paramId)
 replaceWithStackRead m (T.Subs (T.Local localId typ)) = MemoryLoc typ $ Stack $ m M.! ("l" ++ show localId)
-replaceWithStackRead _ (T.Subs (T.Global globalId typ)) = undefined
+replaceWithStackRead _ (T.Subs T.Global{}) = undefined
 replaceWithStackRead _ (T.LitInt n) = Immediate "Int" (fromInteger n)
 replaceWithStackRead _ (T.LitFloat n) = Immediate "Float" ((decode $ encode n) :: Int32)
 replaceWithStackRead _ (T.LitString{}) = Immediate "String" 0x0
