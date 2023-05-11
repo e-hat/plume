@@ -54,3 +54,9 @@ More stuff:
     - [X] CodeGen ARM assembly 
     - [ ] Smarter register allocation, based on linear-scan
 - [ ] Control flow graphs from TAC
+
+#### random idea for CFG stuff
+I won't lie, the data structure for this is hard to get right. I think I need to build it incrementally to make sure I don't do too premature design. It would be really cool (and maybe necessary) to make it agnostic of the actual instruction data type being used, maybe I could add a type class for telling whether an instruction is a branch or not?
+
+It would be super cool to output some kind of LaTeX visualization for the CFG data structure, which I don't think would be *that* hard?? It would be super useful 
+for debugging this nonsense.
