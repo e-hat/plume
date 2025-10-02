@@ -10,25 +10,25 @@ import Semantics.SymbolTable
 -- & typechecking for a given AST
 validateSemantics :: Program -> Either String SymTreeList
 validateSemantics p =
-    let checkGlobalLet :: DeclAug SpanRec -> Either String (DeclAug SpanRec)
+    let checkGlobalLet :: StmtAug SpanRec -> Either String (StmtAug SpanRec)
         checkGlobalLet l@(Let _ _ e, _) =
             if isLit e
                 then Right l
                 else Left $ astSemanticErr l "a global let MUST be a literal value"
         checkGlobalLet d = Right d
         -- handling let expressions differently since global scope has already been created
-        globalSymTreeD :: SymTable -> DeclAug SpanRec -> Either String (DeclAug SymData)
+        globalSymTreeD :: SymTable -> StmtAug SpanRec -> Either String (StmtAug SymData)
         globalSymTreeD tbl (Let t i e, sr) = do
             bl <- Let t i <$> buildSymTreeE tbl e
             return (bl, SymData tbl sr)
         globalSymTreeD tbl d = buildSymTreeD tbl d
      in do
-            let globals = map getASTDeclAug (getProgram p)
+            let globals = map getASTStmtAug (getProgram p)
             globalScope <- buildGlobalScope globals
-            globalDecls <- traverse checkGlobalLet globals
+            globalStmts <- traverse checkGlobalLet globals
             symTrees <-
-                traverse (globalSymTreeD globalScope >=> typecheckD) globalDecls
-            return $ SymTreeList $ map SymDeclAug symTrees
+                traverse (globalSymTreeD globalScope >=> typecheckD) globalStmts
+            return $ SymTreeList $ map SymStmtAug symTrees
 
 -- this function is for verifiying that all Lets in global scope
 -- are literal expressions
@@ -50,20 +50,20 @@ isLit _ = False
 -- (2) checking for scoping errors at the same time
 
 -- builds the initial symbol table that every node has access to, AKA the global scope
-buildGlobalScope :: [DeclAug SpanRec] -> Either String SymTable
+buildGlobalScope :: [StmtAug SpanRec] -> Either String SymTable
 buildGlobalScope ds =
-    let addIfAbsent :: SymTable -> DeclAug SpanRec -> Either String SymTable
+    let addIfAbsent :: SymTable -> StmtAug SpanRec -> Either String SymTable
         addIfAbsent tbl entry =
-            case Map.lookup (getDeclSymbol entry) tbl of
+            case Map.lookup (getStmtSymbol entry) tbl of
                 Just _ ->
                     Left $
                         astSemanticErr
                             entry
                             ( "symbol "
-                                ++ getDeclSymbol entry
-                                ++ " has already been declared in global scope"
+                                ++ getStmtSymbol entry
+                                ++ " has already been stmtared in global scope"
                             )
-                Nothing -> Right $ insertDecl entry tbl
+                Nothing -> Right $ insertStmt entry tbl
         -- verifies that main exists
         -- if success, equivalent to `id`
         checkMain :: SymTable -> Either String SymTable
@@ -74,22 +74,22 @@ buildGlobalScope ds =
                     if m == Many [] "Int"
                         then Right tbl
                         else Left "wrong type for main function, expected main(): Int"
-                Nothing -> Left "missing declaration of main function"
+                Nothing -> Left "missing statement of main function"
      in do
             globalScope <- foldM addIfAbsent Map.empty ds
             checkMain globalScope
 
--- shared btwn BlockDecl and BlockExpr for accumulating symbol tables
-buildBlockTbls :: [SymTable] -> DeclAug t -> [SymTable]
+-- shared btwn BlockStmt and BlockExpr for accumulating symbol tables
+buildBlockTbls :: [SymTable] -> StmtAug t -> [SymTable]
 buildBlockTbls tbls l@(Let{}, _) =
     let t = last tbls
-     in tbls ++ [insertDecl l t]
+     in tbls ++ [insertStmt l t]
 buildBlockTbls tbls _ = tbls ++ [last tbls]
 
--- performs the "scoping" part of validation for declarations
-buildSymTreeD :: SymTable -> DeclAug SpanRec -> Either String (DeclAug SymData)
+-- performs the "scoping" part of validation for statements
+buildSymTreeD :: SymTable -> StmtAug SpanRec -> Either String (StmtAug SymData)
 buildSymTreeD tbl l@(Let t i e, sr) =
-    case Map.lookup (getDeclSymbol l) tbl of
+    case Map.lookup (getStmtSymbol l) tbl of
         Just _ -> Left $ astSemanticErr l ("overlapping symbol " ++ i)
         Nothing -> do
             syml <- Let t i <$> buildSymTreeE tbl e
@@ -101,29 +101,29 @@ buildSymTreeD tbl (DefFn i ps t e, sr) =
             return (symf, SymData tbl sr)
 buildSymTreeD tbl r@(Reassign i e, sr) =
     case Map.lookup i tbl of
-        Nothing -> Left $ astSemanticErr r ("undeclared symbol " ++ i)
+        Nothing -> Left $ astSemanticErr r ("unstmtared symbol " ++ i)
         Just _ -> do
             symr <- Reassign i <$> buildSymTreeE tbl e
             return (symr, SymData tbl sr)
-buildSymTreeD tbl c@(CallDecl{}, _) = buildSymTreeCall tbl c
-buildSymTreeD tbl (BlockDecl ds, sr) = do
+buildSymTreeD tbl c@(CallStmt{}, _) = buildSymTreeCall tbl c
+buildSymTreeD tbl (BlockStmt ds, sr) = do
     let dtbls = foldl buildBlockTbls [tbl] ds
     symds <- zipWithM buildSymTreeD dtbls ds
-    return (BlockDecl symds, SymData tbl sr)
-buildSymTreeD tbl (IfDecl b fd eis med, sr) =
+    return (BlockStmt symds, SymData tbl sr)
+buildSymTreeD tbl (IfStmt b fd eis med, sr) =
     let buildSymTreeEF symtbl (eib, eid) =
             (,) <$> buildSymTreeE symtbl eib <*> buildSymTreeD symtbl eid
      in do
             bi <-
-                IfDecl <$> buildSymTreeE tbl b
+                IfStmt <$> buildSymTreeE tbl b
                     <*> buildSymTreeD tbl fd
                     <*> traverse (buildSymTreeEF tbl) eis
                     <*> traverse (buildSymTreeD tbl) med
             return (bi, SymData tbl sr)
-buildSymTreeD tbl (WhileDecl cond body, sr) = do
+buildSymTreeD tbl (WhileStmt cond body, sr) = do
     builtCond <- buildSymTreeE tbl cond
     builtBody <- buildSymTreeD tbl body
-    return (WhileDecl builtCond builtBody, SymData tbl sr)
+    return (WhileStmt builtCond builtBody, SymData tbl sr)
 
 -- performs the "scoping" part of validation for expressions
 buildSymTreeE :: SymTable -> ExprAug SpanRec -> Either String (ExprAug SymData)
@@ -135,7 +135,7 @@ buildSymTreeE tbl (LitChar c, sr) = Right (LitChar c, SymData tbl sr)
 buildSymTreeE tbl (LitString s, sr) = Right (LitString s, SymData tbl sr)
 buildSymTreeE tbl (LitFloat f, sr) = Right (LitFloat f, SymData tbl sr)
 buildSymTreeE tbl (Return, sr) = Right (Return, SymData tbl sr)
--- BlockExpr will be slightly different, needs to accumulate declared symbols
+-- BlockExpr will be slightly different, needs to accumulate stmtared symbols
 buildSymTreeE tbl (BlockExpr ds e, sr) = do
     let dtbls = foldl buildBlockTbls [tbl] ds
     symds <- zipWithM buildSymTreeD dtbls ds
@@ -144,8 +144,8 @@ buildSymTreeE tbl (BlockExpr ds e, sr) = do
 buildSymTreeE tbl s@(Subs i, sr) =
     case Map.lookup i tbl of
         Just _ -> Right (Subs i, SymData tbl sr)
-        Nothing -> Left $ astSemanticErr s ("undeclared symbol " ++ i)
--- practically identical to CallDecl
+        Nothing -> Left $ astSemanticErr s ("unstmtared symbol " ++ i)
+-- practically identical to CallStmt
 buildSymTreeE tbl c@(CallExpr{}, _) = buildSymTreeCall tbl c
 buildSymTreeE tbl (IfExpr b fe eis e, sr) =
     let buildSymTreeEF symtbl (eib, eie) =
@@ -172,10 +172,10 @@ buildSymTreeE tbl (UnaryOp op t, sr) = do
 -- They should act identical to `id` if typechecking succeeds, otherwise they
 -- throw errors
 
--- performs the typechecking part of validation for declarations
-typecheckD :: DeclAug SymData -> Either String (DeclAug SymData)
+-- performs the typechecking part of validation for statements
+typecheckD :: StmtAug SymData -> Either String (StmtAug SymData)
 typecheckD l@(Let t i e, s) =
-    let t1 = getDeclType l
+    let t1 = getStmtType l
         t2 = getType e
      in if t1 == t2
             then do
@@ -183,7 +183,7 @@ typecheckD l@(Let t i e, s) =
                 return (tl, s)
             else Left $ typeError l t1 e t2
 typecheckD f@(DefFn i ps rt e, s) =
-    let t1 = getDeclType f
+    let t1 = getStmtType f
         t2 = getType e
      in if t1 == t2
             then do
@@ -198,11 +198,11 @@ typecheckD r@(Reassign i e, s@(SymData tbl _)) =
                 tr <- Reassign i <$> typecheckE e
                 return (tr, s)
             else Left $ typeError r t1 e t2
-typecheckD c@(CallDecl{}, _) = typecheckCall c
-typecheckD (BlockDecl ds, s) = do
+typecheckD c@(CallStmt{}, _) = typecheckCall c
+typecheckD (BlockStmt ds, s) = do
     tds <- traverse typecheckD ds
-    return (BlockDecl tds, s)
-typecheckD i@(IfDecl b fd eis med, s) =
+    return (BlockStmt tds, s)
+typecheckD i@(IfStmt b fd eis med, s) =
     let applyTplM (f, g) (x, y) = (,) <$> f x <*> g y
      in do
             tb <- handleBTerm i b >>= typecheckE
@@ -210,11 +210,11 @@ typecheckD i@(IfDecl b fd eis med, s) =
             teisi <- traverse (applyTplM (handleBTerm i, typecheckD)) eis
             teisf <- traverse (applyTplM (typecheckE, pure)) teisi
             tmed <- traverse typecheckD med
-            return (IfDecl tb tfd teisf tmed, s)
-typecheckD w@(WhileDecl cond body, s) = do
+            return (IfStmt tb tfd teisf tmed, s)
+typecheckD w@(WhileStmt cond body, s) = do
     checkedCond <- handleBTerm w cond
     checkedBody <- typecheckD body
-    return (WhileDecl checkedCond checkedBody, s)
+    return (WhileStmt checkedCond checkedBody, s)
 
 -- helper functions for typechecking expressions
 numericalTypes :: [String]
@@ -355,7 +355,7 @@ promoteType _ "Float" = "Float"
 promoteType "Int" "Int" = "Int"
 promoteType _ _ = undefined
 
--- sharing functionality between CallExpr and CallDecl because their semantics
+-- sharing functionality between CallExpr and CallStmt because their semantics
 -- are identical
 -- NOTE: maybe need to do this for Blocks as well in the future
 class Call t where
@@ -363,12 +363,12 @@ class Call t where
     getPExprs :: t a -> [ExprAug a]
     newCall :: Identifier -> [ExprAug a] -> t a
 
-instance Call Decl where
-    getId (CallDecl i _) = i
+instance Call Stmt where
+    getId (CallStmt i _) = i
     getId _ = undefined
-    getPExprs (CallDecl _ ps) = ps
+    getPExprs (CallStmt _ ps) = ps
     getPExprs _ = undefined
-    newCall = CallDecl
+    newCall = CallStmt
 
 instance Call Expr where
     getId (CallExpr i _) = i

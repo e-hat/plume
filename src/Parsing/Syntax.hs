@@ -4,9 +4,9 @@ import qualified Text.Parsec as P
 import Text.Printf (printf)
 import Text.Show.Pretty
 
-newtype Program = Program {getProgram :: [ASTDeclAug]}
+newtype Program = Program {getProgram :: [ASTStmtAug]}
 
-newtype ASTDeclAug = ASTDeclAug {getASTDeclAug :: DeclAug SpanRec}
+newtype ASTStmtAug = ASTStmtAug {getASTStmtAug :: StmtAug SpanRec}
 
 newtype ASTExprAug = ASTExprAug {getASTExprAug :: ExprAug SpanRec}
 
@@ -16,27 +16,27 @@ type Type = String
 
 newtype Param = Param {getParam :: (Type, Identifier)} deriving (Eq)
 
-type DeclAug t = (Decl t, t)
+type StmtAug t = (Stmt t, t)
 
 type ExprAug t = (Expr t, t)
 
 voidSentinel :: String
 voidSentinel = "Void"
 
--- each stmt in Plume is either a declaration or an expression
+-- each stmt in Plume is either a statement or an expression
 -- this is an "augmented" tree structure
 -- it allows me to maintain the same "shape" of the tree, but carry different
 -- data on each node depending on what I'm doing, e.g. I need just span info for
 -- all errors, but I'll need a symbol table on each node for type checking.
 -- t represents that additional piece of data unrelated to tree structure
-data Decl t
+data Stmt t
     = Let Type Identifier (ExprAug t)
     | Reassign Identifier (ExprAug t)
     | DefFn Identifier [Param] Type (ExprAug t)
-    | CallDecl Identifier [ExprAug t]
-    | IfDecl (ExprAug t) (DeclAug t) [(ExprAug t, DeclAug t)] (Maybe (DeclAug t))
-    | WhileDecl (ExprAug t) (DeclAug t)
-    | BlockDecl [DeclAug t]
+    | CallStmt Identifier [ExprAug t]
+    | IfStmt (ExprAug t) (StmtAug t) [(ExprAug t, StmtAug t)] (Maybe (StmtAug t))
+    | WhileStmt (ExprAug t) (StmtAug t)
+    | BlockStmt [StmtAug t]
     deriving (Functor, Foldable, Traversable)
 
 data Expr t
@@ -45,7 +45,7 @@ data Expr t
     | -- note that IfExpr REQUIRES an else branch, otherwise a function could only
       -- sometimes return a value
       IfExpr (ExprAug t) (ExprAug t) [(ExprAug t, ExprAug t)] (ExprAug t)
-    | BlockExpr [DeclAug t] (ExprAug t)
+    | BlockExpr [StmtAug t] (ExprAug t)
     | BinOp Op (ExprAug t) (ExprAug t)
     | UnaryOp Op (ExprAug t)
     | LitInt Integer
@@ -116,18 +116,18 @@ instance PrettyVal Program where
 instance PrettyVal Param where
     prettyVal (Param p) = prettyVal p
 
-instance PrettyVal ASTDeclAug where
-    prettyVal (ASTDeclAug (Let t i e, _)) = Con "Let" [String t, String i, prettyVal $ ASTExprAug e]
-    prettyVal (ASTDeclAug (Reassign i e, _)) = Con "Reassign" [String i, prettyVal $ ASTExprAug e]
-    prettyVal (ASTDeclAug (DefFn i ps t e, _)) =
+instance PrettyVal ASTStmtAug where
+    prettyVal (ASTStmtAug (Let t i e, _)) = Con "Let" [String t, String i, prettyVal $ ASTExprAug e]
+    prettyVal (ASTStmtAug (Reassign i e, _)) = Con "Reassign" [String i, prettyVal $ ASTExprAug e]
+    prettyVal (ASTStmtAug (DefFn i ps t e, _)) =
         Con "DefFn" [Con "FName" [String i], Con "Params" (map prettyVal ps), Con "Return type" [String t], Con "Body" [prettyVal $ ASTExprAug e]]
-    prettyVal (ASTDeclAug (CallDecl i es, _)) = Con "CallDecl" [String i, Con "Params passed" [prettyVal $ map ASTExprAug es]]
-    prettyVal (ASTDeclAug (IfDecl e d eds md, _)) =
-        Con "IfDecl" [Con "Condition" [prettyVal $ ASTExprAug e], Con "IfResult" [prettyVal $ ASTDeclAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (ASTDeclAug <$> md)]]
+    prettyVal (ASTStmtAug (CallStmt i es, _)) = Con "CallStmt" [String i, Con "Params passed" [prettyVal $ map ASTExprAug es]]
+    prettyVal (ASTStmtAug (IfStmt e d eds md, _)) =
+        Con "IfStmt" [Con "Condition" [prettyVal $ ASTExprAug e], Con "IfResult" [prettyVal $ ASTStmtAug d], Con "ElseIfs" (map (prettyVal . augEFPair) eds), Con "Else" [prettyVal (ASTStmtAug <$> md)]]
       where
-        augEFPair (e', d') = (ASTExprAug e', ASTDeclAug d')
-    prettyVal (ASTDeclAug (BlockDecl ds, _)) = Con "BlockDecl" [prettyVal (map ASTDeclAug ds)]
-    prettyVal (ASTDeclAug (WhileDecl cond body, _)) = Con "WhileDecl" [prettyVal $ ASTExprAug cond, prettyVal $ ASTDeclAug body]
+        augEFPair (e', d') = (ASTExprAug e', ASTStmtAug d')
+    prettyVal (ASTStmtAug (BlockStmt ds, _)) = Con "BlockStmt" [prettyVal (map ASTStmtAug ds)]
+    prettyVal (ASTStmtAug (WhileStmt cond body, _)) = Con "WhileStmt" [prettyVal $ ASTExprAug cond, prettyVal $ ASTStmtAug body]
 
 instance PrettyVal ASTExprAug where
     prettyVal (ASTExprAug (Subs i, _)) = Con "Subs" [String i]
@@ -136,7 +136,7 @@ instance PrettyVal ASTExprAug where
         Con "IfExpr" [Con "Condition" [prettyVal $ ASTExprAug c], Con "IfResult" [prettyVal $ ASTExprAug e], Con "ElseIfs" (map (prettyVal . augEFPair) ees), Con "Else" [prettyVal (ASTExprAug me)]]
       where
         augEFPair (e1, e2) = (ASTExprAug e1, ASTExprAug e2)
-    prettyVal (ASTExprAug (BlockExpr ds e, _)) = Con "BlockExpr" [prettyVal (map ASTDeclAug ds), prettyVal $ ASTExprAug e]
+    prettyVal (ASTExprAug (BlockExpr ds e, _)) = Con "BlockExpr" [prettyVal (map ASTStmtAug ds), prettyVal $ ASTExprAug e]
     prettyVal (ASTExprAug (BinOp o a b, _)) = Con "BinOp" [String $ show o, prettyVal $ ASTExprAug a, prettyVal $ ASTExprAug b]
     prettyVal (ASTExprAug (UnaryOp o a, _)) = Con "UnaryOp" [String $ show o, prettyVal $ ASTExprAug a]
     prettyVal (ASTExprAug (LitInt i, _)) = Integer (show i)

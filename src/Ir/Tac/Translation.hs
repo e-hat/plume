@@ -8,28 +8,28 @@ import Semantics.SymbolTable
 import qualified Semantics.Validation as V
 
 toTac :: SymTreeList -> Program
-toTac (SymTreeList topLevelDecls) =
-    let ds = map getSymDeclAug topLevelDecls
+toTac (SymTreeList topLevelStmts) =
+    let ds = map getSymStmtAug topLevelStmts
         globals = collectGlobals ds
-        funcDecls = filter isFunc ds
-        funcs = map (func globals) funcDecls
-     in Program $ M.fromList $ zip (map getFuncName funcDecls) funcs
+        funcStmts = filter isFunc ds
+        funcs = map (func globals) funcStmts
+     in Program $ M.fromList $ zip (map getFuncName funcStmts) funcs
 
 type Env = M.Map S.Identifier Symbol
 
-collectGlobals :: [S.DeclAug SymData] -> Env
+collectGlobals :: [S.StmtAug SymData] -> Env
 collectGlobals = fst . foldl step (M.empty, 0)
   where
-    step :: (Env, Int) -> S.DeclAug SymData -> (Env, Int)
+    step :: (Env, Int) -> S.StmtAug SymData -> (Env, Int)
     step (mapping, counter) (S.Let typ sym _, _) =
         (M.insert sym (Global counter typ) mapping, counter + 1)
     step st _ = st
 
-getFuncName :: S.DeclAug SymData -> S.Identifier
+getFuncName :: S.StmtAug SymData -> S.Identifier
 getFuncName (S.DefFn name _ _ _, _) = name
-getFuncName _ = error "expected a function declaration"
+getFuncName _ = error "expected a function statement"
 
-isFunc :: S.DeclAug SymData -> Bool
+isFunc :: S.StmtAug SymData -> Bool
 isFunc (S.DefFn{}, _) = True
 isFunc _ = False
 
@@ -79,52 +79,52 @@ paramMap = fst . foldl step (M.empty, 0)
 -- Translation functions
 -- The names of these functions do not have the word "translate" preceding them
 -- because it was becoming repetitive
-func :: Env -> S.DeclAug SymData -> Func
+func :: Env -> S.StmtAug SymData -> Func
 func globals funcDef@(S.DefFn _ ps ret _, _) =
     let paramTypes = map (fst . S.getParam) ps
         initial = Translator (Func paramTypes ret []) 0 (M.union globals (paramMap ps))
-        final = execState (decl funcDef) initial
+        final = execState (stmt funcDef) initial
      in getCurrentFunc final
-func _ _ = error "expected a function declaration"
+func _ _ = error "expected a function statement"
 
-decl :: S.DeclAug SymData -> State Translator ()
-decl (S.DefFn _ _ "Void" e, _) = do
+stmt :: S.StmtAug SymData -> State Translator ()
+stmt (S.DefFn _ _ "Void" e, _) = do
     voidExpr e
     appendInst $ Return Nothing
-decl (S.DefFn _ _ _ e, _) = do
+stmt (S.DefFn _ _ _ e, _) = do
     result <- exprExpr e
     appendInst $ Return $ Just result
-decl (S.Let typ name e, _) = do
+stmt (S.Let typ name e, _) = do
     rhs <- exprExpr e
     lhs <- nextLocal typ
     addVarToEnv name lhs
     appendInst $ assignment lhs rhs
-decl (S.Reassign name e, _) = do
+stmt (S.Reassign name e, _) = do
     rhs <- exprExpr e
     lhs <- lookupVar name
     appendInst $ assignment lhs rhs
-decl (S.CallDecl name paramExprs, _) = do
+stmt (S.CallStmt name paramExprs, _) = do
     paramTerms <- mapM exprTerm paramExprs
     appendInst $ IgnoreReturnValCall $ FuncCall (name, paramTerms)
-decl (S.BlockDecl decls, _) = do
-    body <- snd <$> translateSublist (mapM_ decl decls)
+stmt (S.BlockStmt stmts, _) = do
+    body <- snd <$> translateSublist (mapM_ stmt stmts)
     appendInst $ Block body
-decl (S.IfDecl predicate cons [] mElse, _) = do
+stmt (S.IfStmt predicate cons [] mElse, _) = do
     predExpr <- exprExpr predicate
-    consList <- snd <$> translateSublist (decl cons)
+    consList <- snd <$> translateSublist (stmt cons)
     alternative <-
         case mElse of
             Nothing -> return []
-            Just d -> snd <$> translateSublist (decl d)
+            Just d -> snd <$> translateSublist (stmt d)
     appendInst $ Cond predExpr consList alternative
-decl (S.IfDecl predicate cons ((elseIfPred, elseIfCons) : elseIfs) mElse, symData) = do
+stmt (S.IfStmt predicate cons ((elseIfPred, elseIfCons) : elseIfs) mElse, symData) = do
     predExpr <- exprExpr predicate
-    consList <- snd <$> translateSublist (decl cons)
-    alternative <- snd <$> translateSublist (decl (S.IfDecl elseIfPred elseIfCons elseIfs mElse, symData))
+    consList <- snd <$> translateSublist (stmt cons)
+    alternative <- snd <$> translateSublist (stmt (S.IfStmt elseIfPred elseIfCons elseIfs mElse, symData))
     appendInst $ Cond predExpr consList alternative
-decl (S.WhileDecl cond body, _) = do
+stmt (S.WhileStmt cond body, _) = do
     condExpr <- exprExpr cond
-    bodyList <- snd <$> translateSublist (decl body)
+    bodyList <- snd <$> translateSublist (stmt body)
     appendInst $ While condExpr bodyList
 
 exprExpr :: S.ExprAug SymData -> State Translator (Expr Term)
@@ -156,8 +156,8 @@ exprTerm e@(S.CallExpr name _, SymData tbl _) = do
     lhs <- nextLocal (lookupSymbolType name tbl)
     appendInst $ assignment lhs rhs
     return $ Subs lhs
-exprTerm (S.BlockExpr decls out, _) = do
-    (result, block) <- translateSublist (mapM_ decl decls >> exprTerm out)
+exprTerm (S.BlockExpr stmts out, _) = do
+    (result, block) <- translateSublist (mapM_ stmt stmts >> exprTerm out)
     appendInst $ Block block
     return result
 exprTerm e@(S.IfExpr{}, _) = do

@@ -9,13 +9,13 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Expr as Ex
 
 program :: P.Parsec String () Program
-program = Program . map ASTDeclAug <$> (L.whiteSpace *> P.many1 (P.try letdecl P.<|> P.try deffn) <* P.eof)
+program = Program . map ASTStmtAug <$> (L.whiteSpace *> P.many1 (P.try letstmt P.<|> P.try deffn) <* P.eof)
 
--- wraps an declaration parser to keep track of its span
-declWrapper :: P.Parsec String () (Decl SpanRec) -> P.Parsec String () (DeclAug SpanRec)
-declWrapper declP = do
+-- wraps an stmtaration parser to keep track of its span
+stmtWrapper :: P.Parsec String () (Stmt SpanRec) -> P.Parsec String () (StmtAug SpanRec)
+stmtWrapper stmtP = do
     start <- P.getPosition
-    val <- declP
+    val <- stmtP
     end <- P.getPosition
     return (val, spanBtwnSP start end)
 
@@ -103,27 +103,27 @@ char =
 -----------------------------------------------------------
 -- the expressions themselves
 -- "trys" will be optimized after everything else so that I have behavior to test against
-declaration :: P.Parsec String () (DeclAug SpanRec)
-declaration =
-    P.try letdecl P.<|> P.try deffn
-        P.<|> P.try calldecl
+stmtaration :: P.Parsec String () (StmtAug SpanRec)
+stmtaration =
+    P.try letstmt P.<|> P.try deffn
+        P.<|> P.try callstmt
         P.<|> P.try reassign
-        P.<|> P.try ifdecl
-        P.<|> P.try whiledecl
-        P.<|> P.try blockdecl
-        P.<?> "a declaration (something without a result)"
+        P.<|> P.try ifstmt
+        P.<|> P.try whilestmt
+        P.<|> P.try blockstmt
+        P.<?> "a stmtaration (something without a result)"
 
 -- not allowed to define functions in if statements and etc
-bodyDeclaration :: P.Parsec String () (DeclAug SpanRec)
-bodyDeclaration =
-    P.try letdecl
-        P.<|> P.try calldecl
+bodyStatement :: P.Parsec String () (StmtAug SpanRec)
+bodyStatement =
+    P.try letstmt
+        P.<|> P.try callstmt
         P.<|> P.try reassign
-        P.<|> P.try ifdecl
-        P.<|> P.try whiledecl
-        P.<|> P.try blockdecl
-        P.<|> P.try letdecl
-        P.<?> "a declaration (something without a result)"
+        P.<|> P.try ifstmt
+        P.<|> P.try whilestmt
+        P.<|> P.try blockstmt
+        P.<|> P.try letstmt
+        P.<?> "a stmtaration (something without a result)"
 
 expression :: P.Parsec String () (ExprAug SpanRec)
 expression =
@@ -142,9 +142,9 @@ expression =
 yieldexpr :: P.Parsec String () (ExprAug SpanRec)
 yieldexpr = L.reserved "yield" >> expression
 
-letdecl :: P.Parsec String () (DeclAug SpanRec)
-letdecl =
-    declWrapper $ do
+letstmt :: P.Parsec String () (StmtAug SpanRec)
+letstmt =
+    stmtWrapper $ do
         t <- L.typeName
         -- this shouldn't be allowed
         guard (t /= "Void")
@@ -152,9 +152,9 @@ letdecl =
         L.reservedOp ":="
         Let t ident <$> expression
 
-reassign :: P.Parsec String () (DeclAug SpanRec)
+reassign :: P.Parsec String () (StmtAug SpanRec)
 reassign =
-    declWrapper $ do
+    stmtWrapper $ do
         ident <- L.identifier
         L.reservedOp "<-"
         Reassign ident <$> expression
@@ -162,9 +162,9 @@ reassign =
 subs :: P.Parsec String () (ExprAug SpanRec)
 subs = exprWrapper $ Subs <$> L.identifier
 
-deffn :: P.Parsec String () (DeclAug SpanRec)
+deffn :: P.Parsec String () (StmtAug SpanRec)
 deffn =
-    declWrapper $ do
+    stmtWrapper $ do
         L.reserved "def"
         ident <- P.try L.identifier P.<|> (L.reserved "main" >> return "main")
         params <- L.parens $ P.sepBy L.param (L.reservedOp ",")
@@ -190,19 +190,19 @@ callexpr =
         params <- L.parens $ P.sepBy paramexpr (L.reservedOp ",")
         return $ CallExpr ident params
 
-declFromExpr :: ExprAug SpanRec -> Decl SpanRec
-declFromExpr (e, _) = makeCall e
+stmtFromExpr :: ExprAug SpanRec -> Stmt SpanRec
+stmtFromExpr (e, _) = makeCall e
   where
-    makeCall :: Expr SpanRec -> Decl SpanRec
-    makeCall (CallExpr i exs) = CallDecl i exs
+    makeCall :: Expr SpanRec -> Stmt SpanRec
+    makeCall (CallExpr i exs) = CallStmt i exs
     makeCall _ = undefined
 
-calldecl :: P.Parsec String () (DeclAug SpanRec)
-calldecl =
-    declWrapper $ do
+callstmt :: P.Parsec String () (StmtAug SpanRec)
+callstmt =
+    stmtWrapper $ do
         stmt <- callexpr
         L.reservedOp ";"
-        return $ declFromExpr stmt
+        return $ stmtFromExpr stmt
 
 ifbodyexpr :: P.Parsec String () (ExprAug SpanRec)
 ifbodyexpr =
@@ -228,16 +228,16 @@ ifexpr =
         elsecase <- P.try elseexpr
         return $ IfExpr cond firstexpr elseifs elsecase
 
-ifdecl :: P.Parsec String () (DeclAug SpanRec)
-ifdecl =
-    declWrapper $ do
+ifstmt :: P.Parsec String () (StmtAug SpanRec)
+ifstmt =
+    stmtWrapper $ do
         L.reserved "if"
         cond <- opExpression
         L.reservedOp "=>"
-        firstdecl <- bodyDeclaration
-        elseifs <- P.many (P.try elseifdecl)
-        elsecase <- P.optionMaybe (P.try elsedecl)
-        return $ IfDecl cond firstdecl elseifs elsecase
+        firststmt <- bodyStatement
+        elseifs <- P.many (P.try elseifstmt)
+        elsecase <- P.optionMaybe (P.try elsestmt)
+        return $ IfStmt cond firststmt elseifs elsecase
 
 elseifexpr :: P.Parsec String () (ExprAug SpanRec, ExprAug SpanRec)
 elseifexpr =
@@ -248,14 +248,14 @@ elseifexpr =
         L.reservedOp "=>"
         (,) cond <$> ifbodyexpr
 
-elseifdecl :: P.Parsec String () (ExprAug SpanRec, DeclAug SpanRec)
-elseifdecl =
+elseifstmt :: P.Parsec String () (ExprAug SpanRec, StmtAug SpanRec)
+elseifstmt =
     do
         L.reserved "else"
         L.reserved "if"
         cond <- opExpression
         L.reservedOp "=>"
-        (,) cond <$> bodyDeclaration
+        (,) cond <$> bodyStatement
 
 elseexpr :: P.Parsec String () (ExprAug SpanRec)
 elseexpr =
@@ -264,20 +264,20 @@ elseexpr =
         L.reservedOp "=>"
         ifbodyexpr
 
-elsedecl :: P.Parsec String () (DeclAug SpanRec)
-elsedecl =
+elsestmt :: P.Parsec String () (StmtAug SpanRec)
+elsestmt =
     do
         L.reserved "else"
         L.reservedOp "=>"
-        bodyDeclaration
+        bodyStatement
 
-whiledecl :: P.Parsec String () (DeclAug SpanRec)
-whiledecl =
-    declWrapper $ do
+whilestmt :: P.Parsec String () (StmtAug SpanRec)
+whilestmt =
+    stmtWrapper $ do
         L.reserved "while"
         cond <- opExpression
         L.reservedOp "=>"
-        WhileDecl cond <$> bodyDeclaration
+        WhileStmt cond <$> bodyStatement
 
 blockreturnexpr :: P.Parsec String () (ExprAug SpanRec)
 blockreturnexpr =
@@ -295,12 +295,12 @@ blockreturnexpr =
 blockexpr :: P.Parsec String () (ExprAug SpanRec)
 blockexpr =
     exprWrapper . L.braces $ do
-        decls <- P.many bodyDeclaration
-        BlockExpr decls <$> blockreturnexpr
+        stmts <- P.many bodyStatement
+        BlockExpr stmts <$> blockreturnexpr
 
-blockdecl :: P.Parsec String () (DeclAug SpanRec)
-blockdecl =
-    declWrapper . L.braces $ BlockDecl <$> P.many bodyDeclaration
+blockstmt :: P.Parsec String () (StmtAug SpanRec)
+blockstmt =
+    stmtWrapper . L.braces $ BlockStmt <$> P.many bodyStatement
 
 returnexpr :: P.Parsec String () (ExprAug SpanRec)
 returnexpr = exprWrapper $ L.reserved "return" >> return Return

@@ -27,20 +27,20 @@ starBlock = "*******************************************"
 class ErrRep a where
     errRep :: a -> String
 
-instance ErrRep (Decl t) where
-    errRep (Let _ n _) = "Let Declaration for " ++ n
-    errRep (Reassign n _) = "Reassign Declaration for " ++ n
-    errRep (DefFn n _ _ _) = "Function Definition Declaration for " ++ n
-    errRep (CallDecl n _) = "Function Call Declaration of function " ++ n
-    errRep IfDecl{} = "If Statement Declaration"
-    errRep WhileDecl{} = "While Loop Declaration"
-    errRep BlockDecl{} = "Block Statement Declaration"
+instance ErrRep (Stmt t) where
+    errRep (Let _ n _) = "Let Statement for " ++ n
+    errRep (Reassign n _) = "Reassignment Statement for " ++ n
+    errRep (DefFn n _ _ _) = "Function Definition Statement for " ++ n
+    errRep (CallStmt n _) = "Function Call Statement of function " ++ n
+    errRep IfStmt{} = "If  Statement"
+    errRep WhileStmt{} = "While Loop Statement"
+    errRep BlockStmt{} = "Block Statement"
 
 instance ErrRep (Expr t) where
     errRep (Subs n) = "Substitution Expression of " ++ n
     errRep (CallExpr n _) = "Function Call Expression of " ++ n
-    errRep IfExpr{} = "If Statement Expression"
-    errRep BlockExpr{} = "Block Statement Expression"
+    errRep IfExpr{} = "If Expression"
+    errRep BlockExpr{} = "Block Expression"
     errRep BinOp{} = "Binary Operation Expression"
     errRep UnaryOp{} = "Unary Operation Expression"
     errRep LitInt{} = "Integer Literal Expression"
