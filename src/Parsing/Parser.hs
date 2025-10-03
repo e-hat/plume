@@ -11,7 +11,7 @@ import qualified Text.Parsec.Expr as Ex
 program :: P.Parsec String () Program
 program = Program . map ASTStmtAug <$> (L.whiteSpace *> P.many1 (P.try letstmt P.<|> P.try deffn) <* P.eof)
 
--- wraps an stmtaration parser to keep track of its span
+-- wraps an statement parser to keep track of its span
 stmtWrapper :: P.Parsec String () (Stmt SpanRec) -> P.Parsec String () (StmtAug SpanRec)
 stmtWrapper stmtP = do
     start <- P.getPosition
@@ -103,15 +103,15 @@ char =
 -----------------------------------------------------------
 -- the expressions themselves
 -- "trys" will be optimized after everything else so that I have behavior to test against
-stmtaration :: P.Parsec String () (StmtAug SpanRec)
-stmtaration =
+statement :: P.Parsec String () (StmtAug SpanRec)
+statement =
     P.try letstmt P.<|> P.try deffn
         P.<|> P.try callstmt
         P.<|> P.try reassign
         P.<|> P.try ifstmt
         P.<|> P.try whilestmt
         P.<|> P.try blockstmt
-        P.<?> "a stmtaration (something without a result)"
+        P.<?> "a statement (something without a result)"
 
 -- not allowed to define functions in if statements and etc
 bodyStatement :: P.Parsec String () (StmtAug SpanRec)
@@ -123,7 +123,7 @@ bodyStatement =
         P.<|> P.try whilestmt
         P.<|> P.try blockstmt
         P.<|> P.try letstmt
-        P.<?> "a stmtaration (something without a result)"
+        P.<?> "a statement (something without a result)"
 
 expression :: P.Parsec String () (ExprAug SpanRec)
 expression =
