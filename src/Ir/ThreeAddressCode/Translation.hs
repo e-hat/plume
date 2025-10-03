@@ -1,8 +1,8 @@
-module Ir.Tac.Translation (toTac) where
+module Ir.ThreeAddressCode.Translation (toTac) where
 
 import Control.Monad.State
 import qualified Data.Map.Strict as M
-import Ir.Tac.Types
+import Ir.ThreeAddressCode.Types
 import qualified Parsing.Syntax as S
 import Semantics.SymbolTable
 import qualified Semantics.Validation as V
@@ -33,37 +33,37 @@ isFunc :: S.StmtAug SymData -> Bool
 isFunc (S.DefFn{}, _) = True
 isFunc _ = False
 
-data Translator = Translator
+data TState = TState
     { getCurrentFunc :: Func
     , getLocalCounter :: Int
     , getEnv :: Env
     }
 
-setCurrentFunc :: Func -> State Translator ()
+setCurrentFunc :: Func -> State TState ()
 setCurrentFunc f = modify $ \s -> s{getCurrentFunc = f}
 
-setEnv :: Env -> State Translator ()
+setEnv :: Env -> State TState ()
 setEnv env = modify $ \s -> s{getEnv = env}
 
-setLocalCounter :: Int -> State Translator ()
+setLocalCounter :: Int -> State TState ()
 setLocalCounter n = modify $ \s -> s{getLocalCounter = n}
 
-addVarToEnv :: S.Identifier -> Symbol -> State Translator ()
+addVarToEnv :: S.Identifier -> Symbol -> State TState ()
 addVarToEnv name sym = do
     env <- gets getEnv
     setEnv $ M.insert name sym env
 
-lookupVar :: S.Identifier -> State Translator Symbol
+lookupVar :: S.Identifier -> State TState Symbol
 lookupVar name = do
     env <- gets getEnv
     return $ env M.! name
 
-appendInst :: Inst -> State Translator ()
+appendInst :: Inst -> State TState ()
 appendInst i = do
     f <- gets getCurrentFunc
     setCurrentFunc $ f{getFunc = getFunc f ++ [i]}
 
-nextLocal :: Type -> State Translator Symbol
+nextLocal :: Type -> State TState Symbol
 nextLocal typ = do
     n <- gets getLocalCounter
     setLocalCounter (n + 1)
@@ -82,12 +82,12 @@ paramMap = fst . foldl step (M.empty, 0)
 func :: Env -> S.StmtAug SymData -> Func
 func globals funcDef@(S.DefFn _ ps ret _, _) =
     let paramTypes = map (fst . S.getParam) ps
-        initial = Translator (Func paramTypes ret []) 0 (M.union globals (paramMap ps))
+        initial = TState (Func paramTypes ret []) 0 (M.union globals (paramMap ps))
         final = execState (stmt funcDef) initial
      in getCurrentFunc final
 func _ _ = error "expected a function statement"
 
-stmt :: S.StmtAug SymData -> State Translator ()
+stmt :: S.StmtAug SymData -> State TState ()
 stmt (S.DefFn _ _ "Void" e, _) = do
     voidExpr e
     appendInst $ Return Nothing
@@ -127,7 +127,7 @@ stmt (S.WhileStmt cond body, _) = do
     bodyList <- snd <$> translateSublist (stmt body)
     appendInst $ While condExpr bodyList
 
-exprExpr :: S.ExprAug SymData -> State Translator (Expr Term)
+exprExpr :: S.ExprAug SymData -> State TState (Expr Term)
 exprExpr e@(S.Subs{}, _) = None <$> exprTerm e
 exprExpr (S.CallExpr name paramExprs, SymData tbl _) = do
     paramTerms <- mapM exprTerm paramExprs
@@ -146,7 +146,7 @@ exprExpr (S.LitBool bool, _) = return $ None $ LitBool bool
 exprExpr (S.LitChar char, _) = return $ None $ LitChar char
 exprExpr (S.Return, _) = error "only `voidExpr` should be called on Return ExprAug"
 
-exprTerm :: S.ExprAug SymData -> State Translator Term
+exprTerm :: S.ExprAug SymData -> State TState Term
 exprTerm (S.Subs name, _) = do
     env <- gets getEnv
     return $ Subs $ env M.! name
@@ -175,7 +175,7 @@ exprTerm e = do
     appendInst $ assignment lhs rhs
     return $ Subs lhs
 
-ifExprTermHelper :: Symbol -> S.ExprAug SymData -> State Translator ()
+ifExprTermHelper :: Symbol -> S.ExprAug SymData -> State TState ()
 ifExprTermHelper dst (S.IfExpr predicate cons [] els, _) = do
     predExpr <- exprExpr predicate
     (consExpr, consList) <- translateSublist (exprExpr cons)
@@ -198,7 +198,7 @@ ifExprTermHelper _ _ = undefined
 
 -- Translates a term and returns the list of instructions that the term creates,
 -- without changing the State. It also returns intermediate State used for the dummy translation.
-translateSublist :: State Translator a -> State Translator (a, [Inst])
+translateSublist :: State TState a -> State TState (a, [Inst])
 translateSublist action = do
     before <- get
     let initial = before{getCurrentFunc = Func [] [] []}
@@ -207,7 +207,7 @@ translateSublist action = do
     return (result, getFunc $ getCurrentFunc final)
 
 -- These are the only Expr's that could possibly return void
-voidExpr :: S.ExprAug SymData -> State Translator ()
+voidExpr :: S.ExprAug SymData -> State TState ()
 voidExpr node@(S.CallExpr{}, _) = do
     funcCallExpr <- exprExpr node
     case funcCallExpr of

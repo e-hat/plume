@@ -1,4 +1,4 @@
-module Ir.Tac.Types where
+module Ir.ThreeAddressCode.Types where
 
 import Data.Char
 import Data.List

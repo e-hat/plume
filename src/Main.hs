@@ -8,7 +8,7 @@ import Control.Monad ()
 import Data.Binary.Put
 import qualified Data.ByteString.Lazy as BL
 import Data.Semigroup ()
-import Ir.Tac.Translation
+import Ir.ThreeAddressCode.Translation
 import Options.Applicative
 import Parsing.Parser
 import Parsing.Syntax (Op(Negate))
@@ -16,18 +16,19 @@ import Semantics.Validation
 import System.IO
 import qualified Text.Parsec as P
 import Text.Show.Pretty
-import Ir.Cfg.Types
-import qualified Ir.Tac.Types as T
-import qualified Ir.Tac.Translation as Tr
+import Ir.ControlFlowGraph.Types
+import qualified Ir.ThreeAddressCode.Types as T
+import qualified Ir.ControlFlowGraph.Translation as Tr
+import qualified Data.Map.Strict as M
 
 data Input
     = ASTInput String
     | ValInput String
     | RunInput String
-    | TacInput String
+    | ThreeAddressCodeInput String
     | CompileInputWasm String
     | CompileInputARM String
-    | Whatever String
+    | ControlFlowGraphInput String
 
 astInput :: Parser Input
 astInput =
@@ -51,7 +52,7 @@ valInput =
 
 tacInput :: Parser Input
 tacInput =
-    TacInput
+    ThreeAddressCodeInput
         <$> strOption
             ( long "tac"
                 <> short 't'
@@ -78,15 +79,21 @@ compileInputARM =
                 <> help "Compile a plume program to ARM assembly"
             )
 
+controlFlowGraphInput :: Parser Input
+controlFlowGraphInput =
+    ControlFlowGraphInput
+        <$> strOption
+            ( long "cfg"
+                <> metavar "FILENAME"
+                <> help "Compile a plume program and display its control flow graph"
+            )
+
 compileOptions :: Parser Input
-compileOptions = astInput <|> valInput <|> tacInput <|> compileInputWasm <|> compileInputARM
+compileOptions = astInput <|> valInput <|> tacInput <|> compileInputWasm <|> compileInputARM <|> controlFlowGraphInput
 
 runArg :: Parser Input
 runArg =
     RunInput <$> argument str (metavar "FILE")
-
-whateverArg :: Parser Input 
-whateverArg = Whatever <$> argument str (metavar "FILE")
     
 
 input :: Parser Input
@@ -104,9 +111,6 @@ input =
                     (runArg <**> helper)
                     (progDesc "Run a Plume program")
                 )
-            -- For testing random functionality thats in development
-            <> command "whatever"
-                ( info (whateverArg <**> helper) (progDesc "Do whatever!"))
         )
 
 main :: IO ()
@@ -132,7 +136,7 @@ run (ValInput f) = do
             Right _ -> putStrLn ("Validation of " ++ f ++ " successful.")
 run RunInput{} = do
     hPutStrLn stderr "The Plume VM has been deprecated and is no longer available for use."
-run (TacInput f) = do
+run (ThreeAddressCodeInput f) = do
     nodes <- P.parse program f <$> readFile f
     case nodes of
         Left err -> print err
@@ -159,6 +163,10 @@ run (CompileInputARM f) = do
                 let tac = toTac trees
                     postRegAlloc = naiveRegAlloc tac
                  in putStrLn $ ARMEmit.emit postRegAlloc
-run Whatever{} = 
-    let bbs = [BasicBlock "start" [T.Assignment (T.None (T.Subs (T.Local 0 "String"))) (T.Un Negate (T.LitInt 5))] (Jump "end"), BasicBlock "end" [] Return]
-     in print $ fromList bbs
+run (ControlFlowGraphInput f) = do
+    nodes <- P.parse program f <$> readFile f
+    case nodes of
+        Left err -> print err
+        Right p -> case validateSemantics p of
+            Left err -> putStrLn err
+            Right trees -> print $ Tr.fromFunc $ (T.getProgram $ toTac trees) M.! "main"

@@ -6,7 +6,7 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Data.Map.Strict as M
-import qualified Ir.Tac.Types as T
+import qualified Ir.ThreeAddressCode.Types as T
 import qualified Parsing.Syntax as S
 import Text.Printf
 

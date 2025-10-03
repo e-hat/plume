@@ -6,7 +6,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
-import qualified Ir.Tac.Types as T
+import qualified Ir.ThreeAddressCode.Types as T
 import qualified Parsing.Syntax as S
 
 toWasm :: T.Program -> Program

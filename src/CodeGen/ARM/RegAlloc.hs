@@ -4,7 +4,7 @@ import Data.Binary
 import Data.Int
 import Data.List
 import qualified Data.Map.Strict as M
-import qualified Ir.Tac.Types as T
+import qualified Ir.ThreeAddressCode.Types as T
 import Text.Printf
 
 type Type = String
