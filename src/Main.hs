@@ -11,11 +11,14 @@ import Data.Semigroup ()
 import Ir.Tac.Translation
 import Options.Applicative
 import Parsing.Parser
-import Parsing.Syntax ()
+import Parsing.Syntax (Op(Negate))
 import Semantics.Validation
 import System.IO
 import qualified Text.Parsec as P
 import Text.Show.Pretty
+import Ir.Cfg.Types
+import qualified Ir.Tac.Types as T
+import qualified Ir.Tac.Translation as Tr
 
 data Input
     = ASTInput String
@@ -24,6 +27,7 @@ data Input
     | TacInput String
     | CompileInputWasm String
     | CompileInputARM String
+    | Whatever String
 
 astInput :: Parser Input
 astInput =
@@ -81,6 +85,10 @@ runArg :: Parser Input
 runArg =
     RunInput <$> argument str (metavar "FILE")
 
+whateverArg :: Parser Input 
+whateverArg = Whatever <$> argument str (metavar "FILE")
+    
+
 input :: Parser Input
 input =
     hsubparser
@@ -96,6 +104,9 @@ input =
                     (runArg <**> helper)
                     (progDesc "Run a Plume program")
                 )
+            -- For testing random functionality thats in development
+            <> command "whatever"
+                ( info (whateverArg <**> helper) (progDesc "Do whatever!"))
         )
 
 main :: IO ()
@@ -148,3 +159,6 @@ run (CompileInputARM f) = do
                 let tac = toTac trees
                     postRegAlloc = naiveRegAlloc tac
                  in putStrLn $ ARMEmit.emit postRegAlloc
+run Whatever{} = 
+    let bbs = [BasicBlock "start" [T.Assignment (T.None (T.Subs (T.Local 0 "String"))) (T.Un Negate (T.LitInt 5))] (Jump "end"), BasicBlock "end" [] Return]
+     in print $ fromList bbs
